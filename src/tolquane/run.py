@@ -5,13 +5,14 @@ from __future__ import annotations
 from typing import Any
 
 from .errors import TolquaneError
-from .graph import Graph, build
+from .graph import Graph, build, validate
 from .runtime import Report, execute
 
 
 def check(block: Any) -> Graph:
     """Expand and validate a block without running it. Raises ``GraphError`` with a fix."""
     if isinstance(block, Graph):
+        validate(block)
         return block
     return build(block)
 

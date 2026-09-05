@@ -310,8 +310,8 @@ def test_raw_node_inputs_and_selective_recv(runtime: str) -> None:
         ctx.send(("odds", rest))
 
     out = tq.to_list()
-    with pytest.raises(tq.GraphError, match="must take an item"):
-        tq.farm(merge, 1)  # a raw node reads for itself, so it cannot be a worker
+    with pytest.raises(tq.GraphError, match="cannot be raw nodes"):
+        tq.farm(merge, 1, ordered=True)  # tagging needs the runtime to drive the worker
     g = tq.from_iterable(range(10)) >> tq.farm(double, 2, emitter=split, collector=merge) >> out
     tq.run(g, runtime=runtime)
     assert dict(out.items) == {"evens": [0, 4, 8, 12, 16], "odds": [2, 6, 10, 14, 18]}

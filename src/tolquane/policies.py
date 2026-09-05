@@ -49,8 +49,12 @@ class Strategy:
         self._entered_many(src, len(items))
         return src, items
 
-    def _pop(self) -> tuple[int, Any, bool] | None:
-        """Next ``(src, item, batched)``, unpacking batches, handling EOS and loop control."""
+    def _pop(self, watch: int | None = None) -> tuple[int, Any, bool] | None:
+        """Next ``(src, item, batched)``, unpacking batches, handling EOS and loop control.
+
+        Returns ``None`` when every source has ended, or as soon as source ``watch``
+        ends, so that a selective receive never waits for sources it is not reading.
+        """
         while True:
             batch = self._batch
             if batch is not None:
@@ -76,6 +80,8 @@ class Strategy:
                     edge = self.inbox.edges_in[src]
                     if edge.entry_loop is not None:
                         edge.entry_loop.external_ended()
+                if src == watch:
+                    return None
                 continue
             if entry is LOOP_DONE:
                 for i, edge in enumerate(self.inbox.edges_in):
@@ -83,6 +89,8 @@ class Strategy:
                         self.ended.add(i)
                         self.remaining -= 1
                         self.on_source_ended(i)
+                if watch is not None and watch in self.ended:
+                    return None
                 continue
             if isinstance(entry, Batch):
                 self._batch = entry.items
@@ -144,7 +152,7 @@ class FirstCome(Strategy):
         while True:
             if source in self.ended:
                 return None
-            r = self._pop()
+            r = self._pop(watch=source)
             if r is None:
                 return None
             src, item, batched = r

@@ -11,7 +11,7 @@ The whole public surface on one page. `import tolquane as tq`.
 | `@tq.node` on `def f(x): yield ...` | Flat map. Each yielded value is sent. |
 | `@tq.node` on `def f(x, ctx): ctx.send(y)` | Explicit sends: `ctx.send(y)`, `ctx.send(y, to=i)`, `ctx.broadcast(y)`, `ctx.stop()`. Must not return a value. |
 | `@tq.sink` on `def f(x)` or `def f(x, ctx)` | Consumes items. No outputs. |
-| `@tq.raw` on `def f(ctx)` | Full control: `for src, item in ctx.inputs(): ...`, `ctx.recv(source=i)`; call `ctx.flush()` before blocking on anything outside Tolquane. |
+| `@tq.raw` on `def f(ctx)` | Full control: `for src, item in ctx.inputs(): ...`, `ctx.recv(source=i)` reads one input and returns `None` when it ends; call `ctx.flush()` before blocking on anything outside Tolquane. Raw nodes can be farm workers, emitters or collectors, except in ordered and gather farms. |
 | a class with `__call__(self, x)` | Stateful node, one instance per worker. Optional `on_start(self, ctx)` and `on_end(self, ctx)`. |
 
 `ctx.index` is the worker number, `ctx.source` the input the current item came from,
@@ -38,6 +38,16 @@ Inside a `feedback` block the last stage sends back with `ctx.feedback(item)` an
 first stage sees `ctx.is_feedback`. The loop closes by itself when the outside input has
 ended and nothing is in flight; `ctx.stop()` in the first stage ends it earlier.
 A class node with `on_start` may have no inputs at all: it produces in the hook.
+
+Topologies the blocks cannot say (a grid of workers talking to their neighbours):
+expand, link by name, run.
+
+```python
+from tolquane.graph import expand
+g = expand(src >> tq.farm(tq.raw(Cell), 9, name="grid") >> out)
+g.link("grid.0", "grid.1")      # new last output of grid.0, new last input of grid.1
+tq.run(g)
+```
 
 Scatter splits a sequence across workers; gather concatenates the results in order.
 `emit="on_demand"` gives each worker one item at a time (`prefetch=` to change).

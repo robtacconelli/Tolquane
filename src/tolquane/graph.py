@@ -103,6 +103,28 @@ class Graph:
         self.windows.update(other.windows)
         self.loops.extend(other.loops)
 
+    def link(
+        self,
+        src: str,
+        dst: str,
+        *,
+        capacity: int | None = DEFAULT_CAPACITY,
+        batch: int = DEFAULT_BATCH,
+    ) -> EdgeSpec:
+        """Add one channel between two named nodes, for topologies the blocks cannot say.
+
+        Use ``tolquane.graph.expand(block)`` to get the nodes, link them, then ``run``
+        the graph. The new edge is the last input of ``dst`` and the last output of
+        ``src``, so ``ctx.send(item, to=...)`` and ``ctx.source`` can address it.
+        """
+        names = {n.name for n in self.nodes}
+        for name in (src, dst):
+            if name not in names:
+                raise GraphError(f"link(): unknown node {name!r}; nodes are {sorted(names)}")
+        edge = EdgeSpec(src, dst, "link", capacity, batch)
+        self.edges.append(edge)
+        return edge
+
 
 class _Names:
     """Allocates unique node names inside one graph."""
@@ -451,7 +473,7 @@ class Farm(Block):
             raw_workers = [worker] * workers
         parts = [_parts(w) for w in raw_workers]
         for part in parts:
-            if part.kind in ("source", "raw"):
+            if part.kind == "source":
                 raise GraphError(
                     f"farm worker {part.name!r} must take an item: def {part.name}(item) or "
                     f"def {part.name}(item, ctx)"
@@ -478,6 +500,8 @@ class Farm(Block):
         tagged = collect in ("ordered", "gather")
         if tagged and (emitter is False or collector is False):
             raise GraphError(f"collect={collect!r} needs both an emitter and a collector")
+        if tagged and any(part.kind == "raw" for part in parts):
+            raise GraphError(f"collect={collect!r} tags every item, so workers cannot be raw nodes")
         if prefetch < 1:
             raise GraphError("prefetch must be at least 1")
         self.raw_workers = raw_workers

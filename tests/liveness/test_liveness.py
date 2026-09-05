@@ -9,7 +9,8 @@ import tolquane as tq
 
 
 def _threads_settled() -> None:
-    deadline = time.monotonic() + 5
+    # Generous: under a loaded machine (three suites at once) five seconds was not enough.
+    deadline = time.monotonic() + 15
     while time.monotonic() < deadline:
         if not [t for t in threading.enumerate() if t.name.startswith("tolquane:")]:
             return

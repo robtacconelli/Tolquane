@@ -63,6 +63,11 @@ class Context:
         src = self.source
         return src is not None and self._inst.inbox.edges_in[src].feedback
 
+    @property
+    def feedback_inputs(self) -> tuple[int, ...]:
+        """Input indexes that are feedback edges, for ``recv(source=...)`` in raw heads."""
+        return tuple(i for i, e in enumerate(self._inst.inbox.edges_in) if e.feedback)
+
     def send(self, item: Any, *, to: int | None = None) -> None:
         """Send ``item`` downstream: round robin by default, or to output ``to``."""
         if self._sender is not None:
@@ -98,7 +103,11 @@ class Context:
         self._stopped = True
 
     def recv(self, source: int | None = None) -> tuple[int, Any] | None:
-        """Raw nodes: next ``(source, item)``, or ``None`` once every input has ended."""
+        """Raw nodes: next ``(source, item)``, or ``None`` once every input has ended.
+
+        With ``source=i`` only that input is read (others are held back with their
+        backpressure) and ``None`` means that input has ended.
+        """
         strat = self._inst.strategy
         if strat is None:
             raise TolquaneError(f"node {self.name!r} has no inputs to receive from")

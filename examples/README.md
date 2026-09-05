@@ -9,5 +9,6 @@ house style, so keep them short.
 | `hello.py` | source, node, sink, an ordered farm |
 | `word_count.py` | a generator node (flat map), a keyed farm with stateful class workers, `on_end` |
 | `som.py` | the thesis use case: broadcast farm, custom emitter and collector, feedback loop |
+| `msom.py` | the thesis use case ported faithfully: a grid of slices linked to their neighbours, a search/learn protocol with redirects and acknowledgements, raw nodes with selective receive, checked against a sequential reference |
 
 Run one with `python examples/hello.py`.
