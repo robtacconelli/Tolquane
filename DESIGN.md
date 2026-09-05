@@ -292,6 +292,14 @@ must feed it can deadlock; that is a real cycle in the user's topology, and the 
 detector reports it by name (`tests/liveness/` has the case). Ordered and gather
 collectors release at pop, because their window already bounds what they hold.
 
+Batching keeps that rule. A channel entry may carry up to `batch` items; a batch takes
+its credits when it is pushed and gives them back one by one as items are delivered,
+or all at once when the fast path hands a whole batch to a node that holds nothing
+back. A partial batch is sent when it is full, when one millisecond has passed since
+the last flush, or before the producer blocks on anything (input, output credit, an
+ordered window). The sync runtime never uses the clock, so its interleaving stays
+deterministic. Raw nodes that block outside Tolquane call `ctx.flush()` first.
+
 **Node runner** is the loop: `on_start`, then consume the inbox until every source has
 delivered EOS, then `on_end`, then close all outputs. EOS is a distinct object, never
 `None`. The same loop serves every runtime; runtimes only supply channels and a way to
@@ -486,7 +494,7 @@ tests as pytest cases: `combine2`, `all2all3` (as a farm with router workers),
 `ordered_farm_labeling`, `pipeline_farm_node`, `sumTest`. Benchmark script for the
 two-node pipeline (thesis Table 1) and farm scalability (Figure 13).
 
-**Phase 2: composition (0.2).**
+**Phase 2: composition (0.2, done 2026-09-05).**
 `all2all` with all eight cases, `feedback` with both termination rules, `key=` emit,
 `session()` for long-lived graphs, batching on channels, `explain()`, stats report.
 Port the remaining `ff_tests` and the SOM use case as an example (it exercises feedback,

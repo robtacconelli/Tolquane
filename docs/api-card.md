@@ -11,7 +11,7 @@ The whole public surface on one page. `import tolquane as tq`.
 | `@tq.node` on `def f(x): yield ...` | Flat map. Each yielded value is sent. |
 | `@tq.node` on `def f(x, ctx): ctx.send(y)` | Explicit sends: `ctx.send(y)`, `ctx.send(y, to=i)`, `ctx.broadcast(y)`, `ctx.stop()`. Must not return a value. |
 | `@tq.sink` on `def f(x)` or `def f(x, ctx)` | Consumes items. No outputs. |
-| `@tq.raw` on `def f(ctx)` | Full control: `for src, item in ctx.inputs(): ...`, `ctx.recv(source=i)`. |
+| `@tq.raw` on `def f(ctx)` | Full control: `for src, item in ctx.inputs(): ...`, `ctx.recv(source=i)`; call `ctx.flush()` before blocking on anything outside Tolquane. |
 | a class with `__call__(self, x)` | Stateful node, one instance per worker. Optional `on_start(self, ctx)` and `on_end(self, ctx)`. |
 
 `ctx.index` is the worker number, `ctx.source` the input the current item came from,
@@ -29,7 +29,15 @@ tq.farm(work, 8, emitter=my_router, collector=my_merge)   # custom ends
 tq.farm(work, 8, emitter=False)   # expose the workers' inputs (1xN wiring)
 tq.farm([f, g, h])                # one worker per callable
 tq.comb(a, b)                     # fuse two nodes on one thread
+tq.all2all(left_farm, right_farm) # every left worker to every right worker
+tq.all2all(left, right, R=r, G=g, merge=False)   # r after each left worker, g before each right one
+tq.feedback(block)                # wire the block's outputs back to its inputs
 ```
+
+Inside a `feedback` block the last stage sends back with `ctx.feedback(item)` and the
+first stage sees `ctx.is_feedback`. The loop closes by itself when the outside input has
+ended and nothing is in flight; `ctx.stop()` in the first stage ends it earlier.
+A class node with `on_start` may have no inputs at all: it produces in the hook.
 
 Scatter splits a sequence across workers; gather concatenates the results in order.
 `emit="on_demand"` gives each worker one item at a time (`prefetch=` to change).
@@ -46,7 +54,12 @@ N to 1: all into one inbox. N to N: pairwise. N to M: every pair.
 report = tq.run(graph)                        # threads
 report = tq.run(graph, runtime="sync")        # deterministic, single-threaded
 tq.run(graph, capacity=64)                    # bound every edge (default 1024; None = unbounded)
+tq.run(graph, batch=1)                        # hand over every item alone (default 32, flushed within 1 ms)
 print(report)                                 # items in/out per node, queue high-water marks
+
+with tq.session(tq.farm(work, 4)) as s:       # keep a graph running
+    s.put(item)                               # feed it
+    result = s.get(timeout=5)                 # read results as they come (or iterate s)
 ```
 
 Errors: `tq.GraphError` (bad wiring, raised before anything runs), `tq.NodeError`

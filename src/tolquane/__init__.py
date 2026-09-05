@@ -24,12 +24,15 @@ from __future__ import annotations
 from ._sentinels import EOS, SKIP
 from .api import (
     ListSink,
+    all2all,
     comb,
     farm,
+    feedback,
     from_iterable,
     node,
     pipeline,
     raw,
+    session,
     sink,
     source,
     to_list,
@@ -42,22 +45,25 @@ from .errors import (
     NodeError,
     TolquaneError,
 )
-from .graph import Block, Comb, Farm, Graph, Node, Pipeline
+from .graph import AllToAll, Block, Comb, Farm, Feedback, Graph, Node, Pipeline
 from .run import check, run
 from .runner import Context
 from .runtime import NodeStats, Report
+from .session import Session, SessionClosed
 
-__version__ = "0.1.0.dev0"
+__version__ = "0.2.0.dev0"
 
 __all__ = [
     "EOS",
     "SKIP",
+    "AllToAll",
     "Block",
     "ChannelClosed",
     "Comb",
     "Context",
     "DeadlockError",
     "Farm",
+    "Feedback",
     "Graph",
     "GraphError",
     "ListSink",
@@ -66,18 +72,23 @@ __all__ = [
     "NodeStats",
     "Pipeline",
     "Report",
+    "Session",
+    "SessionClosed",
     "TolquaneError",
     "__version__",
+    "all2all",
     "check",
     "comb",
     "draw",
     "explain",
     "farm",
+    "feedback",
     "from_iterable",
     "node",
     "pipeline",
     "raw",
     "run",
+    "session",
     "sink",
     "source",
     "to_list",

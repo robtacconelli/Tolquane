@@ -8,9 +8,9 @@ import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
 
-from .channel import Edge, Inbox, Outbox, Window
+from .channel import Edge, Inbox, Loop, Outbox, Window
 from .errors import Cancelled, DeadlockError, NodeError, TolquaneError
-from .graph import DEFAULT_CAPACITY, Graph, NodeSpec
+from .graph import DEFAULT_BATCH, DEFAULT_CAPACITY, Graph, NodeSpec
 from .policies import Strategy, make_strategy
 from .runner import run_node
 
@@ -45,6 +45,7 @@ class NodeInstance:
         self.inbox = Inbox(self, rc)
         self.outbox = Outbox(self, rc)
         self.strategy: Strategy | None = None
+        self.loop: Loop | None = None
         self.parked_on: threading.Condition | None = self.inbox.not_empty
         self.predicate: Callable[[], bool] | None = None
         self.thread: threading.Thread | None = None
@@ -61,9 +62,10 @@ class NodeInstance:
 class RunContext:
     """State shared by every node of one run: cancellation, failures, the scheduler."""
 
-    def __init__(self) -> None:
+    def __init__(self, *, deterministic: bool = False) -> None:
         self.lock = threading.Lock()
         self.cancelled = False
+        self.deterministic = deterministic
         self.failures: list[tuple[NodeInstance, BaseException]] = []
         self.deadlock_message: str | None = None
         self.done_event = threading.Event()
@@ -230,9 +232,12 @@ class BatonScheduler(Scheduler):
 
 def describe_stall(insts: list[NodeInstance]) -> str:
     lines = ["deadlock: every node is waiting on another one and nothing can make progress"]
+    loops: list[Loop] = []
     for i in insts:
         if not i.live:
             continue
+        if i.loop is not None and i.loop not in loops:
+            loops.append(i.loop)
         if i.reason == "input":
             srcs = i.inbox.describe_sources() or "(no sources)"
             lines.append(f"  {i.name}: waiting for input from {srcs}")
@@ -240,6 +245,8 @@ def describe_stall(insts: list[NodeInstance]) -> str:
             lines.append(f"  {i.name}: not started")
         else:
             lines.append(f"  {i.name}: {i.detail}")
+    for loop in loops:
+        lines.append("  " + loop.describe())
     lines.append(
         "fix: raise the capacity of the full edge, drain inputs in a different order, "
         "or break the cycle"
@@ -274,20 +281,39 @@ def execute(
     *,
     runtime: str = "threads",
     capacity: int | None = 1024,
+    batch: int = 1,
     deadlock_timeout: float | None = 0.3,
 ) -> Report:
     if runtime not in ("threads", "sync"):
         raise TolquaneError(f"unknown runtime {runtime!r}; use 'threads' or 'sync'")
-    rc = RunContext()
+    rc = RunContext(deterministic=runtime == "sync")
     insts = [NodeInstance(spec, i, rc) for i, spec in enumerate(graph.nodes)]
     by_name = {i.name: i for i in insts}
     windows = {wid: Window(limit, rc) for wid, limit in graph.windows.items()}
+    loops = {spec.name: Loop(spec, rc) for spec in graph.loops}
+    loop_of: dict[str, Loop] = {}
+    for loop_spec in graph.loops:
+        loop = loops[loop_spec.name]
+        for name in loop_spec.nodes:
+            loop_of[name] = loop
+        loop.heads = [by_name[h] for h in loop_spec.heads]
     edges: list[Edge] = []
     for e in graph.edges:
         cap = capacity if e.capacity == DEFAULT_CAPACITY else e.capacity
-        edges.append(Edge(by_name[e.src], by_name[e.dst], cap))
+        size = batch if e.batch == DEFAULT_BATCH else e.batch
+        edge = Edge(by_name[e.src], by_name[e.dst], cap, batch=size, feedback=e.feedback)
+        src_loop = loop_of.get(e.src)
+        dst_loop = loop_of.get(e.dst)
+        if dst_loop is not None:
+            if src_loop is dst_loop:
+                edge.loop = dst_loop
+            else:
+                edge.entry_loop = dst_loop
+                dst_loop.external_remaining += 1
+        edges.append(edge)
     for inst in insts:
         spec = inst.spec
+        inst.loop = loop_of.get(spec.name)
         window = windows.get(spec.window) if spec.window else None
         if window is not None and spec.role == "emitter":
             inst.outbox.window = window

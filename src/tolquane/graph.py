@@ -22,6 +22,9 @@ COLLECT_POLICIES = ("first_come", "round_robin", "ordered", "gather")
 DEFAULT_CAPACITY = -1
 """Edge capacity placeholder resolved to ``run(capacity=...)``. ``None`` means unbounded."""
 
+DEFAULT_BATCH = -1
+"""Edge batch placeholder resolved to ``run(batch=...)``."""
+
 
 # --------------------------------------------------------------------------- specs
 
@@ -58,6 +61,17 @@ class EdgeSpec:
     dst: str
     rule: str
     capacity: int | None = DEFAULT_CAPACITY
+    batch: int = DEFAULT_BATCH
+    feedback: bool = False
+
+
+@dataclass(frozen=True)
+class LoopSpec:
+    """A feedback loop: the nodes inside it and the nodes that receive feedback edges."""
+
+    name: str
+    nodes: tuple[str, ...]
+    heads: tuple[str, ...]
 
 
 @dataclass
@@ -69,6 +83,7 @@ class Graph:
     inlets: list[str] = field(default_factory=list)
     outlets: list[str] = field(default_factory=list)
     windows: dict[str, int] = field(default_factory=dict)
+    loops: list[LoopSpec] = field(default_factory=list)
 
     def node(self, name: str) -> NodeSpec:
         for n in self.nodes:
@@ -86,6 +101,7 @@ class Graph:
         self.nodes.extend(other.nodes)
         self.edges.extend(other.edges)
         self.windows.update(other.windows)
+        self.loops.extend(other.loops)
 
 
 class _Names:
@@ -319,23 +335,40 @@ def describe_block(block: Block | None) -> str:
         return f"{block.kind} node {block.name!r}"
     if isinstance(block, Farm):
         return f"farm {block.name!r}"
+    if isinstance(block, AllToAll):
+        return f"all2all {block.name!r}"
+    if isinstance(block, Feedback):
+        return f"feedback block {block.name!r}"
     return repr(block)
 
 
 def connect(
-    outs: list[str], ins: list[str], capacity: int | None = DEFAULT_CAPACITY
+    outs: list[str],
+    ins: list[str],
+    capacity: int | None = DEFAULT_CAPACITY,
+    *,
+    all_pairs: bool = False,
+    feedback: bool = False,
+    batch: int = DEFAULT_BATCH,
 ) -> list[EdgeSpec]:
     """Wire N outputs to M inputs with the same rules BBFlow's pipeline used."""
     n, m = len(outs), len(ins)
+    prefix = "feedback " if feedback else ""
+
+    def edge(o: str, i: str, rule: str) -> EdgeSpec:
+        return EdgeSpec(o, i, prefix + rule, capacity, batch, feedback)
+
+    if all_pairs and (n > 1 or m > 1):
+        return [edge(o, i, "NxM") for o in outs for i in ins]
     if n == 1 and m == 1:
-        return [EdgeSpec(outs[0], ins[0], "1-1", capacity)]
+        return [edge(outs[0], ins[0], "1-1")]
     if n == 1:
-        return [EdgeSpec(outs[0], i, "1xN", capacity) for i in ins]
+        return [edge(outs[0], i, "1xN") for i in ins]
     if m == 1:
-        return [EdgeSpec(o, ins[0], "Nx1", capacity) for o in outs]
+        return [edge(o, ins[0], "Nx1") for o in outs]
     if n == m:
-        return [EdgeSpec(o, i, "N-N", capacity) for o, i in zip(outs, ins, strict=True)]
-    return [EdgeSpec(o, i, "NxM", capacity) for o in outs for i in ins]
+        return [edge(o, i, "N-N") for o, i in zip(outs, ins, strict=True)]
+    return [edge(o, i, "NxM") for o in outs for i in ins]
 
 
 @dataclass(frozen=True)
@@ -352,8 +385,8 @@ class _Parts:
         target = self.target
         is_sink = self.is_sink
         if self.comb is not None:
-            target = (self.comb.first.spec(f"{name}.a"), self.comb.second.spec(f"{name}.b"))
-            is_sink = self.comb.second.is_sink
+            target = tuple(n.spec(f"{name}.{i}") for i, n in enumerate(self.comb.nodes))
+            is_sink = self.comb.nodes[-1].is_sink
         fields: dict[str, Any] = {
             "name": name,
             "kind": self.kind,
@@ -433,6 +466,7 @@ class Farm(Block):
             raise GraphError(f"unknown emit policy {emit!r}; use one of {EMIT_POLICIES}")
         if emit == "key" and key is None:
             raise GraphError("emit='key' needs key=<function of the item>")
+        collect_arg = collect
         if collect is None:
             collect = "ordered" if ordered else ("gather" if emit == "scatter" else "first_come")
         if collect not in COLLECT_POLICIES:
@@ -446,10 +480,12 @@ class Farm(Block):
             raise GraphError(f"collect={collect!r} needs both an emitter and a collector")
         if prefetch < 1:
             raise GraphError("prefetch must be at least 1")
+        self.raw_workers = raw_workers
         self.parts = parts
         self.workers = workers
         self.emit = emit
         self.collect = collect
+        self.collect_arg = collect_arg
         self.ordered = ordered
         self.emitter = emitter
         self.collector = collector
@@ -466,6 +502,24 @@ class Farm(Block):
             f"<tolquane.Farm {self.name} x{self.workers} emit={self.emit} collect={self.collect}>"
         )
 
+    def clone(self, **changes: Any) -> Farm:
+        """A copy of this farm with some options replaced."""
+        options: dict[str, Any] = {
+            "worker": self.raw_workers,
+            "emit": self.emit if self.key is None else "round_robin",
+            "collect": self.collect_arg,
+            "ordered": self.ordered,
+            "emitter": self.emitter,
+            "collector": self.collector,
+            "key": self.key,
+            "prefetch": self.prefetch,
+            "window": self.window,
+            "name": self.name,
+            "capacity": self.capacity,
+        }
+        options.update(changes)
+        return Farm(options.pop("worker"), **options)
+
     def expand(self, names: _Names) -> Graph:
         base = names.unique(self.name)
         g = Graph()
@@ -481,13 +535,14 @@ class Farm(Block):
                 self.parts[i].spec(wname, index=i, group=base, role="worker", tagged=self.tagged)
             )
         in_cap = self.prefetch if self.emit == "on_demand" else self.capacity
+        in_batch = 1 if self.emit == "on_demand" else DEFAULT_BATCH
         if self.emitter is False:
             g.inlets = list(worker_names)
         else:
             ename = f"{base}.emitter"
             g.nodes.insert(0, self._end_spec(self.emitter, ename, "emitter", base, window_id))
             g.inlets = [ename]
-            g.edges.extend(EdgeSpec(ename, w, "farm", in_cap) for w in worker_names)
+            g.edges.extend(EdgeSpec(ename, w, "farm", in_cap, in_batch) for w in worker_names)
         if self.collector is False:
             g.outlets = list(worker_names)
         else:
@@ -518,37 +573,128 @@ class Farm(Block):
 
 
 class Comb(Block):
-    """Two nodes fused into one: the first node's outputs feed the second directly."""
+    """Nodes fused into one: each node's outputs feed the next one directly, one thread."""
+
+    nodes: list[Node]
+    name: str
 
     def __init__(self, first: Any, second: Any) -> None:
-        a = as_block(first)
-        b = as_block(second)
-        if not isinstance(a, Node) or not isinstance(b, Node):
-            raise GraphError("comb() fuses two plain nodes; farms and pipelines cannot be combined")
-        for n in (a, b):
+        nodes: list[Node] = []
+        for part in (first, second):
+            b = as_block(part)
+            if isinstance(b, Comb):
+                nodes.extend(b.nodes)
+            elif isinstance(b, Node):
+                nodes.append(b)
+            else:
+                raise GraphError("comb() fuses plain nodes; farms and pipelines cannot be combined")
+        for n in nodes:
             if n.kind in ("source", "raw", "comb"):
                 raise GraphError(
                     f"comb() cannot fuse {describe_block(n)}; use map, flat or ctx nodes"
                 )
-        if a.is_sink:
-            raise GraphError(f"comb(): {describe_block(a)} is a sink, nothing can follow it")
-        self.first = a
-        self.second = b
-        self.name = f"{a.name}+{b.name}"
+        for n in nodes[:-1]:
+            if n.is_sink:
+                raise GraphError(f"comb(): {describe_block(n)} is a sink, nothing can follow it")
+        self.nodes = nodes
+        self.name = "+".join(n.name for n in nodes)
 
     def __repr__(self) -> str:
         return f"<tolquane.Comb {self.name}>"
 
     def expand(self, names: _Names) -> Graph:
         name = names.unique(self.name)
-        spec_a = self.first.spec(f"{name}.a")
-        spec_b = self.second.spec(f"{name}.b")
-        node = NodeSpec(
-            name=name, kind="comb", target=(spec_a, spec_b), is_sink=self.second.is_sink
-        )
+        node = _parts(self).spec(name)
         g = Graph(nodes=[node], inlets=[name])
         if not node.is_sink:
             g.outlets = [name]
+        return g
+
+
+class AllToAll(Block):
+    """Two farms joined worker to worker, the eight FastFlow cases of ``R``, ``G``, ``merge``."""
+
+    def __init__(
+        self,
+        left: Any,
+        right: Any,
+        *,
+        R: Any = None,
+        G: Any = None,
+        merge: bool = False,
+    ) -> None:
+        if not isinstance(left, Farm) or not isinstance(right, Farm):
+            raise GraphError("all2all() joins two farms: all2all(left_farm, right_farm)")
+        if left.tagged or right.tagged:
+            raise GraphError(
+                "all2all() cannot split an ordered or gather farm; it needs a collector"
+            )
+        self.left = left
+        self.right = right
+        self.R = R
+        self.G = G
+        self.merge = merge
+        self.name = f"{left.name}~{right.name}"
+
+    def __repr__(self) -> str:
+        return f"<tolquane.AllToAll {self.name} merge={self.merge}>"
+
+    def expand(self, names: _Names) -> Graph:
+        R, G = self.R, self.G
+        if self.merge:
+            left = self.left.clone(collector=False)
+            right = self.right.clone(emitter=False)
+            middle: Block | None = None
+            if R is not None and G is not None:
+                middle = Comb(R, G)
+            elif R is not None:
+                middle = as_block(R)
+            elif G is not None:
+                middle = as_block(G)
+            blocks: list[Block] = [left, right] if middle is None else [left, middle, right]
+            return Pipeline(blocks).expand(names)
+        lw = [Comb(w, R) for w in self.left.raw_workers] if R is not None else self.left.raw_workers
+        rw = (
+            [Comb(G, w) for w in self.right.raw_workers]
+            if G is not None
+            else self.right.raw_workers
+        )
+        left = self.left.clone(worker=lw, collector=False)
+        right = self.right.clone(worker=rw, emitter=False)
+        gl = left.expand(names)
+        gr = right.expand(names)
+        g = Graph()
+        g.merge(gl)
+        g.merge(gr)
+        g.edges.extend(connect(gl.outlets, gr.inlets, all_pairs=True))
+        g.inlets = gl.inlets
+        g.outlets = gr.outlets
+        return g
+
+
+class Feedback(Block):
+    """A block whose outputs are also wired back to its inputs."""
+
+    def __init__(self, block: Any, *, name: str | None = None) -> None:
+        self.inner = as_block(block)
+        self.name = name or "loop"
+
+    def __repr__(self) -> str:
+        return f"<tolquane.Feedback {self.name} around {self.inner!r}>"
+
+    def expand(self, names: _Names) -> Graph:
+        g = self.inner.expand(names)
+        if g.loops:
+            raise GraphError("nested feedback loops are not supported yet")
+        if not g.inlets or not g.outlets:
+            raise GraphError(
+                f"feedback() needs a block with both inputs and outputs; "
+                f"{describe_block(self.inner)} has "
+                f"{len(g.inlets)} input(s) and {len(g.outlets)} output(s)"
+            )
+        loop_name = names.unique(self.name)
+        g.edges.extend(connect(g.outlets, g.inlets, feedback=True))
+        g.loops.append(LoopSpec(loop_name, tuple(n.name for n in g.nodes), tuple(g.inlets)))
         return g
 
 
@@ -563,11 +709,22 @@ def as_block(obj: Any) -> Block:
 # --------------------------------------------------------------------------- build
 
 
+def expand(block: Any) -> Graph:
+    """Expand a block into nodes and edges without validating it."""
+    return as_block(block).expand(_Names())
+
+
 def build(block: Any) -> Graph:
     """Expand and validate. Raises ``GraphError`` with a fix for anything wrong."""
-    g = as_block(block).expand(_Names())
+    g = expand(block)
     validate(g)
     return g
+
+
+def _self_feeding(n: NodeSpec) -> bool:
+    """A class node with ``on_start`` may have no inputs: it produces in the hook."""
+    target = n.target[0].target if n.kind == "comb" else n.target
+    return not inspect.isfunction(target) and hasattr(target, "on_start")
 
 
 def validate(g: Graph) -> None:
@@ -584,10 +741,10 @@ def validate(g: Graph) -> None:
                     f"source {n.name!r} has an input from {inc[0].src!r}; a source starts a "
                     "pipeline and takes no input"
                 )
-        elif not inc and n.kind != "raw":
+        elif not inc and n.kind != "raw" and not _self_feeding(n):
             raise GraphError(
-                f"node {n.name!r} has no input; put a source before it, or make it a source "
-                "with @tq.source"
+                f"node {n.name!r} has no input; put a source before it, make it a source "
+                "with @tq.source, or give it an on_start hook that sends"
             )
         if n.is_sink:
             if out:
@@ -601,3 +758,9 @@ def validate(g: Graph) -> None:
             )
         elif n.kind == "source" and not out:
             raise GraphError(f"source {n.name!r} has no output; add a stage after it")
+    seen: set[str] = set()
+    for loop in g.loops:
+        for name in loop.nodes:
+            if name in seen:
+                raise GraphError(f"node {name!r} is inside two feedback loops; not supported yet")
+            seen.add(name)

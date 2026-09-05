@@ -5,8 +5,8 @@ from __future__ import annotations
 from collections import deque
 from typing import TYPE_CHECKING, Any
 
-from ._sentinels import END, EOS
-from .channel import TaggedOut, Window
+from ._sentinels import END, EOS, LOOP_DONE
+from .channel import Batch, TaggedOut, Window
 from .errors import TolquaneError
 
 if TYPE_CHECKING:
@@ -14,7 +14,12 @@ if TYPE_CHECKING:
 
 
 class Strategy:
-    """Delivers ``(source_index, item)`` pairs; ``None`` once every source has ended."""
+    """Delivers ``(source_index, item)`` pairs; ``None`` once every source has ended.
+
+    Credits go back to the producer when an item is delivered to user code, whether it
+    arrived alone or in a batch, so held-back items keep applying backpressure. The
+    fast path ``take_batch`` delivers a whole batch at once and releases it at once.
+    """
 
     supports_selective = False
 
@@ -22,29 +27,83 @@ class Strategy:
         self.inbox = inbox
         self.remaining = len(inbox.edges_in)
         self.ended: set[int] = set()
+        self._batch: list[Any] | None = None
+        self._batch_pos = 0
+        self._batch_src = -1
 
     def next(self, source: int | None = None) -> tuple[int, Any] | None:
         raise NotImplementedError
 
-    def _pop(self) -> tuple[int, Any] | None:
-        """Pop the next non-EOS entry, or None when every source has ended.
-
-        The entry still holds its producer's credit; call ``self.inbox.release(src)``
-        when it is handed to user code, so that buffered items keep applying
-        backpressure instead of growing without bound.
-        """
-        while self.remaining > 0:
-            src, item = self.inbox.pop()
-            if item is EOS:
-                self.inbox.release(src)
-                self.remaining -= 1
-                self.ended.add(src)
-                self.on_source_ended(src)
-                continue
-            return src, item
+    def take_batch(self) -> tuple[int, list[Any]] | None:
+        """Fast path: the rest of the current batch, when nothing is held back."""
         return None
 
-    def _deliver(self, src: int, item: Any) -> tuple[int, Any]:
+    def _drain_batch(self) -> tuple[int, list[Any]]:
+        assert self._batch is not None
+        src = self._batch_src
+        batch = self._batch
+        pos = self._batch_pos
+        items = batch if pos == 0 else batch[pos:]
+        self._batch = None
+        self.inbox.release(src, len(items))
+        self._entered_many(src, len(items))
+        return src, items
+
+    def _pop(self) -> tuple[int, Any, bool] | None:
+        """Next ``(src, item, batched)``, unpacking batches, handling EOS and loop control."""
+        while True:
+            batch = self._batch
+            if batch is not None:
+                src = self._batch_src
+                pos = self._batch_pos
+                item = batch[pos]
+                pos += 1
+                if pos >= len(batch):
+                    self._batch = None
+                else:
+                    self._batch_pos = pos
+                self._entered(src)
+                return src, item, True
+            if self.remaining <= 0:
+                return None
+            src, entry = self.inbox.pop()
+            if entry is EOS:
+                self.inbox.release(src)
+                if src not in self.ended:
+                    self.ended.add(src)
+                    self.remaining -= 1
+                    self.on_source_ended(src)
+                    edge = self.inbox.edges_in[src]
+                    if edge.entry_loop is not None:
+                        edge.entry_loop.external_ended()
+                continue
+            if entry is LOOP_DONE:
+                for i, edge in enumerate(self.inbox.edges_in):
+                    if edge.feedback and i not in self.ended:
+                        self.ended.add(i)
+                        self.remaining -= 1
+                        self.on_source_ended(i)
+                continue
+            if isinstance(entry, Batch):
+                self._batch = entry.items
+                self._batch_pos = 0
+                self._batch_src = src
+                continue
+            self._entered(src)
+            return src, entry, False
+
+    def _entered(self, src: int) -> None:
+        loop = self.inbox.edges_in[src].entry_loop
+        if loop is not None:
+            loop.enter()
+
+    def _entered_many(self, src: int, n: int) -> None:
+        loop = self.inbox.edges_in[src].entry_loop
+        if loop is not None:
+            for _ in range(n):
+                loop.enter()
+
+    def _deliver(self, src: int, item: Any, batched: bool) -> tuple[int, Any]:
         self.inbox.release(src)
         return src, item
 
@@ -59,28 +118,40 @@ class FirstCome(Strategy):
 
     def __init__(self, inbox: Inbox) -> None:
         super().__init__(inbox)
-        self.buffers: dict[int, deque[Any]] = {}
+        self.buffers: dict[int, deque[tuple[Any, bool]]] = {}
+        self._buffered = 0
+
+    def take_batch(self) -> tuple[int, list[Any]] | None:
+        if self._buffered or self._batch is None:
+            return None
+        return self._drain_batch()
 
     def next(self, source: int | None = None) -> tuple[int, Any] | None:
         if source is None:
-            for src, buf in self.buffers.items():
-                if buf:
-                    return self._deliver(src, buf.popleft())
+            if self._buffered:
+                for src, buf in self.buffers.items():
+                    if buf:
+                        self._buffered -= 1
+                        item, batched = buf.popleft()
+                        return self._deliver(src, item, batched)
             r = self._pop()
             return None if r is None else self._deliver(*r)
         buf = self.buffers.setdefault(source, deque())
         if buf:
-            return self._deliver(source, buf.popleft())
+            self._buffered -= 1
+            item, batched = buf.popleft()
+            return self._deliver(source, item, batched)
         while True:
             if source in self.ended:
                 return None
             r = self._pop()
             if r is None:
                 return None
-            src, item = r
+            src, item, batched = r
             if src == source:
-                return self._deliver(src, item)
-            self.buffers.setdefault(src, deque()).append(item)
+                return self._deliver(src, item, batched)
+            self.buffers.setdefault(src, deque()).append((item, batched))
+            self._buffered += 1
 
 
 class RoundRobin(Strategy):
@@ -88,7 +159,9 @@ class RoundRobin(Strategy):
 
     def __init__(self, inbox: Inbox) -> None:
         super().__init__(inbox)
-        self.buffers: dict[int, deque[Any]] = {i: deque() for i in range(len(inbox.edges_in))}
+        self.buffers: dict[int, deque[tuple[Any, bool]]] = {
+            i: deque() for i in range(len(inbox.edges_in))
+        }
         self.expected = 0
 
     def _advance(self) -> None:
@@ -104,10 +177,10 @@ class RoundRobin(Strategy):
                 return None
             buf = self.buffers[self.expected]
             if buf:
-                item = buf.popleft()
+                item, batched = buf.popleft()
                 src = self.expected
                 self._advance()
-                return self._deliver(src, item)
+                return self._deliver(src, item, batched)
             if self.expected in self.ended:
                 if self.remaining == 0 and not any(self.buffers.values()):
                     return None
@@ -119,11 +192,11 @@ class RoundRobin(Strategy):
                     self._advance()
                     continue
                 return None
-            src, item = r
+            src, item, batched = r
             if src == self.expected:
                 self._advance()
-                return self._deliver(src, item)
-            self.buffers[src].append(item)
+                return self._deliver(src, item, batched)
+            self.buffers[src].append((item, batched))
 
 
 class _SeqState:
@@ -162,7 +235,7 @@ class Reorder(Strategy):
                         "incomplete tagged item(s); a worker closed without finishing them"
                     )
                 return None
-            src, item = r
+            src, item, _ = r
             self.inbox.release(src)  # the window bounds memory here, not the edge credit
             if not isinstance(item, TaggedOut):
                 return src, item

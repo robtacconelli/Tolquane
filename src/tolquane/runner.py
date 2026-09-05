@@ -30,9 +30,13 @@ class Context:
         self._sender = sender
         self._outer = outer
         self._stopped = False
+        self._token_pending = False
         self.name: str = inst.spec.name
         self.index: int = inst.spec.index
         self.source: int | None = None
+        if sender is None:
+            # One call fewer per item: the outbox handles ``to=`` itself.
+            self.send = inst.outbox.send  # type: ignore[method-assign]
 
     @property
     def n_inputs(self) -> int:
@@ -47,6 +51,17 @@ class Context:
         if self._outer is not None:
             return self._outer.stopped
         return self._stopped
+
+    @property
+    def cancelled(self) -> bool:
+        """True once the run is being cancelled; long-running raw nodes should return."""
+        return self._rc.cancelled
+
+    @property
+    def is_feedback(self) -> bool:
+        """True when the current item arrived on a feedback edge."""
+        src = self.source
+        return src is not None and self._inst.inbox.edges_in[src].feedback
 
     def send(self, item: Any, *, to: int | None = None) -> None:
         """Send ``item`` downstream: round robin by default, or to output ``to``."""
@@ -64,6 +79,18 @@ class Context:
         else:
             self._inst.outbox.broadcast(item)
 
+    def feedback(self, item: Any, *, to: int | None = None) -> None:
+        """Send ``item`` back to the start of the enclosing ``tq.feedback`` block."""
+        if self._outer is not None:
+            self._outer.feedback(item, to=to)
+        else:
+            self._inst.outbox.feedback(item, to)
+
+    def flush(self) -> None:
+        """Send any batched output now. Raw nodes that block outside Tolquane (a socket,
+        a queue) should call this before blocking, so downstream is not kept waiting."""
+        self._inst.outbox.flush()
+
     def stop(self) -> None:
         """Finish this node after the current item. Its outputs are closed normally."""
         if self._outer is not None:
@@ -80,10 +107,13 @@ class Context:
                 f"node {self.name!r} uses collect={self._inst.spec.collect!r}; "
                 "recv(source=...) needs the default first_come delivery"
             )
+        self._finish_token()
         r = strat.next(source)
         if r is not None:
             self.source = r[0]
             self._inst.stats.items_in += 1
+            if self._inst.loop is not None:
+                self._token_pending = True
         return r
 
     def inputs(self) -> Iterator[tuple[int, Any]]:
@@ -93,6 +123,12 @@ class Context:
             if r is None:
                 return
             yield r
+
+    def _finish_token(self) -> None:
+        if self._token_pending:
+            self._token_pending = False
+            assert self._inst.loop is not None
+            self._inst.loop.done()
 
 
 class _Prepared:
@@ -159,52 +195,96 @@ def _run_source(spec: NodeSpec, fn: Any, ctx: Context) -> None:
         raise TolquaneError(
             f"source {spec.name!r} returned None; a source yields items or returns an iterable"
         )
+    send = ctx.send
     for item in items:
-        if ctx.stopped:
+        if ctx._stopped:
             break
-        ctx.send(item)
+        send(item)
 
 
 def _run_items(inst: NodeInstance, spec: NodeSpec, fn: Any, ctx: Context) -> None:
     strat = inst.strategy
-    assert strat is not None
+    if strat is None:
+        return  # no inputs: the node's on_start hook did all the producing
     outbox = inst.outbox
+    loop = inst.loop
     tagging = spec.tagged and spec.role == "worker"
+    fast = loop is None and not tagging
+    plain_map = spec.kind == "map" and not spec.is_sink
+    plain_sink = spec.kind == "map" and spec.is_sink
+    stats = inst.stats
     while not ctx.stopped:
+        if fast:
+            taken = strat.take_batch()
+            if taken is not None:
+                src, items = taken
+                ctx.source = src
+                stats.items_in += len(items)
+                if plain_map:
+                    send = ctx.send
+                    for item in items:
+                        r = fn(item)
+                        if r is not SKIP:
+                            send(r)
+                        if ctx._stopped:
+                            break
+                elif plain_sink:
+                    for item in items:
+                        fn(item)
+                        if ctx._stopped:
+                            break
+                else:
+                    for item in items:
+                        if ctx._stopped:
+                            break
+                        _process(spec, fn, item, ctx)
+                continue
         r = strat.next()
         if r is None:
             break
         src, item = r
         ctx.source = src
-        inst.stats.items_in += 1
+        stats.items_in += 1
         if tagging and isinstance(item, Tagged):
             outbox.begin_item(item)
             _process(spec, fn, item.item, ctx)
             outbox.end_item()
         else:
             _process(spec, fn, item, ctx)
+        if loop is not None:
+            loop.done()
 
 
 def _run_comb(inst: NodeInstance, rc: RunContext, ctx: Context) -> None:
-    spec_a, spec_b = inst.spec.target
-    a = _prepare(spec_a)
-    b = _prepare(spec_b)
-    inner = Context(inst, rc, sender=lambda y: _process(spec_b, b.fn, y, ctx), outer=ctx)
-    _call_hook(a.on_start, inner)
-    _call_hook(b.on_start, ctx)
+    specs: tuple[NodeSpec, ...] = inst.spec.target
+    prepared = [_prepare(s) for s in specs]
+    # Build the chain back to front: each context sends into the next node's processing.
+    contexts: list[Context] = [ctx]
+    for i in range(len(specs) - 2, -1, -1):
+        nxt_spec, nxt_fn, nxt_ctx = specs[i + 1], prepared[i + 1].fn, contexts[0]
+
+        def sender(y: Any, s: NodeSpec = nxt_spec, f: Any = nxt_fn, c: Context = nxt_ctx) -> None:
+            _process(s, f, y, c)
+
+        contexts.insert(0, Context(inst, rc, sender=sender, outer=ctx))
+    for p, c in zip(prepared, contexts, strict=True):
+        _call_hook(p.on_start, c)
     strat = inst.strategy
-    assert strat is not None
-    while not ctx.stopped:
+    loop = inst.loop
+    first_spec, first_fn, first_ctx = specs[0], prepared[0].fn, contexts[0]
+    while strat is not None and not ctx.stopped:
         r = strat.next()
         if r is None:
             break
         src, item = r
-        ctx.source = src
-        inner.source = src
+        for c in contexts:
+            c.source = src
         inst.stats.items_in += 1
-        _process(spec_a, a.fn, item, inner)
-    _call_hook(a.on_end, inner)
-    _call_hook(b.on_end, ctx)
+        _process(first_spec, first_fn, item, first_ctx)
+        if loop is not None:
+            loop.done()
+    for p, c in zip(prepared, contexts, strict=True):
+        _call_hook(p.on_end, c)
 
 
 def run_node(inst: NodeInstance, rc: RunContext) -> None:
@@ -231,6 +311,7 @@ def run_node(inst: NodeInstance, rc: RunContext) -> None:
         rc.fail(inst, exc)
     finally:
         try:
+            ctx._finish_token()
             inst.outbox.close_all()
         except Cancelled:
             pass

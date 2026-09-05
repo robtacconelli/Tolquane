@@ -46,6 +46,9 @@ def draw(block: Any) -> str:
         lines.extend("    " + _shape(n) for n in nodes)
         lines.append("  end")
     for e in g.edges:
+        if e.feedback:
+            lines.append(f"  {_nid(e.src)} -.->|feedback| {_nid(e.dst)}")
+            continue
         label = "" if e.rule in ("1-1", "farm") else f"|{e.rule}|"
         lines.append(f"  {_nid(e.src)} -->{label} {_nid(e.dst)}")
     return "\n".join(lines)
@@ -76,4 +79,8 @@ def explain(block: Any) -> str:
     if g.windows:
         for wid, limit in g.windows.items():
             lines.append(f"window {wid}: at most {limit} tagged items in flight")
+    for loop in g.loops:
+        lines.append(
+            f"loop {loop.name}: {len(loop.nodes)} node(s), feedback into " + ", ".join(loop.heads)
+        )
     return "\n".join(lines)

@@ -1,25 +1,32 @@
 """Channels: the inbox every node waits on, the outbox it sends from, and the edges.
 
-Locking discipline: a thread never holds an inbox lock and an outbox lock at the same
-time. Producers wait on the outbox ``space`` condition for a credit, then append under
-the inbox lock. Consumers pop under the inbox lock, then hand the credit back under the
-outbox lock. Every wait goes through the scheduler so that cancellation and deadlock
-detection see it.
+Locking discipline: an outbox lock may be held while an inbox lock is taken (a producer
+pushing a flushed batch), never the other way round. Producers wait on the outbox
+``space`` condition for credits, consumers wait on the inbox ``not_empty`` condition,
+and every wait goes through the scheduler so cancellation and deadlock detection see it.
+
+Credits count items, not entries: a batch of k items takes k credits when it is pushed
+and gives them back one by one as the consumer delivers the items to user code.
 """
 
 from __future__ import annotations
 
 import threading
+import time
 from collections import deque
 from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
-from ._sentinels import END, EOS
+from ._sentinels import END, EOS, LOOP_DONE
 from .errors import ChannelClosed, TolquaneError
 
 if TYPE_CHECKING:
+    from .graph import LoopSpec
     from .runtime import NodeInstance, RunContext
+
+FLUSH_AFTER = 0.001
+"""Seconds a partial batch may wait before it is sent anyway."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -43,6 +50,15 @@ class TaggedOut:
     item: Any
 
 
+class Batch:
+    """Several items travelling as one queue entry."""
+
+    __slots__ = ("items",)
+
+    def __init__(self, items: list[Any]) -> None:
+        self.items = items
+
+
 class Window:
     """Bounds the number of tagged items in flight between an emitter and its collector."""
 
@@ -55,6 +71,9 @@ class Window:
         rc.register_cond(self.cond)
 
     def acquire(self, inst: NodeInstance) -> None:
+        if inst.outbox.has_pending:
+            # Never wait with items still batched: the collector needs them to release.
+            inst.outbox.flush()
         with self.lock:
             self.rc.scheduler.wait(
                 inst,
@@ -71,43 +90,124 @@ class Window:
             self.cond.notify_all()
 
 
+class Loop:
+    """Termination bookkeeping for one feedback loop.
+
+    ``tokens`` counts items inside the loop: an item entering from outside, or sent on
+    an edge inside the loop, adds one; a node finishing with an item removes one. When
+    every external input has ended and no token is left, the loop's heads are told to
+    treat their feedback inputs as ended.
+    """
+
+    def __init__(self, spec: LoopSpec, rc: RunContext) -> None:
+        self.name = spec.name
+        self.rc = rc
+        self.lock = threading.Lock()
+        self.tokens = 0
+        self.external_remaining = 0
+        self.closed = False
+        self.heads: list[NodeInstance] = []
+
+    def enter(self) -> None:
+        with self.lock:
+            self.tokens += 1
+
+    def sent(self, n: int = 1) -> None:
+        with self.lock:
+            self.tokens += n
+
+    def done(self) -> None:
+        with self.lock:
+            self.tokens -= 1
+            close = self._should_close()
+        if close:
+            self._close()
+
+    def external_ended(self) -> None:
+        with self.lock:
+            self.external_remaining -= 1
+            close = self._should_close()
+        if close:
+            self._close()
+
+    def _should_close(self) -> bool:
+        if self.closed or self.external_remaining > 0 or self.tokens > 0:
+            return False
+        self.closed = True
+        return True
+
+    def _close(self) -> None:
+        for head in self.heads:
+            head.inbox.push_control(LOOP_DONE)
+
+    def describe(self) -> str:
+        return (
+            f"loop {self.name}: {self.tokens} item(s) in flight, "
+            f"{self.external_remaining} external input(s) still open"
+        )
+
+
 class Edge:
     """One channel from an outbox to an inbox."""
 
     __slots__ = (
+        "batch",
         "capacity",
         "closed",
         "credits",
         "dst",
+        "entry_loop",
+        "feedback",
         "high_water",
         "inbox",
+        "last_flush",
+        "loop",
         "out_index",
         "outbox",
+        "pending",
         "queued",
         "src",
         "src_index",
     )
 
-    def __init__(self, src: NodeInstance, dst: NodeInstance, capacity: int | None) -> None:
+    def __init__(
+        self,
+        src: NodeInstance,
+        dst: NodeInstance,
+        capacity: int | None,
+        *,
+        batch: int = 1,
+        feedback: bool = False,
+    ) -> None:
         self.src = src
         self.dst = dst
         self.capacity = capacity
         self.credits = capacity if capacity is not None else 0
+        self.batch = max(1, batch if capacity is None else min(batch, capacity))
+        self.feedback = feedback
         self.closed = False
         self.queued = 0
         self.high_water = 0
+        self.pending: list[Any] = []
+        self.last_flush = time.monotonic()
+        self.loop: Loop | None = None
+        self.entry_loop: Loop | None = None
         self.inbox = dst.inbox
         self.outbox = src.outbox
         self.src_index = len(dst.inbox.edges_in)
-        self.out_index = len(src.outbox.edges)
         dst.inbox.edges_in.append(self)
-        src.outbox.edges.append(self)
+        if feedback:
+            self.out_index = len(src.outbox.feedback_edges)
+            src.outbox.feedback_edges.append(self)
+        else:
+            self.out_index = len(src.outbox.edges)
+            src.outbox.edges.append(self)
 
-    def refill(self) -> None:
+    def refill(self, n: int = 1) -> None:
         if self.capacity is None:
             return
         with self.outbox.lock:
-            self.credits += 1
+            self.credits += n
             self.outbox.space.notify_all()
 
     def wake_producer(self) -> None:
@@ -129,35 +229,50 @@ class Inbox:
         self.progress = 0
         rc.register_cond(self.not_empty)
 
-    def push(self, edge: Edge, item: Any) -> bool:
+    def push(self, edge: Edge, entry: Any, n: int = 1) -> bool:
         with self.lock:
             if self.done:
                 return False
-            self.q.append((edge.src_index, item))
-            edge.queued += 1
+            self.q.append((edge.src_index, entry))
+            edge.queued += n
             if edge.queued > edge.high_water:
                 edge.high_water = edge.queued
             self.progress += 1
             self.not_empty.notify()
         return True
 
-    def pop(self) -> tuple[int, Any]:
-        """Take the next entry. The producer's credit comes back only on ``release``."""
+    def push_control(self, control: Any) -> None:
         with self.lock:
-            self.rc.scheduler.wait(
-                self.inst, self.not_empty, self._has_item, "input", "waiting for input"
-            )
-            src, item = self.q.popleft()
-            self.edges_in[src].queued -= 1
+            if self.done:
+                return
+            self.q.append((-1, control))
             self.progress += 1
-        return src, item
+            self.not_empty.notify()
 
-    def release(self, src: int) -> None:
-        """Give one credit back to the producer of ``src``: its item has been consumed."""
-        self.edges_in[src].refill()
+    def pop(self) -> tuple[int, Any]:
+        """Take the next entry. Flushes this node's pending output before waiting."""
+        outbox = self.inst.outbox
+        while True:
+            with self.lock:
+                if self.q or not outbox.has_pending:
+                    self.rc.scheduler.wait(
+                        self.inst, self.not_empty, self._has_item, "input", "waiting for input"
+                    )
+                    src, entry = self.q.popleft()
+                    if src >= 0:
+                        self.edges_in[src].queued -= (
+                            len(entry.items) if isinstance(entry, Batch) else 1
+                        )
+                    self.progress += 1
+                    return src, entry
+            outbox.flush()
 
     def _has_item(self) -> bool:
         return len(self.q) > 0
+
+    def release(self, src: int, n: int = 1) -> None:
+        """Give ``n`` credits back to the producer of ``src``: its items were consumed."""
+        self.edges_in[src].refill(n)
 
     def mark_done(self) -> None:
         with self.lock:
@@ -171,7 +286,7 @@ class Inbox:
 
 
 class Outbox:
-    """Where a node sends from. Applies the node's distribution policy and tagging."""
+    """Where a node sends from. Applies the distribution policy, tagging and batching."""
 
     def __init__(self, inst: NodeInstance, rc: RunContext) -> None:
         self.inst = inst
@@ -179,28 +294,68 @@ class Outbox:
         self.lock = threading.Lock()
         self.space = threading.Condition(self.lock)
         self.edges: list[Edge] = []
+        self.feedback_edges: list[Edge] = []
         self.rr = 0
+        self.fb_rr = 0
         self.seq = 0
         self.window: Window | None = None
         self.tag: Tagged | None = None
         self.sub = 0
+        self._pending_count = 0
+        spec = inst.spec
+        self._plain_rr = spec.distribute == "round_robin" and not (
+            spec.tagged and spec.role == "emitter"
+        )
+        # The sync runtime must not depend on the clock: it flushes when full or waiting.
+        self._timed = not rc.deterministic
         rc.register_cond(self.space)
+
+    @property
+    def has_pending(self) -> bool:
+        return self._pending_count > 0
+
+    def _all_edges(self) -> list[Edge]:
+        return self.edges + self.feedback_edges if self.feedback_edges else self.edges
 
     # ----------------------------------------------------------------- low level
 
-    def _acquire_credit(self, edge: Edge) -> None:
+    def _acquire_credit(self, edge: Edge, n: int) -> None:
         if edge.capacity is None:
             return
         with self.lock:
+            if edge.credits < n and not edge.inbox.done:
+                self._flush_others_locked(edge)
             self.rc.scheduler.wait(
                 self.inst,
                 self.space,
-                lambda: edge.credits > 0 or edge.inbox.done,
+                lambda: edge.credits >= n or edge.inbox.done,
                 "output",
                 f"sending to {edge.dst.spec.name!r} (queue full, capacity {edge.capacity})",
             )
             if not edge.inbox.done:
-                edge.credits -= 1
+                edge.credits -= n
+
+    def _flush_others_locked(self, current: Edge | None) -> None:
+        """Push any other edge's pending batch that already has credits. Lock held."""
+        for e in self._all_edges():
+            if e is current or not e.pending:
+                continue
+            n = len(e.pending)
+            if e.capacity is not None and e.credits < n and not e.inbox.done:
+                continue
+            items = e.pending
+            e.pending = []
+            self._pending_count -= n
+            e.last_flush = time.monotonic()
+            if e.capacity is not None and not e.inbox.done:
+                e.credits -= n
+            self._push_entry(e, Batch(items), n)
+
+    def _push_entry(self, edge: Edge, entry: Any, n: int) -> None:
+        if edge.inbox.push(edge, entry, n):
+            self.inst.stats.items_out += n
+        else:
+            self.inst.stats.dropped += n
 
     def put(self, edge: Edge, item: Any, *, raw: bool = False) -> None:
         if edge.closed:
@@ -211,15 +366,40 @@ class Outbox:
         if not raw and self.tag is not None:
             item = TaggedOut(self.tag.seq, self.tag.part, self.tag.nparts, self.sub, item)
             self.sub += 1
-        self._acquire_credit(edge)
-        if edge.inbox.push(edge, item):
-            self.inst.stats.items_out += 1
-        else:
-            self.inst.stats.dropped += 1
+        if edge.loop is not None:
+            edge.loop.sent()
+        if edge.batch <= 1:
+            self._acquire_credit(edge, 1)
+            self._push_entry(edge, item, 1)
+            return
+        pending = edge.pending
+        pending.append(item)
+        self._pending_count += 1
+        if len(pending) >= edge.batch or (
+            self._timed and time.monotonic() - edge.last_flush >= FLUSH_AFTER
+        ):
+            self._flush_edge(edge)
+
+    def _flush_edge(self, edge: Edge) -> None:
+        items = edge.pending
+        edge.pending = []
+        n = len(items)
+        self._pending_count -= n
+        self._acquire_credit(edge, n)
+        edge.last_flush = time.monotonic()
+        self._push_entry(edge, Batch(items), n)
+
+    def flush(self) -> None:
+        """Send every partial batch now."""
+        for e in self._all_edges():
+            if e.pending:
+                self._flush_edge(e)
 
     def _put_any(self, item: Any) -> None:
         n = len(self.edges)
         with self.lock:
+            if self._pending_count:
+                self._flush_others_locked(None)
             self.rc.scheduler.wait(
                 self.inst,
                 self.space,
@@ -241,10 +421,9 @@ class Outbox:
                 chosen.credits -= 1
         if chosen.closed:
             raise ChannelClosed(f"node {self.inst.spec.name!r} sent after closing its outputs")
-        if chosen.inbox.push(chosen, item):
-            self.inst.stats.items_out += 1
-        else:
-            self.inst.stats.dropped += 1
+        if chosen.loop is not None:
+            chosen.loop.sent()
+        self._push_entry(chosen, item, 1)
 
     # ----------------------------------------------------------------- policies
 
@@ -254,8 +433,18 @@ class Outbox:
                 f"node {self.inst.spec.name!r} has no output to send to; add a stage after it"
             )
 
-    def send(self, item: Any) -> None:
-        self._require_edges()
+    def send(self, item: Any, *, to: int | None = None) -> None:
+        if to is not None:
+            self.send_to(to, item)
+            return
+        edges = self.edges
+        if not edges:
+            self._require_edges()
+        if self._plain_rr:
+            rr = self.rr
+            self.rr = rr + 1 if rr + 1 < len(edges) else 0
+            self.put(edges[rr], item)
+            return
         spec = self.inst.spec
         if spec.tagged and spec.role == "emitter":
             self._send_tagged(item)
@@ -303,6 +492,24 @@ class Outbox:
             return
         for e in self.edges:
             self.put(e, item)
+
+    def feedback(self, item: Any, to: int | None = None) -> None:
+        if not self.feedback_edges:
+            raise TolquaneError(
+                f"node {self.inst.spec.name!r} has no feedback output; wrap the block in "
+                "tq.feedback(...) and send back from its last stage"
+            )
+        if to is None:
+            e = self.feedback_edges[self.fb_rr]
+            self.fb_rr = (self.fb_rr + 1) % len(self.feedback_edges)
+        elif 0 <= to < len(self.feedback_edges):
+            e = self.feedback_edges[to]
+        else:
+            raise TolquaneError(
+                f"node {self.inst.spec.name!r} fed back to {to}, but it has "
+                f"{len(self.feedback_edges)} feedback output(s)"
+            )
+        self.put(e, item)
 
     # ----------------------------------------------------------------- tagging
 
@@ -354,11 +561,12 @@ class Outbox:
     # ----------------------------------------------------------------- closing
 
     def close_all(self) -> None:
-        for e in self.edges:
+        self.flush()
+        for e in self._all_edges():
             if e.closed:
                 continue
             e.closed = True
-            self._acquire_credit(e)
+            self._acquire_credit(e, 1)
             e.inbox.push(e, EOS)
 
 

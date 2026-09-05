@@ -11,12 +11,13 @@ same graph runs on threads, processes or across a network. Tolquane is the succe
 [FastFlow](https://github.com/fastflow/fastflow) building blocks, rebuilt from scratch
 to be simple to use and impossible to hang.
 
-> **Status: 0.1 in progress.** The core runs on threads and on a deterministic
+> **Status: 0.2 in progress.** The core runs on threads and on a deterministic
 > single-threaded runtime: nodes, pipelines, farms with every emitter and collector
-> policy, ordered farms, node fusion, deadlock detection. Processes, the network
-> runtime and the AI builder are next; see [DESIGN.md](DESIGN.md) for the design,
-> the liveness rules and the roadmap, and [docs/api-card.md](docs/api-card.md) for
-> the whole API on one page.
+> policy, ordered farms, node fusion, all-to-all, feedback loops that terminate by
+> rule, channel batching, long-lived sessions, deadlock detection. The AI builder,
+> processes and the network runtime are next; see [DESIGN.md](DESIGN.md) for the
+> design, the liveness rules and the roadmap, [docs/api-card.md](docs/api-card.md)
+> for the whole API on one page, and [examples/](examples/) for flows in the house style.
 
 ## What it looks like
 
@@ -43,7 +44,9 @@ tq.run(graph, runtime="sync")          # same graph, one thread, deterministic
 A function is a node. Return `tq.SKIP` to drop an item; `None` is an ordinary value.
 A generator function yields zero or many items. Farms come with round-robin, broadcast,
 scatter, on-demand and key-based emitters, first-come, round-robin, gather and ordered
-collectors, and feedback loops that terminate by rule.
+collectors. `tq.all2all` joins two farms worker to worker, `tq.feedback` wires a block
+back onto itself with a loop that closes when nothing is left in flight, and
+`tq.session` keeps a graph running while you push items in and read results out.
 
 ## Runtimes
 

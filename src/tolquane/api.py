@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Iterable
+from collections.abc import Iterable
 from typing import Any
 
-from .graph import Comb, Farm, Node, Pipeline
+from .graph import AllToAll, Comb, Farm, Feedback, Node, Pipeline
+from .session import Session
 
 
 def _decorator(declared: str | None, fn: Any, name: str | None, **kw: Any) -> Any:
@@ -50,6 +51,32 @@ def pipeline(*blocks: Any) -> Pipeline:
     return Pipeline(blocks)
 
 
+def all2all(
+    left: Farm, right: Farm, *, R: Any = None, G: Any = None, merge: bool = False
+) -> AllToAll:
+    """Join two farms worker to worker, removing the collector and emitter between them.
+
+    ``R`` is fused after every left worker, ``G`` before every right worker. With
+    ``merge=True`` the two farms stay in a pipeline through one node (``R``, ``G`` or
+    ``comb(R, G)``), or worker to worker when neither is given.
+    """
+    return AllToAll(left, right, R=R, G=G, merge=merge)
+
+
+def feedback(block: Any, *, name: str | None = None) -> Feedback:
+    """Wire a block's outputs back to its inputs. Send back with ``ctx.feedback(item)``.
+
+    The loop closes by itself once every outside input has ended and nothing is in
+    flight; ``ctx.stop()`` in the first stage ends it earlier.
+    """
+    return Feedback(block, name=name)
+
+
+def session(block: Any, **options: Any) -> Session:
+    """Run a graph in the background: ``with tq.session(g) as s: s.put(x); s.get()``."""
+    return Session(block, **options)
+
+
 class _ListSink:
     def __init__(self) -> None:
         self.items: list[Any] = []
@@ -85,14 +112,16 @@ def from_iterable(items: Iterable[Any], name: str = "from_iterable") -> Node:
 
 
 __all__ = [
-    "Callable",
     "ListSink",
+    "all2all",
     "comb",
     "farm",
+    "feedback",
     "from_iterable",
     "node",
     "pipeline",
     "raw",
+    "session",
     "sink",
     "source",
     "to_list",

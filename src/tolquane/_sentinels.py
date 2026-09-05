@@ -32,3 +32,6 @@ EOS: Final = _Sentinel("EOS")
 
 END: Final = _Sentinel("END")
 """Internal marker: a tagged item produced all of its outputs."""
+
+LOOP_DONE: Final = _Sentinel("LOOP_DONE")
+"""Internal control message: a feedback loop has nothing in flight; close its feedback inputs."""
