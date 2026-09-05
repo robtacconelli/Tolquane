@@ -1,7 +1,7 @@
 # Tolquane design: rebuilding BBFlow in Python
 
 Status: draft 1, 2026-09-05. Companion to `PREV_CLAUDE.md` (naming decision).
-Decisions 1 to 5 in section 10 are settled; the liveness rules in section 6 are
+Decisions 1 to 5 in section 11 are settled; the liveness rules in section 6 are
 the contract every phase must keep.
 Sources studied: https://github.com/robtacconelli/BBFlow (Java 17, ~2.9k lines of
 library code, last commit May 2022) and the thesis *BBFlow: a Java implementation of
@@ -200,9 +200,14 @@ whose sub-exceptions carry the node name and worker index.
 ### 4.5 Introspection
 
 ```python
+tq.check(graph)         # validate wiring without running; raises GraphError with a fix
 tq.draw(graph)          # Mermaid text of the wired graph (cardinalities resolved)
 tq.explain(graph)       # which topology rule applied to each edge: 1-1, 1xN, Nx1, N-N, NxM
 ```
+
+Test helpers: `tq.from_iterable(items)` is a source, `tq.to_list()` a sink whose
+`.items` holds what arrived. Decorated functions stay callable, so `double(3)` still
+returns 6 in a unit test.
 
 ### 4.6 Distributed
 
@@ -277,6 +282,15 @@ polls: a multi-input node blocks once and wakes on any input. Collector policies
 Inbox strategies: `first_come` is the raw inbox order; `round_robin` re-orders by
 source index; `ordered` re-orders by sequence tag. Bounded per-source credits keep one
 fast producer from starving the others.
+
+Credits come back at delivery, not at pop. An item a strategy pops but holds back
+(a `round_robin` collector waiting for another source, a raw node doing
+`recv(source=1)` while source 0 keeps arriving) keeps its producer's credit, so a
+held-back source blocks after `capacity` items instead of growing a buffer without
+bound. The price is that a node which refuses to read one source while the emitter
+must feed it can deadlock; that is a real cycle in the user's topology, and the stall
+detector reports it by name (`tests/liveness/` has the case). Ordered and gather
+collectors release at pop, because their window already bounds what they hold.
 
 **Node runner** is the loop: `on_start`, then consume the inbox until every source has
 delivered EOS, then `on_end`, then close all outputs. EOS is a distinct object, never
@@ -400,9 +414,12 @@ return new graph values and never mutate their arguments. Ports are objects, nev
 positional indices, so "remove channel 0" bugs cannot exist. `comb` is function
 composition over one node interface, with no mode branching. (A7, A12, A13)
 
-**R12. Cardinality is checked, not guessed.** A map function placed where two inputs
-arrive is a build-time error with a hint (`use def f(x, ctx)`). No reflection, no
-anonymous-class detection, no busy loops on an empty default method. (A4, A6)
+**R12. Cardinality is declared or inferred, never guessed from a class.** A node's
+kind comes from its signature (`f(x)`, `f(x, ctx)`, generator, `raw`), a source may have
+no inputs, a sink no outputs, and a map node at the end of a pipeline is a build-time
+error with a hint. Several inputs into a plain function merge first-come through the
+inbox, which is well defined; nothing is silently ignored. No reflection on class
+names, no busy loops on an empty default method. (A4, A6)
 
 **R13. Network control is out of band.** HELLO, EOS, ACK and PING are frame kinds,
 never payload values. Sequence numbers with an acknowledgement window give at-least-once
@@ -451,15 +468,16 @@ under broadcast, feedback termination, cycle deadlock detection, exception insid
 
 ## 8. Roadmap
 
-Each phase ends with tests green in CI and a runnable example.
+Each phase ends with tests green in CI and a runnable example. The AI builder sits
+right after the core so that the API is shaped by what generated code needs.
 
-**Phase 0: bootstrap (days).**
+**Phase 0: bootstrap (done 2026-09-05).**
 `pyproject.toml` (hatchling), `src/tolquane`, ruff + mypy strict, pytest, GitHub
 Actions matrix (3.11, 3.12, 3.13, 3.14, 3.14t), README with the hello world,
 placeholder `tolquane 0.0.1` on PyPI (from the `PREV_CLAUDE.md` to-do list), license
 decided.
 
-**Phase 1: core on threads (0.1).**
+**Phase 1: core on threads (0.1, done 2026-09-05).**
 Graph, Channel, Inbox, node runner, EOS, `sync` and `threads` runtimes, `pipeline`,
 `comb`, `farm` with round_robin/broadcast/scatter and first_come/round_robin/gather,
 `ordered=True`, `on_demand`, error propagation, stall detector, `run()`, `draw()`.
@@ -474,24 +492,145 @@ two-node pipeline (thesis Table 1) and farm scalability (Figure 13).
 Port the remaining `ff_tests` and the SOM use case as an example (it exercises feedback,
 custom emitter/collector and worker-to-worker edges).
 
-**Phase 3: processes (0.3).**
+**Phase 3: AI builder (0.3).**
+`tolquane[ai]` extra, `tolquane build` command and `tolquane.ai.build()`, Anthropic
+provider first, OpenAI second, the four tools, the API card and `docs/style.md`, a
+recorded-fixture test suite so the loop is tested without a key, and ten end-to-end
+examples with their generated flows checked into `examples/generated/`.
+
+**Phase 4: processes (0.4).**
 `processes` runtime with spawn, pickle protocol 5 channels, cloudpickle fallback for
 lambdas, per-farm process pools, numpy zero-copy on scatter/gather. Benchmarks:
 farm on a GIL build, pure Python CPU work, compared with threads on 3.14t.
 
-**Phase 4: distributed (0.4).**
+**Phase 5: distributed (0.5).**
 Framing, serializers, HMAC handshake, `TcpChannel`, `deploy.toml`, `tolquane run`,
 reconnect and backpressure. Reproduce thesis Tables 2 to 5 (pipeline and farm over
 loopback and Ethernet).
 
-**Phase 5: asyncio, docs, 1.0.**
+**Phase 6: asyncio, docs, 1.0.**
 `asyncio` runtime, `async def` nodes, Chrome trace export, mkdocs site (tutorial,
 cookbook, "coming from FastFlow/BBFlow", runtime decision table), API reference from
 docstrings, 1.0 on PyPI. Subinterpreter runtime stays experimental behind a flag.
 
 ---
 
-## 9. Definition of "easily usable by anyone"
+## 9. The AI builder
+
+Tolquane ships with a builder: a command and a library call that turns a plain-language
+description into a runnable flow, tests it, and improves it with the user, using the
+user's own Claude or GPT key. The target user has never read the FastFlow papers. The
+output must be short, readable Python with a few blocks and comments, not a wall of
+generated code.
+
+### 9.1 What it does
+
+```
+$ tolquane build "read urls from urls.txt, fetch each with 8 workers, keep the ones
+                  that return 200, write the titles to titles.csv"
+```
+
+1. **Plan.** The model reads the API card (section 9.3) and writes a short plan: which
+   blocks, which runtime, what each node does.
+2. **Write.** It emits one file, `flow.py`, in the house style: sources, nodes and sinks
+   as small named functions, the graph as one `>>` line, a `main()` that calls `tq.run`.
+   Every node carries a one-line comment saying what it does and why it is a node.
+3. **Check.** `tq.check(graph)` validates wiring without running: unconnected ports,
+   sources with inputs, sinks with outputs, bad cardinality. Errors go back to the model
+   verbatim; they are written for this purpose (node name, what is wrong, how to fix it).
+4. **Test.** The builder runs the flow on the `sync` runtime with a small sample
+   (the first 20 items, a generated fixture, or a user-provided sample file) and shows
+   the model the output, the stats report and any `NodeError`. Deadlocks surface as a
+   `DeadlockError` naming the cycle, never as a hang, so the loop always terminates.
+5. **Improve.** The user says what is wrong or what to add; the model edits the same
+   file. `tq.explain` and `tq.draw` output are available to the model so it can reason
+   about topology instead of guessing.
+
+The same loop is available in Python (`tolquane.ai.build(description, ...)`) so people
+can embed it in notebooks and internal tools.
+
+### 9.2 Provider and model
+
+- Claude through the official `anthropic` SDK, model `claude-opus-5` by default with
+  adaptive thinking and `output_config.effort` set to `high`; the plan step uses
+  structured outputs so the block list is machine-checkable. Streaming is on for the
+  write step. The key comes from the environment (`ANTHROPIC_API_KEY`) or an
+  `ant auth login` profile; the builder never stores it.
+- GPT through the official `openai` SDK, selected with `--provider openai`.
+- Both are optional extras: `pip install "tolquane[ai]"`. The core library never
+  imports either SDK.
+- The generate/check/run loop is driven by the Anthropic SDK tool runner with four
+  tools: `write_flow`, `check_flow`, `run_flow`, `read_docs`. On OpenAI the same four
+  tools run through that SDK's function-calling loop.
+
+### 9.3 What the library must provide for the builder to be good
+
+These are Phase 1 and 2 deliverables, because generated code is only as good as the
+API it targets.
+
+- **One way to do each thing.** A function is a node; `>>` is a pipeline; a farm is one
+  call with keyword options. Fewer choices means fewer wrong choices.
+- **An API card**, `docs/api-card.md`: the whole public surface on one page with one
+  example per block, kept under 2K tokens, and shipped inside the package so the builder
+  can read it at runtime. It doubles as the human cheat sheet.
+- **Errors written for a reader with no context.** Every `GraphError` and `NodeError`
+  names the node, states the problem in one sentence, and ends with a fix.
+- **`tq.check`, `tq.explain`, `tq.draw`** as pure functions of the graph, callable
+  without running anything.
+- **The `sync` runtime**: deterministic, single-threaded, exact deadlock detection, so a
+  test run costs nothing and cannot hang the builder.
+- **`tq.to_list()` and `tq.from_iterable()`** so any flow can be tested with a sample in
+  three lines.
+- **A house style** documented in `docs/style.md` and followed by every example in the
+  repository, because the model imitates what it reads.
+
+### 9.4 Generated output, the standard to hit
+
+```python
+"""Fetch a list of URLs in parallel and save the page titles."""
+import csv
+import tolquane as tq
+import urllib.request
+
+@tq.source
+def urls():
+    # One URL per line; blank lines are skipped.
+    with open("urls.txt") as f:
+        yield from (line.strip() for line in f if line.strip())
+
+@tq.node
+def fetch(url: str):
+    # Network-bound, so a farm of threads is the right runtime.
+    with urllib.request.urlopen(url, timeout=10) as r:
+        return (url, r.status, r.read().decode("utf-8", "replace"))
+
+@tq.node
+def keep_ok(page):
+    url, status, body = page
+    return page if status == 200 else tq.SKIP
+
+@tq.sink
+def write_title(page):
+    url, _, body = page
+    title = body.split("<title>")[1].split("</title>")[0] if "<title>" in body else ""
+    writer.writerow([url, title])
+
+def main():
+    global writer
+    with open("titles.csv", "w", newline="") as f:
+        writer = csv.writer(f)
+        tq.run(urls >> tq.farm(fetch, workers=8) >> keep_ok >> write_title)
+
+if __name__ == "__main__":
+    main()
+```
+
+Twenty lines of logic, every block visible, nothing to learn beyond `source`, `node`,
+`sink`, `farm` and `>>`.
+
+---
+
+## 10. Definition of "easily usable by anyone"
 
 - `pip install tolquane`, no compiler, no dependencies.
 - The hello world in the README runs unchanged on threads, processes and two machines.
@@ -504,7 +643,7 @@ docstrings, 1.0 on PyPI. Subinterpreter runtime stays experimental behind a flag
 
 ---
 
-## 10. Decisions (recorded 2026-09-05)
+## 11. Decisions (recorded 2026-09-05)
 
 | # | Decision | Choice | Note |
 |---|---|---|---|

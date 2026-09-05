@@ -4,36 +4,81 @@ Nodes speak on channels. Pipelines, farms and all-to-all blocks compose them, an
 same graph runs on threads, processes or across a network. The design lives in
 ``DESIGN.md`` at the repository root.
 
-This release is a placeholder that reserves the name; the public API described in the
-design is not implemented yet.
+    import tolquane as tq
+
+    @tq.source
+    def numbers():
+        yield from range(1, 101)
+
+    @tq.node
+    def double(x):
+        return x * 2
+
+    out = tq.to_list()
+    tq.run(numbers >> tq.farm(double, workers=4) >> out)
+    print(sorted(out.items))
 """
 
 from __future__ import annotations
 
-from typing import Final
+from ._sentinels import EOS, SKIP
+from .api import (
+    ListSink,
+    comb,
+    farm,
+    from_iterable,
+    node,
+    pipeline,
+    raw,
+    sink,
+    source,
+    to_list,
+)
+from .draw import draw, explain
+from .errors import (
+    ChannelClosed,
+    DeadlockError,
+    GraphError,
+    NodeError,
+    TolquaneError,
+)
+from .graph import Block, Comb, Farm, Graph, Node, Pipeline
+from .run import check, run
+from .runner import Context
+from .runtime import NodeStats, Report
 
-__version__ = "0.0.1"
+__version__ = "0.1.0.dev0"
 
-
-class _Skip:
-    """Type of the :data:`SKIP` sentinel. Do not instantiate; use ``SKIP``."""
-
-    __slots__ = ()
-
-    def __repr__(self) -> str:
-        return "tolquane.SKIP"
-
-    def __reduce__(self) -> str:
-        # Pickle as a reference to the module-level name so that the sentinel stays a
-        # singleton across processes and network channels.
-        return "SKIP"
-
-
-SKIP: Final = _Skip()
-"""Return ``SKIP`` from a node to send nothing for the current item.
-
-``None`` is an ordinary value in Tolquane and travels downstream like any other; ``SKIP``
-is the only way for a function node to drop an item.
-"""
-
-__all__ = ["SKIP", "__version__"]
+__all__ = [
+    "EOS",
+    "SKIP",
+    "Block",
+    "ChannelClosed",
+    "Comb",
+    "Context",
+    "DeadlockError",
+    "Farm",
+    "Graph",
+    "GraphError",
+    "ListSink",
+    "Node",
+    "NodeError",
+    "NodeStats",
+    "Pipeline",
+    "Report",
+    "TolquaneError",
+    "__version__",
+    "check",
+    "comb",
+    "draw",
+    "explain",
+    "farm",
+    "from_iterable",
+    "node",
+    "pipeline",
+    "raw",
+    "run",
+    "sink",
+    "source",
+    "to_list",
+]

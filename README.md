@@ -11,11 +11,14 @@ same graph runs on threads, processes or across a network. Tolquane is the succe
 [FastFlow](https://github.com/fastflow/fastflow) building blocks, rebuilt from scratch
 to be simple to use and impossible to hang.
 
-> **Status: design phase.** The package on PyPI is a placeholder that reserves the
-> name. The API below is the target; see [DESIGN.md](DESIGN.md) for the full design,
-> the liveness rules and the roadmap.
+> **Status: 0.1 in progress.** The core runs on threads and on a deterministic
+> single-threaded runtime: nodes, pipelines, farms with every emitter and collector
+> policy, ordered farms, node fusion, deadlock detection. Processes, the network
+> runtime and the AI builder are next; see [DESIGN.md](DESIGN.md) for the design,
+> the liveness rules and the roadmap, and [docs/api-card.md](docs/api-card.md) for
+> the whole API on one page.
 
-## What it will look like
+## What it looks like
 
 ```python
 import tolquane as tq
@@ -34,7 +37,7 @@ def show(x: int) -> None:
 
 graph = numbers >> tq.farm(double, workers=4) >> show
 tq.run(graph)                          # threads by default
-tq.run(graph, runtime="processes")     # same graph, multiprocess
+tq.run(graph, runtime="sync")          # same graph, one thread, deterministic
 ```
 
 A function is a node. Return `tq.SKIP` to drop an item; `None` is an ordinary value.
@@ -46,11 +49,19 @@ collectors, and feedback loops that terminate by rule.
 
 | Runtime | Use when |
 |---|---|
-| `sync` | Tests and debugging: the whole graph runs deterministically in the calling thread. |
-| `threads` | I/O-bound stages, numpy and C work, and full parallelism on free-threaded CPython 3.14t. |
-| `processes` | CPU-bound pure Python on a GIL build. |
-| `asyncio` | Network-heavy stages and `async def` nodes. |
-| distributed | Two or more machines: edges crossing a host boundary become TCP channels from a deploy file. |
+| `sync` (available) | Tests and debugging: one node runs at a time in a fixed order, and a deadlock is reported the moment it happens. |
+| `threads` (available) | I/O-bound stages, numpy and C work, and full parallelism on free-threaded CPython 3.14t. |
+| `processes` (planned) | CPU-bound pure Python on a GIL build. |
+| `asyncio` (planned) | Network-heavy stages and `async def` nodes. |
+| distributed (planned) | Two or more machines: edges crossing a host boundary become TCP channels from a deploy file. |
+
+## An AI builder is part of the plan
+
+`tolquane build "read urls.txt, fetch each with 8 workers, keep the 200s, save the
+titles"` will write a short, commented flow with your own Claude or GPT key, check it,
+run it on the sync runtime with a sample, and improve it with you. The library is being
+shaped for that: one way to do each thing, errors that say how to fix themselves, and
+`tq.check` / `tq.explain` / `tq.draw` to look before running.
 
 ## Principles
 
