@@ -52,24 +52,77 @@ class NodeInstance:
         self.loop: Loop | None = None
         self.remote: RemoteWorker | None = None
         self.ctx_source: int = 0
+        self.in_flight: int = 0  # work running outside the channels: coroutines in a pool
+        self.flight_lock = threading.Lock()
+        self.started_at: float = time.perf_counter()
         self.parked_on: threading.Condition | None = self.inbox.not_empty
         self.predicate: Callable[[], bool] | None = None
+        # The sync runtime parks a node on this, never on a channel lock, so handing the
+        # baton over can never wait on a lock some other node holds.
+        self.baton_cond = threading.Condition()
+        rc.register_cond(self.baton_cond)
         self.thread: threading.Thread | None = None
 
     @property
     def name(self) -> str:
         return self.spec.name
 
+    def outbox_capacity(self) -> int:
+        """Items a source may have queued ahead of its slowest output; 64 when unbounded."""
+        caps = [e.capacity for e in self.outbox.edges if e.capacity is not None]
+        return min(caps) if caps else 64
+
     @property
     def live(self) -> bool:
         return self.state not in (State.DONE, State.FAILED)
 
     @property
+    def busy_outside(self) -> bool:
+        """Work is running for this node where no channel can see it: coroutines on an
+        event loop, or items at a remote worker. Their results will arrive by themselves."""
+        if self.in_flight > 0:
+            return True
+        return self.remote is not None and self.remote.in_flight > 0
+
+    @property
     def idle(self) -> bool:
-        """Waiting with nothing in hand: a remote worker with items in flight is busy."""
-        if self.state is not State.WAITING:
-            return False
-        return self.remote is None or self.remote.in_flight <= 0
+        """Waiting with nothing in hand."""
+        return self.state is State.WAITING and not self.busy_outside
+
+
+class Tracer:
+    """Collects wait and run intervals per node and writes a Chrome trace file."""
+
+    def __init__(self) -> None:
+        self.t0 = time.perf_counter()
+        self.events: list[tuple[str, str, float, float]] = []
+        self.lock = threading.Lock()
+
+    def record(self, node: str, name: str, start: float, end: float) -> None:
+        with self.lock:
+            self.events.append((node, name, start, end))
+
+    def write(self, path: str, insts: list[NodeInstance]) -> None:
+        import json
+
+        tids = {inst.name: i + 1 for i, inst in enumerate(insts)}
+        out: list[dict[str, Any]] = [
+            {"name": "thread_name", "ph": "M", "pid": 1, "tid": tid, "args": {"name": name}}
+            for name, tid in tids.items()
+        ]
+        for node, name, start, end in self.events:
+            out.append(
+                {
+                    "name": name,
+                    "ph": "X",
+                    "pid": 1,
+                    "tid": tids.get(node, 0),
+                    "ts": round((start - self.t0) * 1e6, 1),
+                    "dur": round((end - start) * 1e6, 1),
+                }
+            )
+        with open(path, "w") as f:
+            json.dump({"traceEvents": out, "displayTimeUnit": "ms"}, f)
 
 
 class RunContext:
@@ -80,11 +133,13 @@ class RunContext:
         *,
         deterministic: bool = False,
         on_failure: Callable[[str], None] | None = None,
+        tracer: Tracer | None = None,
     ) -> None:
         self.lock = threading.Lock()
         self.cancelled = False
         self.deterministic = deterministic
         self.on_failure = on_failure
+        self.tracer = tracer
         self.failures: list[tuple[NodeInstance, BaseException]] = []
         self.deadlock_message: str | None = None
         self.done_event = threading.Event()
@@ -131,6 +186,8 @@ class RunContext:
     def node_done(self, inst: NodeInstance) -> None:
         if inst.state is not State.FAILED:
             inst.state = State.DONE
+        if self.tracer is not None:
+            self.tracer.record(inst.name, "node", inst.started_at, time.perf_counter())
         self.scheduler.node_done(inst)
         self.done_event.set()
 
@@ -157,6 +214,13 @@ class Scheduler:
     def node_done(self, inst: NodeInstance) -> None:
         pass
 
+    def event(self, inst: NodeInstance, delta: int = 0) -> None:
+        """A thread outside the runtime changed ``inst``'s work in flight by ``delta``
+        and may have posted a result to its inbox."""
+        if delta:
+            with inst.flight_lock:
+                inst.in_flight += delta
+
 
 class ThreadScheduler(Scheduler):
     def wait(
@@ -173,6 +237,8 @@ class ThreadScheduler(Scheduler):
         inst.reason = reason
         inst.detail = detail
         inst.parked_on = cond
+        tracer = self.rc.tracer
+        started = time.perf_counter() if tracer is not None else 0.0
         try:
             while not predicate():
                 if self.rc.cancelled:
@@ -181,6 +247,8 @@ class ThreadScheduler(Scheduler):
         finally:
             inst.state = State.RUNNING
             inst.parked_on = None
+            if tracer is not None:
+                tracer.record(inst.name, f"wait {reason}", started, time.perf_counter())
 
 
 class BatonScheduler(Scheduler):
@@ -190,17 +258,29 @@ class BatonScheduler(Scheduler):
         super().__init__(rc)
         self.insts = insts
         self.holder: NodeInstance | None = insts[0] if insts else None
+        self.baton = threading.Lock()
 
     def node_started(self, inst: NodeInstance) -> None:
-        with inst.inbox.lock:
-            self._park(inst, inst.inbox.not_empty)
+        self._park(inst, None)
         inst.state = State.RUNNING
 
-    def _park(self, inst: NodeInstance, cond: threading.Condition) -> None:
-        while self.holder is not inst:
-            if self.rc.cancelled:
-                raise Cancelled
-            cond.wait()
+    def _park(self, inst: NodeInstance, held: threading.Condition | None) -> None:
+        """Block until ``inst`` holds the baton. ``held`` is the channel condition whose
+        lock the caller holds; it is let go while parked and taken back before returning,
+        exactly as ``held.wait()`` would do."""
+        if self.holder is inst:
+            return
+        if held is not None:
+            held.release()
+        try:
+            with inst.baton_cond:
+                while self.holder is not inst:
+                    if self.rc.cancelled:
+                        raise Cancelled
+                    inst.baton_cond.wait()
+        finally:
+            if held is not None:
+                held.acquire()
 
     def wait(
         self,
@@ -236,21 +316,54 @@ class BatonScheduler(Scheduler):
         return False
 
     def _handoff(self, current: NodeInstance) -> None:
+        with self.baton:
+            cand = self._pick(current.order + 1, current)
+        self._wake(cand)
+
+    def event(self, inst: NodeInstance, delta: int = 0) -> None:
+        """Nobody holds the baton while every node waits on work outside the channels;
+        the thread that finished such work hands it to whoever can run now, or reports
+        the deadlock that the finished work has revealed."""
+        cand = None
+        with self.baton:
+            if delta:
+                with inst.flight_lock:
+                    inst.in_flight += delta
+            if self.holder is None:
+                cand = self._pick(inst.order)
+        self._wake(cand)
+
+    def _pick(self, start: int, current: NodeInstance | None = None) -> NodeInstance | None:
+        """Hand the baton to the first runnable node from ``start`` on (under ``baton``).
+
+        Setting ``holder`` is the handoff; the notify that follows is only a wake-up call
+        and happens outside ``baton``. ``current`` is the node giving the baton away: it
+        is considered last and, when it can run again, keeps the baton without a wake-up.
+        """
         n = len(self.insts)
-        for k in range(1, n + 1):
-            cand = self.insts[(current.order + k) % n]
+        for k in range(n):
+            cand = self.insts[(start + k) % n]
+            if cand is current:
+                continue
             if self._runnable(cand):
                 self.holder = cand
-                cond = cand.parked_on
-                if cond is not None:
-                    with cond:
-                        cond.notify_all()
-                return
+                return cand
+        if current is not None and self._runnable(current):
+            self.holder = current
+            return None
         self.holder = None
-        if any(i.live for i in self.insts) and not self.rc.cancelled:
-            # We hold the caller's channel lock here, so we must not cancel in place.
+        live = [i for i in self.insts if i.live]
+        if live and not self.rc.cancelled and not any(i.busy_outside for i in live):
+            # We may hold the caller's channel lock here, so we must not cancel in place.
             # During cancellation nobody is runnable by design: that is not a deadlock.
             self.rc.report_deadlock(describe_stall(self.insts))
+        return None
+
+    @staticmethod
+    def _wake(cand: NodeInstance | None) -> None:
+        if cand is not None:
+            with cand.baton_cond:
+                cand.baton_cond.notify_all()
 
 
 def describe_stall(insts: list[NodeInstance]) -> str:
@@ -308,13 +421,15 @@ def execute(
     deadlock_timeout: float | None = 0.3,
     remote_loops: dict[str, tuple[Loop, list[Any]]] | None = None,
     on_failure: Callable[[str], None] | None = None,
+    trace: str | None = None,
 ) -> Report:
     if runtime not in ("threads", "sync", "processes"):
         raise TolquaneError(f"unknown runtime {runtime!r}; use 'threads', 'processes' or 'sync'")
     all_workers_remote = runtime == "processes"
     if all_workers_remote:
         runtime = "threads"
-    rc = RunContext(deterministic=runtime == "sync", on_failure=on_failure)
+    tracer = Tracer() if trace else None
+    rc = RunContext(deterministic=runtime == "sync", on_failure=on_failure, tracer=tracer)
     insts = [NodeInstance(spec, i, rc) for i, spec in enumerate(graph.nodes)]
     by_name = {i.name: i for i in insts}
     windows = {wid: Window(limit, rc) for wid, limit in graph.windows.items()}
@@ -407,6 +522,8 @@ def execute(
     for remote in remotes:
         remote.shutdown()
     elapsed = time.perf_counter() - start
+    if tracer is not None and trace:
+        tracer.write(trace, insts)
 
     if rc.failures:
         # A failure cancels the run, and a cancelled run can look stalled; the failure

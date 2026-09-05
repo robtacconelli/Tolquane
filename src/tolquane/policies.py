@@ -68,7 +68,7 @@ class Strategy:
                     self._batch_pos = pos
                 self._entered(src)
                 return src, item, True
-            if self.remaining <= 0:
+            if self.remaining <= 0 and watch != -1:
                 return None
             src, entry = self.inbox.pop()
             if entry is EOS:
@@ -83,6 +83,8 @@ class Strategy:
                 if src == watch:
                     return None
                 continue
+            if src < 0 and entry is not LOOP_DONE:
+                return src, entry, False  # an event the node posted to itself (async pools)
             if entry is LOOP_DONE:
                 for i, edge in enumerate(self.inbox.edges_in):
                     if edge.feedback and i not in self.ended:
@@ -143,7 +145,11 @@ class FirstCome(Strategy):
                         item, batched = buf.popleft()
                         return self._deliver(src, item, batched)
             r = self._pop()
-            return None if r is None else self._deliver(*r)
+            if r is None:
+                return None
+            if r[0] < 0:
+                return r[0], r[1]
+            return self._deliver(*r)
         buf = self.buffers.setdefault(source, deque())
         if buf:
             self._buffered -= 1
@@ -156,6 +162,8 @@ class FirstCome(Strategy):
             if r is None:
                 return None
             src, item, batched = r
+            if src < 0:
+                return src, item
             if src == source:
                 return self._deliver(src, item, batched)
             self.buffers.setdefault(src, deque()).append((item, batched))

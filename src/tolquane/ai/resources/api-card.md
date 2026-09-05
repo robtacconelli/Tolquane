@@ -13,6 +13,7 @@ The whole public surface on one page. `import tolquane as tq`.
 | `@tq.sink` on `def f(x)` or `def f(x, ctx)` | Consumes items. No outputs. |
 | `@tq.raw` on `def f(ctx)` | Full control: `for src, item in ctx.inputs(): ...`, `ctx.recv(source=i)` reads one input and returns `None` when it ends; call `ctx.flush()` before blocking on anything outside Tolquane. Raw nodes can be farm workers, emitters or collectors, except in ordered and gather farms. |
 | a class with `__call__(self, x)` | Stateful node, one instance per worker. Optional `on_start(self, ctx)` and `on_end(self, ctx)`. |
+| `async def f(x)` | A coroutine node: takes the item only (no `ctx`), returns or yields what to send. `tq.farm(f, workers=200)` is one pool running 200 coroutines at a time on one thread, for network-bound work; `ordered=True` keeps input order. Async classes may have async hooks. |
 
 `ctx.index` is the worker number, `ctx.source` the input the current item came from,
 `ctx.name` the node name. Decorated functions stay callable: `f(3)` works in tests.
@@ -68,6 +69,7 @@ tq.farm(work, 8, runtime="processes")   # only this farm's workers in processes
 tq.run(graph, deploy="deploy.toml", group="G1")   # this host's share; other hosts run their group
 tq.run(graph, capacity=64)                    # bound every edge (default 1024; None = unbounded)
 tq.run(graph, batch=1)                        # hand over every item alone (default 32, flushed within 1 ms)
+tq.run(graph, trace="trace.json")             # Chrome trace of every node's runs and waits (Perfetto, chrome://tracing)
 print(report)                                 # items in/out per node, queue high-water marks
 
 with tq.session(tq.farm(work, 4)) as s:       # keep a graph running

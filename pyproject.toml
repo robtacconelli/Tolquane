@@ -13,7 +13,7 @@ license-files = ["LICENSE"]
 authors = [{ name = "Roberto Tacconelli" }]
 keywords = ["parallel", "streaming", "pipeline", "farm", "dataflow", "fastflow", "building-blocks"]
 classifiers = [
-  "Development Status :: 1 - Planning",
+  "Development Status :: 4 - Beta",
   "Intended Audience :: Developers",
   "Operating System :: OS Independent",
   "Programming Language :: Python :: 3 :: Only",
@@ -33,6 +33,7 @@ tolquane = "tolquane.cli:main"
 [project.optional-dependencies]
 ai = ["anthropic>=1.0", "openai>=2.0"]
 processes = ["cloudpickle>=3.0"]
+docs = ["mkdocs-material>=9.5", "mkdocstrings[python]>=0.26"]
 msgpack = ["msgpack>=1.0"]
 numpy = ["numpy>=1.26"]
 cloudpickle = ["cloudpickle>=3.0"]
@@ -44,6 +45,8 @@ dev = [
   "anthropic>=1.0",
   "openai>=2.0",
   "cloudpickle>=3.0",
+  "mkdocs-material>=9.5",
+  "mkdocstrings[python]>=0.26",
 ]
 
 [project.urls]
@@ -51,6 +54,7 @@ Homepage = "https://github.com/robtacconelli/Tolquane"
 Repository = "https://github.com/robtacconelli/Tolquane"
 Issues = "https://github.com/robtacconelli/Tolquane/issues"
 Design = "https://github.com/robtacconelli/Tolquane/blob/main/DESIGN.md"
+Changelog = "https://github.com/robtacconelli/Tolquane/blob/main/CHANGELOG.md"
 
 [tool.hatch.version]
 path = "src/tolquane/__init__.py"

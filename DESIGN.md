@@ -110,7 +110,7 @@ about this and make the runtime a one-word switch.
 | `sync` | Function calls in the caller's thread, lock-step scheduler | Python `deque` | Tests, debugging, tiny graphs. Deterministic. |
 | `threads` (default) | One `threading.Thread` per node | `deque` + `Condition`, bounded | I/O-bound stages, numpy/C work, and **full parallelism on free-threaded CPython 3.14t**. Same model as BBFlow. |
 | `processes` | Farm workers in child processes (spawned), everything else as threads in the parent; `tq.farm(..., runtime="processes")` for one farm | pickle protocol 5 over a `multiprocessing` pipe, batched; a completion marker per item keeps credits and loop tokens exact; shared-memory ring for fixed-size records later | CPU-bound pure Python on a GIL build. |
-| `asyncio` | One task per node; nodes may be `async def` | `asyncio.Queue` | Network-heavy stages, thousands of light nodes. |
+| async nodes | `async def` nodes run on an event loop inside the threads runtime; `tq.farm(coro, workers=N)` is one pool node running N coroutines at a time | The node's own inbox and outbox; the pool feeds and drains the loop | Network-heavy stages: hundreds of requests in flight on one thread. |
 | `tcp` (distributed) | Any of the above per host; cross-host edges become TCP channels | Length-prefixed frames, batched, reconnecting | Two or more machines. |
 | `interpreters` (experimental, later) | One subinterpreter per node (PEP 734, Python 3.14) | Interpreter channels | GIL-per-interpreter parallelism without process overhead. |
 
@@ -162,7 +162,7 @@ tq.run(graph, runtime="processes")     # same graph, multiprocess
 | A class with `__call__` | Stateful node; one instance per worker. Optional `on_start(ctx)` and `on_end(ctx)` map to BBFlow's `init()` and `EOS()`. |
 | `def f(ctx)` decorated with `@tq.raw` | Full control: `for src, item in ctx.inputs(): ...` and manual sends. BBFlow's CUSTOM mode, without the hazards. |
 | A no-argument generator function | Source. `@tq.sink` marks a node that must have no outputs; both are checked at build time. |
-| `async def` | Allowed in the asyncio runtime; rejected elsewhere with a clear error. |
+| `async def` | A coroutine pool: takes the item only, returns or yields what to send. A farm of one coroutine is one pool node with `workers` in flight; `ordered=True` keeps input order. Async classes may have async hooks. |
 
 ### 4.3 Blocks
 
@@ -270,7 +270,8 @@ tolquane/
 `Edge(src_port, dst_port, channel_options)`. Building blocks are functions that return
 subgraphs; `>>` concatenates. Nothing runs until `run()`. Validation happens at build
 time: unconnected required ports, type hints that disagree across an edge (warning),
-async nodes in a sync runtime.
+async nodes with a `ctx` parameter, in `comb()`, or in a farm with any policy but the
+default.
 
 **Channel** is a protocol with `put(item)`, `put_many(batch)`, `close()`, and a
 `Subscriber` that the inbox registers. Implementations differ per runtime. A channel is
@@ -454,14 +455,28 @@ does the parent release the producer's credit and the loop token, so `capacity` 
 items in flight as running, so a slow child is never reported as a deadlock; a stalled
 child is reported as the proxy waiting on it.
 
-**R15. Every rule has a test.** `tests/liveness/` runs under a pytest timeout and
-covers: put after close, multi-output close, gather with dropped items, slow consumer
-under broadcast, feedback termination, cycle deadlock detection, exception inside
-`on_end`, SIGINT during `run()`, child process crash, network peer disappearing.
+**R15. Work outside the channels counts as busy.** A pool's coroutines and a remote
+worker's items are work no channel can see. Each node reports how much of it is in
+flight (`in_flight`, changed only through the scheduler), and the deadlock detectors
+wait for it: the thread watchdog treats such a node as running, and the sync
+scheduler leaves the baton on the table until the thread that finishes the work hands
+it back or, if nothing can run then, reports the deadlock itself. A pool node stays one
+thread: the event loop posts results into the node's own inbox, so the node waits in one
+place for either input or a result and its state is never shared between threads. The
+sync scheduler parks a node on a private condition, never on a channel lock, so handing
+the baton over never waits on a lock another node holds.
+
+**R16. Every rule has a test.** `tests/liveness/` and `tests/test_async.py` run under a
+pytest timeout and cover: put after close, multi-output close, gather with dropped
+items, slow consumer under broadcast, feedback termination, cycle deadlock detection,
+exception inside `on_end`, SIGINT during `run()`, child process crash, network peer
+disappearing, a pool inside a jammed loop.
 
 ---
 
 ## 7. BBFlow to Tolquane mapping
+
+<!-- --8<-- [start:mapping] -->
 
 | BBFlow | Tolquane |
 |---|---|
@@ -486,6 +501,8 @@ under broadcast, feedback termination, cycle deadlock detection, exception insid
 | `customWatch` | `stats=True` report, `trace=True` |
 | manual feedback via `addInputChannel` | `tq.feedback(...)` |
 | `ordered_farm_labeling` example | `ordered=True` |
+
+<!-- --8<-- [end:mapping] -->
 
 ---
 
@@ -531,10 +548,13 @@ Framing, serializers, HMAC handshake, `TcpChannel`, `deploy.toml`, `tolquane run
 reconnect and backpressure. Reproduce thesis Tables 2 to 5 (pipeline and farm over
 loopback and Ethernet).
 
-**Phase 6: asyncio, docs, 1.0.**
-`asyncio` runtime, `async def` nodes, Chrome trace export, mkdocs site (tutorial,
-cookbook, "coming from FastFlow/BBFlow", runtime decision table), API reference from
-docstrings, 1.0 on PyPI. Subinterpreter runtime stays experimental behind a flag.
+**Phase 6: async nodes, docs, 1.0 (done 2026-09-05).**
+`async def` nodes as coroutine pools on an event loop inside the threads runtime (a
+separate asyncio runtime was not needed: a pool node gives network-bound stages the
+concurrency, and every other node keeps its thread), Chrome trace export
+(`tq.run(..., trace="trace.json")`), mkdocs site (tutorial, cookbook, "coming from
+FastFlow/BBFlow", runtime decision table), API reference from docstrings, 1.0 built as
+sdist and wheel. The subinterpreter runtime is left for a later release.
 
 ---
 
@@ -662,8 +682,8 @@ Twenty lines of logic, every block visible, nothing to learn beyond `source`, `n
 
 - `pip install tolquane`, no compiler, no dependencies.
 - The hello world in the README runs unchanged on threads, processes and two machines.
-- Every error names the node and says what to do ("node `double` returned a coroutine;
-  use `runtime='asyncio'`").
+- Every error names the node and says what to do ("async node `fetch` takes (item,
+  ctx); coroutines take the item only and return (or yield) what to send").
 - `runtime="sync"` makes any graph steppable in a debugger.
 - `tq.draw` shows what will be wired before anything runs.
 - One page explains which runtime to pick and why, with the GIL stated plainly.

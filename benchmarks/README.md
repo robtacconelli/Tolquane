@@ -105,3 +105,16 @@ here: one frame per item costs a system call and a round trip of acknowledgement
 item, one frame per 32 items amortizes both. The farm shape pays twice (emitter to
 worker and worker to collector both cross the wire), and its per-item Python work in
 the parent group runs on one core next to the two proxies per worker.
+
+## Phase 6, coroutine pools (2026-09-05)
+
+`tq.farm(fetch, workers=N)` where `fetch` awaits 20 ms per item, 2000 items, 3.13:
+
+| workers | 1 | 10 | 100 | 1000 |
+|---|---|---|---|---|
+| time | 41.3 s | 4.21 s | 0.44 s | 0.08 s |
+
+Wall time is the waiting time divided by the pool size until the fixed cost of the
+pool (about 40 µs per item on one thread) takes over. The sync runtime's speed is
+unchanged by the scheduler rework of this phase: 2.50 s for the 1,000,000-item
+pipeline against 2.52 s in the Phase 1 baseline.

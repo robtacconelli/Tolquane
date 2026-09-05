@@ -48,6 +48,9 @@ class NodeSpec:
     key: Callable[[Any], Any] | None = None
     window: str | None = None
     remote: bool = False
+    is_async: bool = False
+    concurrency: int = 1
+    ordered: bool = False
 
     @property
     def label(self) -> str:
@@ -171,6 +174,7 @@ class Described:
     generator: bool
     factory: bool
     name: str
+    is_async: bool = False
 
 
 def describe(target: Any) -> Described:
@@ -185,27 +189,49 @@ def describe(target: Any) -> Described:
         arity = _positional_arity(call)
         if arity is not None:
             arity -= 1  # self
-        return Described(arity, inspect.isgeneratorfunction(call), True, target.__name__)
+        return Described(
+            arity,
+            inspect.isgeneratorfunction(call) or inspect.isasyncgenfunction(call),
+            True,
+            target.__name__,
+            _is_async(call),
+        )
     if inspect.isfunction(target) or inspect.ismethod(target) or inspect.isbuiltin(target):
         name = str(getattr(target, "__name__", type(target).__name__))
         if name == "<lambda>":
             name = "lambda"
         return Described(
-            _positional_arity(target), inspect.isgeneratorfunction(target), False, name
+            _positional_arity(target),
+            inspect.isgeneratorfunction(target) or inspect.isasyncgenfunction(target),
+            False,
+            name,
+            _is_async(target),
         )
     if callable(target):
         call = type(target).__call__
         return Described(
             _positional_arity(target),
-            inspect.isgeneratorfunction(call),
+            inspect.isgeneratorfunction(call) or inspect.isasyncgenfunction(call),
             False,
             type(target).__name__,
+            _is_async(call),
         )
     raise GraphError(f"{target!r} is not callable, so it cannot be a node")
 
 
+def _is_async(fn: Any) -> bool:
+    return inspect.iscoroutinefunction(fn) or inspect.isasyncgenfunction(fn)
+
+
 def _kind_for(desc: Described, *, declared: str | None) -> NodeKind:
     arity = 1 if desc.arity is None else desc.arity
+    if desc.is_async and arity == 2:
+        raise GraphError(
+            f"async node {desc.name!r} takes (item, ctx); coroutines take the item only "
+            "and return or yield what to send"
+        )
+    if desc.is_async and declared == "raw":
+        raise GraphError(f"raw node {desc.name!r} cannot be a coroutine; use a thread")
     if declared == "source":
         if arity != 0:
             raise GraphError(
@@ -263,6 +289,7 @@ class Node(Block):
         self.kind: NodeKind = _kind_for(desc, declared=declared)
         self.factory = desc.factory
         self.generator = desc.generator
+        self.is_async = desc.is_async
         self.is_sink = declared == "sink"
         self.name = name or desc.name
         if distribute not in EMIT_POLICIES:
@@ -289,6 +316,7 @@ class Node(Block):
             "generator": self.generator,
             "is_sink": self.is_sink,
             "distribute": self.distribute,
+            "is_async": self.is_async,
         }
         base.update(overrides)
         return NodeSpec(**base)
@@ -403,6 +431,7 @@ class _Parts:
     name: str
     comb: Comb | None = None
     is_sink: bool = False
+    is_async: bool = False
 
     def spec(self, name: str, **overrides: Any) -> NodeSpec:
         target = self.target
@@ -417,6 +446,7 @@ class _Parts:
             "factory": self.factory,
             "generator": self.generator,
             "is_sink": is_sink,
+            "is_async": self.is_async,
         }
         fields.update(overrides)
         return NodeSpec(**fields)
@@ -426,7 +456,13 @@ def _parts(obj: Any) -> _Parts:
     """Kind, factory flag, generator flag, target and name of a Node, Comb or bare callable."""
     if isinstance(obj, Node):
         return _Parts(
-            obj.kind, obj.factory, obj.generator, obj.target, obj.name, is_sink=obj.is_sink
+            obj.kind,
+            obj.factory,
+            obj.generator,
+            obj.target,
+            obj.name,
+            is_sink=obj.is_sink,
+            is_async=obj.is_async,
         )
     if isinstance(obj, Comb):
         return _Parts("comb", False, False, obj, obj.name, comb=obj)
@@ -435,7 +471,14 @@ def _parts(obj: Any) -> _Parts:
             f"{obj!r} cannot be used as a single node; use a function, class or comb()"
         )
     desc = describe(obj)
-    return _Parts(_kind_for(desc, declared=None), desc.factory, desc.generator, obj, desc.name)
+    return _Parts(
+        _kind_for(desc, declared=None),
+        desc.factory,
+        desc.generator,
+        obj,
+        desc.name,
+        is_async=desc.is_async,
+    )
 
 
 def forward(item: Any, ctx: Any) -> None:
@@ -552,6 +595,8 @@ class Farm(Block):
 
     def expand(self, names: _Names) -> Graph:
         base = names.unique(self.name)
+        if any(p.is_async for p in self.parts):
+            return self._expand_async(base)
         g = Graph()
         window_id: str | None = None
         if self.tagged:
@@ -587,6 +632,29 @@ class Farm(Block):
             g.nodes.append(self._end_spec(self.collector, cname, "collector", base, window_id))
             g.outlets = [cname]
             g.edges.extend(EdgeSpec(w, cname, "farm", self.capacity) for w in worker_names)
+        return g
+
+    def _expand_async(self, base: str) -> Graph:
+        """A farm of coroutines is one pool node running ``workers`` of them at a time."""
+        parts = self.parts
+        if not all(p.is_async for p in parts) or len({p.target for p in parts}) != 1:
+            raise GraphError(f"farm {base!r}: async workers must all be the same coroutine")
+        if self.emit != "round_robin" or self.collect not in ("first_come", "ordered"):
+            raise GraphError(
+                f"farm {base!r} runs coroutines as one pool; emit and collect policies other "
+                "than the defaults (and ordered=True) do not apply"
+            )
+        if self.emitter not in (None, False) or self.collector not in (None, False):
+            raise GraphError(
+                f"farm {base!r} runs coroutines as one pool; it has no emitter or collector "
+                "to replace"
+            )
+        spec = parts[0].spec(
+            base, group=None, role=None, concurrency=self.workers, ordered=self.ordered
+        )
+        g = Graph(nodes=[spec], inlets=[base])
+        if not spec.is_sink:
+            g.outlets = [base]
         return g
 
     def _end_spec(
@@ -626,9 +694,10 @@ class Comb(Block):
             else:
                 raise GraphError("comb() fuses plain nodes; farms and pipelines cannot be combined")
         for n in nodes:
-            if n.kind in ("source", "raw", "comb"):
+            if n.kind in ("source", "raw", "comb") or n.is_async:
                 raise GraphError(
-                    f"comb() cannot fuse {describe_block(n)}; use map, flat or ctx nodes"
+                    f"comb() cannot fuse {describe_block(n)}; use map, flat or ctx nodes "
+                    "(not coroutines)"
                 )
         for n in nodes[:-1]:
             if n.is_sink:

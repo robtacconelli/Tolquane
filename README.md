@@ -11,15 +11,13 @@ same graph runs on threads, processes or across a network. Tolquane is the succe
 [FastFlow](https://github.com/fastflow/fastflow) building blocks, rebuilt from scratch
 to be simple to use and impossible to hang.
 
-> **Status: 0.5 in progress.** The core runs on threads and on a deterministic
-> single-threaded runtime: nodes, pipelines, farms with every emitter and collector
-> policy, ordered farms, node fusion, all-to-all, feedback loops that terminate by
-> rule, channel batching, long-lived sessions, deadlock detection, an AI builder
-> that writes, checks and runs flows from a sentence, a processes runtime for
-> CPU-bound work on GIL builds, and a distributed runtime over TCP. asyncio and the
-> docs site are next; see [DESIGN.md](DESIGN.md) for the design, the liveness rules and
-> the roadmap, [docs/api-card.md](docs/api-card.md) for the whole API on one page, and
-> [examples/](examples/) for flows in the house style.
+> **1.0.** Nodes, pipelines, farms with every emitter and collector policy, ordered
+> farms, node fusion, all-to-all, feedback loops that terminate by rule, batching,
+> sessions, deadlock detection; threads, processes, coroutine pools, a distributed
+> runtime over TCP and a deterministic sync runtime; an AI builder that writes, checks
+> and runs flows from a sentence. See [DESIGN.md](DESIGN.md) for the design and the
+> liveness rules, [docs/api-card.md](docs/api-card.md) for the whole API on one page,
+> [examples/](examples/) for flows in the house style, and [CHANGELOG.md](CHANGELOG.md).
 
 ## What it looks like
 
@@ -69,7 +67,7 @@ back onto itself with a loop that closes when nothing is left in flight, and
 | `sync` (available) | Tests and debugging: one node runs at a time in a fixed order, and a deadlock is reported the moment it happens. |
 | `threads` (available) | I/O-bound stages, numpy and C work, and full parallelism on free-threaded CPython 3.14t. |
 | `processes` (available) | CPU-bound pure Python on a GIL build: farm workers in child processes, everything else in the parent. |
-| `asyncio` (planned) | Network-heavy stages and `async def` nodes. |
+| async nodes (available) | Network-heavy stages: `async def` nodes run on an event loop, and a farm of them is one pool running `workers` coroutines at a time on one thread. |
 | distributed (available) | Two or more machines: a deploy file cuts the graph into groups, and edges crossing a group become TCP channels with backpressure, resend and an optional shared secret. |
 
 ## The AI builder

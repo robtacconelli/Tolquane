@@ -53,7 +53,7 @@ from .runner import Context
 from .runtime import NodeStats, Report
 from .session import Session, SessionClosed
 
-__version__ = "0.5.0.dev0"
+__version__ = "1.0.0"
 
 __all__ = [
     "EOS",

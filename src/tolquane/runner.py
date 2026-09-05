@@ -318,6 +318,10 @@ def run_node(inst: NodeInstance, rc: RunContext) -> None:
         rc.scheduler.node_started(inst)
         if spec.kind == "comb":
             _run_comb(inst, rc, ctx)
+        elif spec.is_async:
+            from .asyncnode import run_async_node
+
+            run_async_node(inst, rc, ctx, _prepare(spec))
         else:
             prepared = _prepare(spec)
             _call_hook(prepared.on_start, ctx)

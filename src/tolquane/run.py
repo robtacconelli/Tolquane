@@ -27,6 +27,7 @@ def run(
     deadlock_timeout: float | None = 0.3,
     deploy: str | Path | dict[str, Any] | None = None,
     group: str | None = None,
+    trace: str | None = None,
 ) -> Report:
     """Run a block to completion and return a ``Report``.
 
@@ -40,7 +41,9 @@ def run(
     ``deadlock_timeout`` is how long the thread runtime tolerates every node waiting
     before raising ``DeadlockError``. With ``deploy`` (a deploy file or dict) and
     ``group``, only this group's nodes run here and edges to other groups go over TCP;
-    every group runs the same call with its own name.
+    every group runs the same call with its own name. ``trace`` writes a Chrome trace
+    file (open it in Perfetto or chrome://tracing) with every node's run and every
+    wait for input, output or window, to see where time goes.
     """
     if capacity is not None and capacity < 1:
         raise TolquaneError("capacity must be at least 1, or None for unbounded")
@@ -65,5 +68,10 @@ def run(
         )
         return report
     return execute(
-        graph, runtime=runtime, capacity=capacity, batch=batch, deadlock_timeout=deadlock_timeout
+        graph,
+        runtime=runtime,
+        capacity=capacity,
+        batch=batch,
+        deadlock_timeout=deadlock_timeout,
+        trace=trace,
     )

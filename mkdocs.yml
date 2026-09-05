@@ -1,0 +1,48 @@
+site_name: Tolquane
+site_description: Parallel programming with composable building blocks, in Python.
+repo_url: https://github.com/robtacconelli/Tolquane
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: teal
+      toggle:
+        icon: material/brightness-7
+        name: Dark mode
+    - scheme: slate
+      primary: teal
+      toggle:
+        icon: material/brightness-4
+        name: Light mode
+  features:
+    - navigation.sections
+    - content.code.copy
+nav:
+  - Overview: index.md
+  - Tutorial: tutorial.md
+  - Cookbook: cookbook.md
+  - Runtimes: runtimes.md
+  - The AI builder: builder.md
+  - API card: api-card.md
+  - API reference: api.md
+  - Coming from FastFlow and BBFlow: from-bbflow.md
+  - House style: style.md
+  - Design: design.md
+markdown_extensions:
+  - admonition
+  - tables
+  - pymdownx.superfences
+  - pymdownx.snippets:
+      base_path: [".", "docs"]
+      check_paths: true
+  - toc:
+      permalink: true
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            show_source: false
+            docstring_style: google
+            members_order: source
