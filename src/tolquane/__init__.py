@@ -47,12 +47,13 @@ from .errors import (
     WorkerDied,
 )
 from .graph import AllToAll, Block, Comb, Farm, Feedback, Graph, Node, Pipeline
+from .net import PeerFailed, PeerLost, load_deployment
 from .run import check, run
 from .runner import Context
 from .runtime import NodeStats, Report
 from .session import Session, SessionClosed
 
-__version__ = "0.4.0.dev0"
+__version__ = "0.5.0.dev0"
 
 __all__ = [
     "EOS",
@@ -71,6 +72,8 @@ __all__ = [
     "Node",
     "NodeError",
     "NodeStats",
+    "PeerFailed",
+    "PeerLost",
     "Pipeline",
     "Report",
     "Session",
@@ -86,6 +89,7 @@ __all__ = [
     "farm",
     "feedback",
     "from_iterable",
+    "load_deployment",
     "node",
     "pipeline",
     "raw",

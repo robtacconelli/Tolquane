@@ -10,7 +10,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
 from .channel import Edge, Inbox, Loop, Outbox, Window
-from .errors import Cancelled, DeadlockError, GraphError, NodeError, TolquaneError, WorkerDied
+from .errors import Cancelled, DeadlockError, GraphError, NodeError, RunFailure, TolquaneError
 from .graph import DEFAULT_BATCH, DEFAULT_CAPACITY, Graph, NodeSpec
 from .policies import Strategy, make_strategy
 from .runner import run_node
@@ -75,10 +75,16 @@ class NodeInstance:
 class RunContext:
     """State shared by every node of one run: cancellation, failures, the scheduler."""
 
-    def __init__(self, *, deterministic: bool = False) -> None:
+    def __init__(
+        self,
+        *,
+        deterministic: bool = False,
+        on_failure: Callable[[str], None] | None = None,
+    ) -> None:
         self.lock = threading.Lock()
         self.cancelled = False
         self.deterministic = deterministic
+        self.on_failure = on_failure
         self.failures: list[tuple[NodeInstance, BaseException]] = []
         self.deadlock_message: str | None = None
         self.done_event = threading.Event()
@@ -100,8 +106,11 @@ class RunContext:
 
     def fail(self, inst: NodeInstance, exc: BaseException) -> None:
         with self.lock:
+            first = not self.failures
             self.failures.append((inst, exc))
             inst.state = State.FAILED
+        if first and self.on_failure is not None:
+            self.on_failure(f"node {inst.name!r} failed: {type(exc).__name__}: {exc}")
         self.cancel()
 
     def report_deadlock(self, message: str) -> None:
@@ -238,8 +247,9 @@ class BatonScheduler(Scheduler):
                         cond.notify_all()
                 return
         self.holder = None
-        if any(i.live for i in self.insts):
+        if any(i.live for i in self.insts) and not self.rc.cancelled:
             # We hold the caller's channel lock here, so we must not cancel in place.
+            # During cancellation nobody is runnable by design: that is not a deadlock.
             self.rc.report_deadlock(describe_stall(self.insts))
 
 
@@ -297,13 +307,14 @@ def execute(
     batch: int = 1,
     deadlock_timeout: float | None = 0.3,
     remote_loops: dict[str, tuple[Loop, list[Any]]] | None = None,
+    on_failure: Callable[[str], None] | None = None,
 ) -> Report:
     if runtime not in ("threads", "sync", "processes"):
         raise TolquaneError(f"unknown runtime {runtime!r}; use 'threads', 'processes' or 'sync'")
     all_workers_remote = runtime == "processes"
     if all_workers_remote:
         runtime = "threads"
-    rc = RunContext(deterministic=runtime == "sync")
+    rc = RunContext(deterministic=runtime == "sync", on_failure=on_failure)
     insts = [NodeInstance(spec, i, rc) for i, spec in enumerate(graph.nodes)]
     by_name = {i.name: i for i in insts}
     windows = {wid: Window(limit, rc) for wid, limit in graph.windows.items()}
@@ -397,16 +408,20 @@ def execute(
         remote.shutdown()
     elapsed = time.perf_counter() - start
 
-    if rc.deadlock_message is not None:
-        raise DeadlockError(rc.deadlock_message)
     if rc.failures:
+        # A failure cancels the run, and a cancelled run can look stalled; the failure
+        # is the cause, so it is what gets reported.
         for _, exc in rc.failures:
-            if isinstance(exc, KeyboardInterrupt | SystemExit | WorkerDied):
+            if isinstance(exc, KeyboardInterrupt | SystemExit | RunFailure):
                 raise exc
         errors = [NodeError(i.name, i.spec.index, exc) for i, exc in rc.failures]
         if len(errors) == 1:
             raise errors[0]
         raise ExceptionGroup("several nodes failed", errors)
+    if rc.deadlock_message is not None:
+        if rc.on_failure is not None:
+            rc.on_failure(rc.deadlock_message.splitlines()[0])
+        raise DeadlockError(rc.deadlock_message)
     report = Report(runtime=runtime, elapsed=elapsed)
     for inst in insts:
         report.nodes[inst.name] = inst.stats

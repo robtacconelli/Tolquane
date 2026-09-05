@@ -35,7 +35,12 @@ class NodeError(TolquaneError):
         return (NodeError, (self.node, self.index, self.original))
 
 
-class WorkerDied(TolquaneError):
+class RunFailure(TolquaneError):
+    """Failures of the machinery rather than of user code; raised as they are, never
+    wrapped in a ``NodeError``."""
+
+
+class WorkerDied(RunFailure):
     """A worker process ended without finishing its work (crash, kill, out of memory)."""
 
 

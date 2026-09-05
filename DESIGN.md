@@ -429,11 +429,17 @@ error with a hint. Several inputs into a plain function merge first-come through
 inbox, which is well defined; nothing is silently ignored. No reflection on class
 names, no busy loops on an empty default method. (A4, A6)
 
-**R13. Network control is out of band.** HELLO, EOS, ACK and PING are frame kinds,
-never payload values. Sequence numbers with an acknowledgement window give at-least-once
-delivery within a session and a bounded resend buffer. `SO_REUSEADDR` is set. A failed
-bind or a peer that stays dead past the reconnect budget surfaces as a graph error. (A14,
-A15, A16)
+**R13. Network control is out of band.** HELLO, WELCOME, CHALLENGE, ACK, END and
+ERROR are frame kinds, never payload values. Items travel in numbered batches; the
+receiver acknowledges a batch once its node has it, and only then does the sender give
+the producer's credits back, so the capacity window holds across the wire. After a
+dropped connection the receiver states the position it expects and the sender resends
+from there, so nothing is lost or duplicated within a run. `SO_REUSEADDR` is set. A
+failed bind, a peer that never connects, or one that stays gone past the reconnect
+budget surfaces as `PeerLost`; a peer that fails says why in an ERROR frame and the
+others stop with `PeerFailed`. As built: one listening socket per group, one TCP
+connection per cut edge, pickle protocol 5 frames, an HMAC challenge when a secret is
+set. Loops and ordered farms' ends stay inside one group. (A14, A15, A16)
 
 **R14. Processes always spawn.** Never fork with threads alive. Child death is detected
 through the broken pipe and raised as `WorkerDied`; a child whose parent dies sees its
@@ -520,7 +526,7 @@ examples with their generated flows checked into `examples/generated/`.
 lambdas, per-farm process pools, numpy zero-copy on scatter/gather. Benchmarks:
 farm on a GIL build, pure Python CPU work, compared with threads on 3.14t.
 
-**Phase 5: distributed (0.5).**
+**Phase 5: distributed (0.5, done 2026-09-05).**
 Framing, serializers, HMAC handshake, `TcpChannel`, `deploy.toml`, `tolquane run`,
 reconnect and backpressure. Reproduce thesis Tables 2 to 5 (pipeline and farm over
 loopback and Ethernet).

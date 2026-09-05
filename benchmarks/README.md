@@ -87,3 +87,21 @@ missing part is process startup (about 0.1 s per run, all children at once), pic
 each item across the pipe, and the emitter and collector sharing one core with the
 parent's threads. On a 0.5 s workload the same farm reaches only 3.3x, so keep
 processes for work that runs longer than a second or send bigger items.
+
+## Phase 5, TCP between groups (2026-09-05)
+
+Two groups as two processes on loopback, one cut edge between them (thesis Tables 2
+and 5). `benchmarks/network_pipeline.py 1000000 <batch>` and
+`benchmarks/network_farm.py 300000 3 32`.
+
+| Shape | batch 1 | batch 32 | batch 256 |
+|---|---|---|---|
+| producer to consumer, 1,000,000 integers | 45.5 s | 3.5 s | 2.5 s |
+| farm of 3 with the workers on the other side, 300,000 integers | | 4.0 s | |
+
+For scale, the thesis measured 1.2 s for the same million items through BBFlow's
+buffered Java channel on loopback and 4.5 s unbuffered. The batch is the whole story
+here: one frame per item costs a system call and a round trip of acknowledgements per
+item, one frame per 32 items amortizes both. The farm shape pays twice (emitter to
+worker and worker to collector both cross the wire), and its per-item Python work in
+the parent group runs on one core next to the two proxies per worker.

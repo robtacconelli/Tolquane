@@ -65,6 +65,7 @@ report = tq.run(graph)                        # threads
 report = tq.run(graph, runtime="sync")        # deterministic, single-threaded
 tq.run(graph, runtime="processes")   # every farm worker in its own process, the rest here
 tq.farm(work, 8, runtime="processes")   # only this farm's workers in processes
+tq.run(graph, deploy="deploy.toml", group="G1")   # this host's share; other hosts run their group
 tq.run(graph, capacity=64)                    # bound every edge (default 1024; None = unbounded)
 tq.run(graph, batch=1)                        # hand over every item alone (default 32, flushed within 1 ms)
 print(report)                                 # items in/out per node, queue high-water marks
@@ -78,6 +79,13 @@ Errors: `tq.GraphError` (bad wiring, raised before anything runs), `tq.NodeError
 (user code raised; `.node`, `.index`, `__cause__`), `tq.DeadlockError` (every node
 waiting; message names the cycle), `tq.WorkerDied` (a worker process crashed).
 Several failures come as an `ExceptionGroup`.
+
+Distributed: a deploy file (TOML) names groups, gives each an `endpoint = "host:port"`
+and lists the `nodes` it runs (node names, farm names or glob patterns such as
+`"work.[0-9]*"`); edges between groups become TCP channels with backpressure, resend
+after a dropped connection, and an optional `secret` under `[options]`. A feedback loop
+and an ordered farm's emitter and collector stay in one group. `tolquane run flow.py
+--deploy deploy.toml --group G1` on every host.
 
 Processes: workers must be importable (module-level functions or classes, a
 `if __name__ == "__main__":` guard); lambdas and closures need `pip install cloudpickle`.

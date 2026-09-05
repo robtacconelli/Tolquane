@@ -12,5 +12,6 @@
 - API keys never go into the repository, fixtures or docs. Live builder tests run only with `TOLQUANE_LIVE=1` and keys in the environment; the default suite replays `tests/fixtures/ai/*.json`. Record a new fixture with `tolquane build ... --record file.json`.
 - The builder's system prompt is assembled from `src/tolquane/ai/resources/` (the API card, the style guide, two example flows); `tests/test_ai.py` keeps those copies identical to `docs/` and `examples/`. Edit the originals and copy.
 - The processes runtime (`src/tolquane/processes.py`) spawns children; tests that use it define workers at module level so plain pickle finds them, and cloudpickle (a dev dependency) covers closures. Never fork.
+- The distributed runtime (`src/tolquane/net.py`) is tested with several groups on loopback inside one test process; ports come from binding to port 0. No test needs a second machine.
 - Layout: `src/tolquane/` package, `tests/` (with `tests/liveness/` for the section 6 rules), `docs/` (`api-card.md` is the one-page API, `style.md` the house style for flows), `examples/` (flows in the house style; the AI builder reads them), `benchmarks/`, `reference/`.
 - Run the tests on every local interpreter before a commit that touches the core: `.venv/bin/pytest`, `.venv311/bin/pytest`, `.venv314t/bin/pytest`.

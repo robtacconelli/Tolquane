@@ -3,8 +3,6 @@
 import random
 import time
 
-import pytest
-
 import tolquane as tq
 
 
@@ -484,18 +482,3 @@ def test_benchmark_blocking_and_farm_shapes(runtime: str) -> None:
         runtime=runtime,
     )
     assert out.items == [100]
-
-
-NETWORK_PROGRAMS = [
-    "networkTest",
-    "pipeline_network",
-    "combine2_network_feedback",
-    "benchmarks/distributed/benchmark_network",
-    "benchmarks/distributed/benchmark_network_farm",
-]
-
-
-@pytest.mark.parametrize("program", NETWORK_PROGRAMS)
-@pytest.mark.skip(reason="needs TCP channels: the distributed runtime is Phase 5")
-def test_network_programs(program: str) -> None:
-    raise AssertionError(program)

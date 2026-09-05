@@ -63,7 +63,11 @@ def cmd_draw(args: argparse.Namespace) -> int:
 
 
 def cmd_run(args: argparse.Namespace) -> int:
-    report = run(_graph(args), runtime=args.runtime, batch=args.batch)
+    if bool(args.deploy) != bool(args.group):
+        raise SystemExit("--deploy and --group go together")
+    report = run(
+        _graph(args), runtime=args.runtime, batch=args.batch, deploy=args.deploy, group=args.group
+    )
     if args.stats:
         print(report, file=sys.stderr)
     return 0
@@ -157,9 +161,13 @@ def main(argv: list[str] | None = None) -> int:
         p.add_argument("flow", help="path to a flow.py that defines build(source=None)")
         p.add_argument("--sample", default=None, help="feed a sample file instead of the source")
         if name == "run":
-            p.add_argument("--runtime", default="threads", choices=["threads", "sync"])
+            p.add_argument("--runtime", default="threads", choices=["threads", "processes", "sync"])
             p.add_argument("--batch", type=int, default=32)
             p.add_argument("--stats", action="store_true", help="print the run report")
+            p.add_argument(
+                "--deploy", default=None, help="deploy file (TOML) cutting the graph into groups"
+            )
+            p.add_argument("--group", default=None, help="which group this host runs")
         p.set_defaults(func=func)
 
     args = parser.parse_args(argv)
