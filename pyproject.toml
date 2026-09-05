@@ -1,0 +1,78 @@
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[project]
+name = "tolquane"
+dynamic = ["version"]
+description = "Parallel programming with composable building blocks: nodes, pipelines, farms and all-to-all, on threads, processes or a network."
+readme = "README.md"
+requires-python = ">=3.11"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+authors = [{ name = "Roberto Tacconelli" }]
+keywords = ["parallel", "streaming", "pipeline", "farm", "dataflow", "fastflow", "building-blocks"]
+classifiers = [
+  "Development Status :: 1 - Planning",
+  "Intended Audience :: Developers",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Topic :: Software Development :: Libraries",
+  "Topic :: System :: Distributed Computing",
+  "Typing :: Typed",
+]
+dependencies = []
+
+[project.optional-dependencies]
+msgpack = ["msgpack>=1.0"]
+numpy = ["numpy>=1.26"]
+cloudpickle = ["cloudpickle>=3.0"]
+dev = [
+  "pytest>=8.3",
+  "pytest-timeout>=2.3",
+  "ruff>=0.6",
+  "mypy>=1.11",
+]
+
+[project.urls]
+Homepage = "https://github.com/robtacconelli/Tolquane"
+Repository = "https://github.com/robtacconelli/Tolquane"
+Issues = "https://github.com/robtacconelli/Tolquane/issues"
+Design = "https://github.com/robtacconelli/Tolquane/blob/main/DESIGN.md"
+
+[tool.hatch.version]
+path = "src/tolquane/__init__.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/tolquane"]
+
+[tool.hatch.build.targets.sdist]
+include = ["src/tolquane", "tests", "README.md", "LICENSE", "pyproject.toml"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src", "tests"]
+extend-exclude = ["*.md"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM", "RUF", "PT"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["RUF012"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+packages = ["tolquane"]
+mypy_path = "src"
+warn_unreachable = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+timeout = 30
