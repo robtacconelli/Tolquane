@@ -11,13 +11,14 @@ same graph runs on threads, processes or across a network. Tolquane is the succe
 [FastFlow](https://github.com/fastflow/fastflow) building blocks, rebuilt from scratch
 to be simple to use and impossible to hang.
 
-> **Status: 0.2 in progress.** The core runs on threads and on a deterministic
+> **Status: 0.3 in progress.** The core runs on threads and on a deterministic
 > single-threaded runtime: nodes, pipelines, farms with every emitter and collector
 > policy, ordered farms, node fusion, all-to-all, feedback loops that terminate by
-> rule, channel batching, long-lived sessions, deadlock detection. The AI builder,
-> processes and the network runtime are next; see [DESIGN.md](DESIGN.md) for the
-> design, the liveness rules and the roadmap, [docs/api-card.md](docs/api-card.md)
-> for the whole API on one page, and [examples/](examples/) for flows in the house style.
+> rule, channel batching, long-lived sessions, deadlock detection, and an AI builder
+> that writes, checks and runs flows from a sentence. Processes and the network
+> runtime are next; see [DESIGN.md](DESIGN.md) for the design, the liveness rules and
+> the roadmap, [docs/api-card.md](docs/api-card.md) for the whole API on one page, and
+> [examples/](examples/) for flows in the house style.
 
 ## What it looks like
 
@@ -58,13 +59,24 @@ back onto itself with a loop that closes when nothing is left in flight, and
 | `asyncio` (planned) | Network-heavy stages and `async def` nodes. |
 | distributed (planned) | Two or more machines: edges crossing a host boundary become TCP channels from a deploy file. |
 
-## An AI builder is part of the plan
+## The AI builder
 
-`tolquane build "read urls.txt, fetch each with 8 workers, keep the 200s, save the
-titles"` will write a short, commented flow with your own Claude or GPT key, check it,
-run it on the sync runtime with a sample, and improve it with you. The library is being
-shaped for that: one way to do each thing, errors that say how to fix themselves, and
-`tq.check` / `tq.explain` / `tq.draw` to look before running.
+```
+pip install "tolquane[ai]"
+export ANTHROPIC_API_KEY=...        # or OPENAI_API_KEY with --provider openai
+tolquane build "read urls.txt, fetch each with 8 workers, write url, status and size to status.csv"
+```
+
+The builder writes one short, commented `flow.py` in the house style, checks its wiring,
+runs it on the deterministic runtime with a sample it makes up (or `--sample file`),
+fixes what fails, then asks you what to change. Claude Opus 5 is the default; GPT works
+through `--provider openai`. Ten flows it wrote, unedited, with their transcripts, are in
+[examples/generated/](examples/generated/); none of the ten needed a correction.
+The same loop is a function: `tolquane.ai.build(description, workdir=".")`.
+
+Generated code runs on your machine, in a subprocess, with a timeout. Keys are read
+from the environment and never stored. `tolquane check`, `run`, `explain` and `draw`
+work on any file that defines `build(source=None)`.
 
 ## Principles
 

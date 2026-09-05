@@ -1,0 +1,87 @@
+{
+ "provider": "anthropic",
+ "turns": [
+  {
+   "user": "Build this flow:\n\ncompute fibonacci(n) for n from 1 to 60 on 4 workers and print n and the value in input order",
+   "results": [],
+   "text": "",
+   "calls": [
+    {
+     "id": "toolu_01HeeAxX8CqseRBqvVWcAwum",
+     "name": "write_flow",
+     "args": {
+      "code": "\"\"\"Compute fibonacci(n) for n from 1 to 60 on four workers and print each n with its value in input order.\"\"\"\n\nimport tolquane as tq\n\n\n@tq.source\ndef indices():\n    # The stream to process: the numbers 1 to 60.\n    yield from range(1, 61)\n\n\n@tq.node\ndef fibonacci(n: int) -> tuple[int, int]:\n    # Pure function, so it can run on several workers at once.\n    a, b = 0, 1\n    for _ in range(n):\n        a, b = b, a + b\n    return n, a\n\n\n@tq.sink\ndef show(pair: tuple[int, int]) -> None:\n    n, value = pair\n    print(f\"fib({n:>2}) = {value}\")\n\n\ndef build(source=None):\n    # ordered=True makes the farm deliver results in input order.\n    start = tq.from_iterable(source) if source is not None else indices\n    return start >> tq.farm(fibonacci, workers=4, ordered=True) >> show\n\n\ndef main() -> None:\n    tq.run(build())\n\n\nif __name__ == \"__main__\":\n    main()\n"
+     }
+    },
+    {
+     "id": "toolu_01DCKzAfSHMu3MzD57HMzLrS",
+     "name": "check_flow",
+     "args": {}
+    }
+   ],
+   "usage": {
+    "input_tokens": 116,
+    "output_tokens": 435,
+    "cache_read_input_tokens": 4849
+   },
+   "model": "claude-opus-5",
+   "at": 1788621212.7004683
+  },
+  {
+   "user": null,
+   "results": [
+    {
+     "call_id": "toolu_01HeeAxX8CqseRBqvVWcAwum",
+     "is_error": false,
+     "content": "wrote flow.py (38 lines)"
+    },
+    {
+     "call_id": "toolu_01DCKzAfSHMu3MzD57HMzLrS",
+     "is_error": false,
+     "content": "OK: 8 nodes.\nindices: source; 0 input(s), 1 output(s)\nfibonacci.emitter: ctx, emit=round_robin; 1 input(s), 4 output(s)\nfibonacci.0: map, tagged; 1 input(s), 1 output(s)\nfibonacci.1: map, tagged; 1 input(s), 1 output(s)\nfibonacci.2: map, tagged; 1 input(s), 1 output(s)\nfibonacci.3: map, tagged; 1 input(s), 1 output(s)\nfibonacci.collector: ctx, collect=ordered; 4 input(s), 1 output(s)\nshow: sink; 1 input(s), 0 output(s)\nedges:\n  fibonacci.emitter -> fibonacci.0  [farm]\n  fibonacci.emitter -> fibonacci.1  [farm]\n  fibonacci.emitter -> fibonacci.2  [farm]\n  fibonacci.emitter -> fibonacci.3  [farm]\n  fibonacci.0 -> fibonacci.collector  [farm]\n  fibonacci.1 -> fibonacci.collector  [farm]\n  fibonacci.2 -> fibonacci.collector  [farm]\n  fibonacci.3 -> fibonacci.collector  [farm]\n  indices -> fibonacci.emitter  [1-1]\n  fibonacci.collector -> show  [1-1]\nwindow fibonacci.window: at most 256 tagged items in flight"
+    }
+   ],
+   "text": "",
+   "calls": [
+    {
+     "id": "toolu_01DyHscnZdAig6zKp763BYFV",
+     "name": "run_flow",
+     "args": {}
+    }
+   ],
+   "usage": {
+    "input_tokens": 1126,
+    "output_tokens": 27,
+    "cache_read_input_tokens": 4849
+   },
+   "model": "claude-opus-5",
+   "at": 1788621215.3308952
+  },
+  {
+   "user": null,
+   "results": [
+    {
+     "call_id": "toolu_01DyHscnZdAig6zKp763BYFV",
+     "is_error": false,
+     "content": "OK.\nrun on sync: 0.003s\n  node                       in       out   dropped\n  indices                     0        60         0\n  fibonacci.emitter          60        60         0\n  fibonacci.0                15        30         0\n  fibonacci.1                15        30         0\n  fibonacci.2                15        30         0\n  fibonacci.3                15        30         0\n  fibonacci.collector        60        60         0\n  show                       60         0         0\n  edge high-water marks:\n    fibonacci.emitter -> fibonacci.0: 16\n    fibonacci.emitter -> fibonacci.1: 16\n    fibonacci.emitter -> fibonacci.2: 16\n    fibonacci.emitter -> fibonacci.3: 16\n    fibonacci.0 -> fibonacci.collector: 31\n    fibonacci.1 -> fibonacci.collector: 31\n    fibonacci.2 -> fibonacci.collector: 31\n    fibonacci.3 -> fibonacci.collector: 31\n    indices -> fibonacci.emitter: 61\n    fibonacci.collector -> show: 61\nstdout:\nfib( 1) = 1\nfib( 2) = 1\nfib( 3) = 2\nfib( 4) = 3\nfib( 5) = 5\nfib( 6) = 8\nfib( 7) = 13\nfib( 8) = 21\nfib( 9) = 34\nfib(10) = 55\nfib(11) = 89\nfib(12) = 144\nfib(13) = 233\nfib(14) = 377\nfib(15) = 610\nfib(16) = 987\nfib(17) = 1597\nfib(18) = 2584\nfib(19) = 4181\nfib(20) = 6765\nfib(21) = 10946\nfib(22) = 17711\nfib(23) = 28657\nfib(24) = 46368\nfib(25) = 75025\nfib(26) = 121393\nfib(27) = 196418\nfib(28) = 317811\nfib(29) = 514229\nfib(30) = 832040\nfib(31) = 1346269\nfib(32) = 2178309\nfib(33) = 3524578\nfib(34) = 5702887\nfib(35) = 9227465\nfib(36) = 14930352\nfib(37) = 24157817\nfib(38) = 39088169\nfib(39) = 63245986\nfib(40) = 102334155\nfib(41) = 165580141\nfib(42) = 267914296\nfib(43) = 433494437\nfib(44) = 701408733\nfib(45) = 1134903170\nfib(46) = 1836311903\nfib(47) = 2971215073\nfib(48) = 4807526976\nfib(49) = 7778742049\nfib(50) = 12586269025\nfib(51) = 20365011074\nfib(52) = 32951280099\nfib(53) = 53316291173\nfib(54) = 86267571272\nfib(55) = 139583862445\nfib(56) = 225851433717\nfib(57) = 365435296162\nfib(58) = 591286729879\nfib(59) = 956722026041\nfib(60) = 1548008755920\n"
+    }
+   ],
+   "text": "`flow.py` streams the numbers 1 to 60 into a four-worker farm that computes each Fibonacci value iteratively, with `ordered=True` so the sink prints them in input order (fib(1)=1 \u2026 fib(60)=1548008755920).\n\nRun it with `python flow.py`; `build(source=[...])` lets you feed any other list of n values for testing, and the farm's worker count is the one number to change if you scale it up.",
+   "calls": [],
+   "usage": {
+    "input_tokens": 2172,
+    "output_tokens": 143,
+    "cache_read_input_tokens": 4849
+   },
+   "model": "claude-opus-5",
+   "at": 1788621219.112597
+  }
+ ],
+ "system_chars": 10334,
+ "tools": [
+  "write_flow",
+  "check_flow",
+  "run_flow",
+  "read_docs"
+ ]
+}

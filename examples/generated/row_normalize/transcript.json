@@ -1,0 +1,247 @@
+{
+ "provider": "anthropic",
+ "turns": [
+  {
+   "user": "Build this flow:\n\ngiven a 200 by 50 matrix of random floats generated in the file with a fixed seed, split each row across 4 workers, divide every value by the row maximum, gather the row back in order, and print the first three normalized rows rounded to 3 decimals",
+   "results": [],
+   "text": "",
+   "calls": [
+    {
+     "id": "toolu_01RSdQzZxSbnWVoY6ADH4RgA",
+     "name": "read_docs",
+     "args": {
+      "name": "api-card"
+     }
+    },
+    {
+     "id": "toolu_012yQQ8jwYK9iCVnarv7Rrcd",
+     "name": "read_docs",
+     "args": {
+      "name": "msom"
+     }
+    }
+   ],
+   "usage": {
+    "input_tokens": 159,
+    "output_tokens": 494,
+    "cache_read_input_tokens": 4849
+   },
+   "model": "claude-opus-5",
+   "at": 1788621244.9533458
+  },
+  {
+   "user": null,
+   "results": [
+    {
+     "call_id": "toolu_01RSdQzZxSbnWVoY6ADH4RgA",
+     "is_error": false,
+     "content": "# Tolquane API card\n\nThe whole public surface on one page. `import tolquane as tq`.\n\n## Nodes: a function is a node\n\n| Write | Meaning |\n|---|---|\n| `@tq.source` on `def f(): yield ...` | Produces items. No inputs. |\n| `@tq.node` on `def f(x): return y` | Map. The return value is sent. `return tq.SKIP` sends nothing. `None` is a normal value. |\n| `@tq.node` on `def f(x): yield ...` | Flat map. Each yielded value is sent. |\n| `@tq.node` on `def f(x, ctx): ctx.send(y)` | Explicit sends: `ctx.send(y)`, `ctx.send(y, to=i)`, `ctx.broadcast(y)`, `ctx.stop()`. Must not return a value. |\n| `@tq.sink` on `def f(x)` or `def f(x, ctx)` | Consumes items. No outputs. |\n| `@tq.raw` on `def f(ctx)` | Full control: `for src, item in ctx.inputs(): ...`, `ctx.recv(source=i)` reads one input and returns `None` when it ends; call `ctx.flush()` before blocking on anything outside Tolquane. Raw nodes can be farm workers, emitters or collectors, except in ordered and gather farms. |\n| a class with `__call__(self, x)` | Stateful node, one instance per worker. Optional `on_start(self, ctx)` and `on_end(self, ctx)`. |\n\n`ctx.index` is the worker number, `ctx.source` the input the current item came from,\n`ctx.name` the node name. Decorated functions stay callable: `f(3)` works in tests.\n\n## Blocks\n\n```python\na >> b >> c                       # pipeline; tq.pipeline(a, b, c) is the same\ntq.farm(work, workers=8)          # emitter -> 8 workers -> collector\ntq.farm(work, 8, emit=\"round_robin\" | \"on_demand\" | \"broadcast\" | \"scatter\", key=fn)\ntq.farm(work, 8, collect=\"first_come\" | \"round_robin\" | \"gather\")\ntq.farm(work, 8, ordered=True)    # output order == input order\ntq.farm(work, 8, emitter=my_router, collector=my_merge)   # custom ends\ntq.farm(work, 8, emitter=False)   # expose the workers' inputs (1xN wiring)\ntq.farm([f, g, h])                # one worker per callable\ntq.comb(a, b)                     # fuse two nodes on one thread\ntq.all2all(left_farm, right_farm) # every left worker to ever"
+    },
+    {
+     "call_id": "toolu_012yQQ8jwYK9iCVnarv7Rrcd",
+     "is_error": false,
+     "content": "\"\"\"The thesis use case, ported faithfully from BBFlow's tests/MSOM.\n\nA self-organizing map is cut into a grid of slices, one per worker. Adjacent slices\nare linked so that a learning step near a border trains cells across it, diagonal\nneighbours reached by redirecting through a side neighbour, with acknowledgements\nrouted back the same way. An emitter sequences the protocol (search on every slice,\nlearn on the winner, wait for the acknowledgement) through a feedback loop from the\ncollector. `sequential_search_and_learn` is the single-map reference the parallel\nversion must match exactly.\n\"\"\"\n\nfrom __future__ import annotations\n\nimport copy\nimport math\nimport random\nfrom dataclasses import dataclass\n\nimport tolquane as tq\nfrom tolquane.graph import expand\n\nTOP, LEFT, BOTTOM, RIGHT = 0, 1, 2, 3\nOPPOSITE = {TOP: BOTTOM, BOTTOM: TOP, LEFT: RIGHT, RIGHT: LEFT}\nCIRC = 5  # neighbourhood radius (Chebyshev)\n\nSEARCH, LEARN, SEARCH_AND_LEARN, FINISHED, LEARN_FINISHED, LEARN_NEIGHBOURS, SEARCH_FINISHED = (\n    range(1, 8)\n)\nLISTEN_NEIGHBOURS, LISTEN_COMMAND = 0, 1\nSLAVE, LEARNING = 0, 1\n\nMap = list[list[list[float]]]\n\n\n@dataclass\nclass Packet:\n    kind: int\n    packet_id: int = -1\n    neuron: list[float] | None = None\n    train_i: int = 0\n    train_j: int = 0\n    curve: float = 0.0\n    result: tuple[int, int, float, int] | None = None  # best_i, best_j, distance, slice\n    redirect: int | None = None\n    reply_redirect: int | None = None\n    listen: int = LISTEN_COMMAND\n\n\n@dataclass\nclass Config:\n    size: int\n    depth: int\n    split: int\n    initial: Map\n    links_out: dict[int, dict[int, int]]  # slice -> direction -> output index\n    links_in: dict[int, dict[int, int]]  # slice -> input index -> direction it comes from\n\n    @property\n    def parts(self) -> int:\n        return self.split * self.split\n\n    @property\n    def side(self) -> int:\n        return self.size // self.split\n\n\n_CFG: Config | None = None\n\n\n# --------------------------------------------------------------"
+    }
+   ],
+   "text": "",
+   "calls": [
+    {
+     "id": "toolu_01M73dV1ATBn21nBXem5jmg9",
+     "name": "write_flow",
+     "args": {
+      "code": "\"\"\"Normalize each row of a fixed-seed 200x50 random matrix by its maximum, scattering\neach row across four workers, and print the first three normalized rows.\"\"\"\n\nimport random\n\nimport tolquane as tq\n\nSEED = 12345\nROWS = 200\nCOLS = 50\n\n\n@tq.source\ndef rows():\n    # The matrix: 200 rows of 50 random floats, reproducible thanks to the fixed seed.\n    rng = random.Random(SEED)\n    for _ in range(ROWS):\n        yield [rng.random() for _ in range(COLS)]\n\n\n@tq.node\ndef with_max(row: list[float]) -> list[tuple[float, float]]:\n    # The row maximum is a whole-row property, so it is computed before the split\n    # and carried alongside every value.\n    top = max(row)\n    return [(v, top) for v in row]\n\n\n@tq.node\ndef divide(chunk: list[tuple[float, float]]) -> list[float]:\n    # One slice of a row, on one of the four workers: pure arithmetic, no state.\n    return [v / top for v, top in chunk]\n\n\nclass Show:\n    # Stateful (it counts rows), so it is a class: prints only the first three rows.\n    def __init__(self) -> None:\n        self.seen = 0\n\n    def __call__(self, row: list[float]) -> None:\n        self.seen += 1\n        if self.seen <= 3:\n            print(f\"row {self.seen}: {[round(v, 3) for v in row]}\")\n\n\ndef build(source=None):\n    start = tq.from_iterable(source) if source is not None else rows\n    # scatter splits each row over the 4 workers, gather concatenates the pieces back\n    # in worker order, so the row comes out whole and in its original order.\n    return start >> with_max >> tq.farm(divide, 4, emit=\"scatter\", collect=\"gather\") >> tq.sink(Show())\n\n\ndef main() -> None:\n    tq.run(build())\n\n\nif __name__ == \"__main__\":\n    main()\n"
+     }
+    }
+   ],
+   "usage": {
+    "input_tokens": 8274,
+    "output_tokens": 1373,
+    "cache_read_input_tokens": 4849
+   },
+   "model": "claude-opus-5",
+   "at": 1788621263.2214208
+  },
+  {
+   "user": null,
+   "results": [
+    {
+     "call_id": "toolu_01M73dV1ATBn21nBXem5jmg9",
+     "is_error": false,
+     "content": "wrote flow.py (58 lines)"
+    }
+   ],
+   "text": "",
+   "calls": [
+    {
+     "id": "toolu_01FgSxLAgZJfskj79QryQt53",
+     "name": "check_flow",
+     "args": {}
+    }
+   ],
+   "usage": {
+    "input_tokens": 9665,
+    "output_tokens": 27,
+    "cache_read_input_tokens": 4849
+   },
+   "model": "claude-opus-5",
+   "at": 1788621264.7510126
+  },
+  {
+   "user": null,
+   "results": [
+    {
+     "call_id": "toolu_01FgSxLAgZJfskj79QryQt53",
+     "is_error": false,
+     "content": "OK: 9 nodes.\nrows: source; 0 input(s), 1 output(s)\nwith_max: map; 1 input(s), 1 output(s)\ndivide.emitter: ctx, emit=scatter; 1 input(s), 4 output(s)\ndivide.0: map, tagged; 1 input(s), 1 output(s)\ndivide.1: map, tagged; 1 input(s), 1 output(s)\ndivide.2: map, tagged; 1 input(s), 1 output(s)\ndivide.3: map, tagged; 1 input(s), 1 output(s)\ndivide.collector: ctx, collect=gather; 4 input(s), 1 output(s)\nShow: sink; 1 input(s), 0 output(s)\nedges:\n  rows -> with_max  [1-1]\n  divide.emitter -> divide.0  [farm]\n  divide.emitter -> divide.1  [farm]\n  divide.emitter -> divide.2  [farm]\n  divide.emitter -> divide.3  [farm]\n  divide.0 -> divide.collector  [farm]\n  divide.1 -> divide.collector  [farm]\n  divide.2 -> divide.collector  [farm]\n  divide.3 -> divide.collector  [farm]\n  with_max -> divide.emitter  [1-1]\n  divide.collector -> Show  [1-1]\nwindow divide.window: at most 256 tagged items in flight"
+    }
+   ],
+   "text": "",
+   "calls": [
+    {
+     "id": "toolu_01MXTvXsBPCbFbMVmn9zPFmG",
+     "name": "run_flow",
+     "args": {
+      "sample": [
+       [
+        1.0,
+        2.0,
+        4.0,
+        8.0
+       ],
+       [
+        5.0,
+        5.0,
+        10.0,
+        0.0
+       ],
+       [
+        3.0,
+        1.0,
+        2.0,
+        6.0
+       ],
+       [
+        7.0,
+        7.0,
+        7.0,
+        7.0
+       ]
+      ]
+     }
+    }
+   ],
+   "usage": {
+    "input_tokens": 10163,
+    "output_tokens": 130,
+    "cache_read_input_tokens": 4849
+   },
+   "model": "claude-opus-5",
+   "at": 1788621267.7124603
+  },
+  {
+   "user": null,
+   "results": [
+    {
+     "call_id": "toolu_01MXTvXsBPCbFbMVmn9zPFmG",
+     "is_error": false,
+     "content": "OK.\nrun on sync: 0.002s\n  node                    in       out   dropped\n  from_iterable            0         4         0\n  with_max                 4         4         0\n  divide.emitter           4        16         0\n  divide.0                 4         8         0\n  divide.1                 4         8         0\n  divide.2                 4         8         0\n  divide.3                 4         8         0\n  divide.collector         4         4         0\n  Show                     4         0         0\n  edge high-water marks:\n    from_iterable -> with_max: 5\n    divide.emitter -> divide.0: 5\n    divide.emitter -> divide.1: 5\n    divide.emitter -> divide.2: 5\n    divide.emitter -> divide.3: 5\n    divide.0 -> divide.collector: 9\n    divide.1 -> divide.collector: 9\n    divide.2 -> divide.collector: 9\n    divide.3 -> divide.collector: 9\n    with_max -> divide.emitter: 5\n    divide.collector -> Show: 5\nstdout:\nrow 1: [0.125, 0.25, 0.5, 1.0]\nrow 2: [0.5, 0.5, 1.0, 0.0]\nrow 3: [0.5, 0.167, 0.333, 1.0]\n"
+    }
+   ],
+   "text": "",
+   "calls": [
+    {
+     "id": "toolu_01VciUNfcqTovV6qg5UcCRZt",
+     "name": "run_flow",
+     "args": {}
+    }
+   ],
+   "usage": {
+    "input_tokens": 10711,
+    "output_tokens": 163,
+    "cache_read_input_tokens": 4849
+   },
+   "model": "claude-opus-5",
+   "at": 1788621271.1127977
+  },
+  {
+   "user": null,
+   "results": [
+    {
+     "call_id": "toolu_01VciUNfcqTovV6qg5UcCRZt",
+     "is_error": false,
+     "content": "OK.\nrun on sync: 0.014s\n  node                    in       out   dropped\n  rows                     0       200         0\n  with_max               200       200         0\n  divide.emitter         200       800         0\n  divide.0               200       400         0\n  divide.1               200       400         0\n  divide.2               200       400         0\n  divide.3               200       400         0\n  divide.collector       200       200         0\n  Show                   200         0         0\n  edge high-water marks:\n    rows -> with_max: 201\n    divide.emitter -> divide.0: 201\n    divide.emitter -> divide.1: 201\n    divide.emitter -> divide.2: 201\n    divide.emitter -> divide.3: 201\n    divide.0 -> divide.collector: 401\n    divide.1 -> divide.collector: 401\n    divide.2 -> divide.collector: 401\n    divide.3 -> divide.collector: 401\n    with_max -> divide.emitter: 201\n    divide.collector -> Show: 201\nstdout:\nrow 1: [0.426, 0.01, 0.843, 0.305, 0.376, 0.198, 0.578, 0.165, 0.127, 0.442, 0.574, 0.178, 0.565, 0.363, 0.979, 0.093, 1.0, 0.421, 0.515, 0.151, 0.735, 0.194, 0.349, 0.024, 0.347, 0.988, 1.0, 0.761, 0.004, 0.961, 0.89, 0.788, 0.183, 0.102, 0.424, 0.905, 0.591, 0.753, 0.238, 0.535, 0.725, 0.843, 0.825, 0.237, 0.892, 0.221, 0.819, 0.567, 0.19, 0.601]\nrow 2: [0.521, 0.964, 0.042, 0.165, 0.989, 0.837, 0.151, 0.23, 0.542, 0.158, 0.326, 0.05, 0.716, 0.079, 1.0, 0.926, 0.793, 0.777, 0.37, 0.682, 0.765, 0.483, 0.062, 0.63, 0.328, 0.613, 0.423, 0.958, 0.203, 0.773, 0.702, 0.56, 0.08, 0.166, 0.973, 0.232, 0.164, 0.29, 0.54, 0.522, 0.003, 0.003, 0.499, 0.186, 0.611, 0.803, 0.096, 0.508, 0.408, 0.795]\nrow 3: [1.0, 0.436, 0.255, 0.92, 0.029, 0.346, 0.413, 0.186, 0.712, 0.543, 0.261, 0.433, 0.725, 0.34, 0.071, 0.482, 0.204, 0.651, 0.211, 0.141, 0.936, 0.346, 0.306, 0.564, 0.726, 0.703, 0.836, 0.272, 0.447, 0.381, 0.541, 0.601, 0.659, 0.071, 0.389, 0.742, 0.037, 0.782, 0.718, 0.421, 0.47, 0.277, 0.772, 0.503, 0.278, 0.031, 0.361, 0.965, 0.708, 0.655]\n"
+    }
+   ],
+   "text": "",
+   "calls": [
+    {
+     "id": "toolu_01Grus4oztVyPGPtAojYy6AQ",
+     "name": "run_flow",
+     "args": {
+      "sample": [
+       [
+        0.0,
+        1.0,
+        2.0,
+        3.0,
+        4.0,
+        5.0,
+        6.0,
+        7.0,
+        8.0,
+        9.0,
+        10.0
+       ],
+       [
+        100.0,
+        50.0,
+        25.0,
+        20.0,
+        10.0,
+        5.0,
+        4.0,
+        2.0,
+        1.0,
+        0.5,
+        0.25
+       ]
+      ]
+     }
+    }
+   ],
+   "usage": {
+    "input_tokens": 11972,
+    "output_tokens": 1025,
+    "cache_read_input_tokens": 4849
+   },
+   "model": "claude-opus-5",
+   "at": 1788621285.4648411
+  },
+  {
+   "user": null,
+   "results": [
+    {
+     "call_id": "toolu_01Grus4oztVyPGPtAojYy6AQ",
+     "is_error": false,
+     "content": "OK.\nrun on sync: 0.002s\n  node                    in       out   dropped\n  from_iterable            0         2         0\n  with_max                 2         2         0\n  divide.emitter           2         8         0\n  divide.0                 2         4         0\n  divide.1                 2         4         0\n  divide.2                 2         4         0\n  divide.3                 2         4         0\n  divide.collector         2         2         0\n  Show                     2         0         0\n  edge high-water marks:\n    from_iterable -> with_max: 3\n    divide.emitter -> divide.0: 3\n    divide.emitter -> divide.1: 3\n    divide.emitter -> divide.2: 3\n    divide.emitter -> divide.3: 3\n    divide.0 -> divide.collector: 5\n    divide.1 -> divide.collector: 5\n    divide.2 -> divide.collector: 5\n    divide.3 -> divide.collector: 5\n    with_max -> divide.emitter: 3\n    divide.collector -> Show: 3\nstdout:\nrow 1: [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]\nrow 2: [1.0, 0.5, 0.25, 0.2, 0.1, 0.05, 0.04, 0.02, 0.01, 0.005, 0.003]\n"
+    }
+   ],
+   "text": "`flow.py` generates a 200\u00d750 matrix of random floats from a fixed seed (`random.Random(12345)`), attaches each row's maximum to its values, scatters every row across 4 farm workers that do the division, gathers the pieces back in order, and a small stateful sink prints the first three normalized rows rounded to 3 decimals. Run it with `python flow.py` (threads runtime); check and a sync run both pass, and hand-checked samples confirm rows come out whole, in original order, with exactly one 1.0 per row.\n\nTwo things worth knowing: the row maximum is computed in its own node before the split, because it is a whole-row property the workers cannot see from their slice; and change `SEED`, `ROWS` or `COLS` at the top of the file to resize the matrix.",
+   "calls": [],
+   "usage": {
+    "input_tokens": 13460,
+    "output_tokens": 300,
+    "cache_read_input_tokens": 4849
+   },
+   "model": "claude-opus-5",
+   "at": 1788621291.3529906
+  }
+ ],
+ "system_chars": 10334,
+ "tools": [
+  "write_flow",
+  "check_flow",
+  "run_flow",
+  "read_docs"
+ ]
+}

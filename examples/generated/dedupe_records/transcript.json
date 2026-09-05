@@ -1,0 +1,96 @@
+{
+ "provider": "anthropic",
+ "turns": [
+  {
+   "user": "Build this flow:\n\nread JSON records one per line from records.jsonl, each with an id field, drop later duplicates of the same id, and write the survivors to unique.jsonl in their original order",
+   "results": [],
+   "text": "",
+   "calls": [
+    {
+     "id": "toolu_013Uomwd8M9ajkpGrjetRrqy",
+     "name": "write_flow",
+     "args": {
+      "code": "\"\"\"Read JSON records from records.jsonl, drop later duplicates of the same id, and write the survivors to unique.jsonl in order.\"\"\"\n\nimport json\n\nimport tolquane as tq\n\nIN_PATH = \"records.jsonl\"\nOUT_PATH = \"unique.jsonl\"\n\n\n@tq.source\ndef read_lines():\n    # One raw line per item; the file is read lazily so it never sits in memory.\n    with open(IN_PATH, encoding=\"utf-8\") as f:\n        yield from f\n\n\n@tq.node\ndef parse(line: str):\n    # Text to record; blank lines are dropped rather than sent on.\n    line = line.strip()\n    if not line:\n        return tq.SKIP\n    return json.loads(line)\n\n\n@tq.node\nclass KeepFirstById:\n    # Stateful and order-sensitive, so it is a class on a single worker:\n    # the first record for an id wins, later ones are skipped.\n    def __init__(self) -> None:\n        self.seen: set = set()\n\n    def __call__(self, record: dict):\n        key = record[\"id\"]\n        if key in self.seen:\n            return tq.SKIP\n        self.seen.add(key)\n        return record\n\n\n@tq.sink\nclass WriteJsonl:\n    # Holds the output file handle, so it is a class with on_start/on_end.\n    def on_start(self, ctx: tq.Context) -> None:\n        self.out = open(OUT_PATH, \"w\", encoding=\"utf-8\")\n        self.written = 0\n\n    def __call__(self, record: dict) -> None:\n        self.out.write(json.dumps(record) + \"\\n\")\n        self.written += 1\n\n    def on_end(self, ctx: tq.Context) -> None:\n        self.out.close()\n        print(f\"wrote {self.written} unique records to {OUT_PATH}\")\n\n\ndef build(source=None):\n    start = tq.from_iterable(source) if source is not None else read_lines\n    return start >> parse >> KeepFirstById >> WriteJsonl\n\n\ndef main() -> None:\n    tq.run(build())\n\n\nif __name__ == \"__main__\":\n    main()\n"
+     }
+    },
+    {
+     "id": "toolu_012ddz3aTFR5PHd2Mh4cMJFg",
+     "name": "check_flow",
+     "args": {}
+    }
+   ],
+   "usage": {
+    "input_tokens": 133,
+    "output_tokens": 1585,
+    "cache_read_input_tokens": 4849
+   },
+   "model": "claude-opus-5",
+   "at": 1788621196.688121
+  },
+  {
+   "user": null,
+   "results": [
+    {
+     "call_id": "toolu_013Uomwd8M9ajkpGrjetRrqy",
+     "is_error": false,
+     "content": "wrote flow.py (68 lines)"
+    },
+    {
+     "call_id": "toolu_012ddz3aTFR5PHd2Mh4cMJFg",
+     "is_error": false,
+     "content": "OK: 4 nodes.\nread_lines: source; 0 input(s), 1 output(s)\nparse: map; 1 input(s), 1 output(s)\nKeepFirstById: map, one instance per node; 1 input(s), 1 output(s)\nWriteJsonl: sink, one instance per node; 1 input(s), 0 output(s)\nedges:\n  read_lines -> parse  [1-1]\n  parse -> KeepFirstById  [1-1]\n  KeepFirstById -> WriteJsonl  [1-1]"
+    }
+   ],
+   "text": "",
+   "calls": [
+    {
+     "id": "toolu_01TSVJ8M4eArRpL6Ej2t3RAk",
+     "name": "run_flow",
+     "args": {
+      "sample": [
+       "{\"id\": 1, \"name\": \"ada\"}",
+       "{\"id\": 2, \"name\": \"bob\"}",
+       "",
+       "{\"id\": 1, \"name\": \"ada again\"}",
+       "{\"id\": 3, \"name\": \"cy\"}",
+       "{\"id\": 2, \"name\": \"bob dup\"}"
+      ]
+     }
+    }
+   ],
+   "usage": {
+    "input_tokens": 1967,
+    "output_tokens": 169,
+    "cache_read_input_tokens": 4849
+   },
+   "model": "claude-opus-5",
+   "at": 1788621199.4830945
+  },
+  {
+   "user": null,
+   "results": [
+    {
+     "call_id": "toolu_01TSVJ8M4eArRpL6Ej2t3RAk",
+     "is_error": false,
+     "content": "OK.\nrun on sync: 0.001s\n  node                 in       out   dropped\n  from_iterable         0         6         0\n  parse                 6         5         0\n  KeepFirstById         5         3         0\n  WriteJsonl            3         0         0\n  edge high-water marks:\n    from_iterable -> parse: 7\n    parse -> KeepFirstById: 6\n    KeepFirstById -> WriteJsonl: 4\nstdout:\nwrote 3 unique records to unique.jsonl\n"
+    }
+   ],
+   "text": "The flow reads `records.jsonl` line by line, parses each line as JSON, keeps only the first record for each `id` in a single stateful node (so original order is preserved), and appends survivors to `unique.jsonl`, printing a count at the end.\n\nRun it with `python flow.py`; blank lines are ignored, and a record without an `id` or with malformed JSON raises a `NodeError` naming the node rather than silently passing through. For testing, `build(source=[...])` accepts a list of JSON text lines instead of the file.",
+   "calls": [],
+   "usage": {
+    "input_tokens": 2306,
+    "output_tokens": 172,
+    "cache_read_input_tokens": 4849
+   },
+   "model": "claude-opus-5",
+   "at": 1788621203.2102761
+  }
+ ],
+ "system_chars": 10334,
+ "tools": [
+  "write_flow",
+  "check_flow",
+  "run_flow",
+  "read_docs"
+ ]
+}

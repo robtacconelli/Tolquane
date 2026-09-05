@@ -1,0 +1,94 @@
+{
+ "provider": "openai",
+ "turns": [
+  {
+   "user": "Build this flow:\n\nread integers one per line from numbers.txt, square each on 4 workers, keep only the even squares, and print their sum at the end",
+   "results": [],
+   "text": "",
+   "calls": [
+    {
+     "id": "call_ZvAq5gLE8BFQYZBgQDmR6ZJ2",
+     "name": "write_flow",
+     "args": {
+      "code": "\"\"\"Read integers from numbers.txt, square them in parallel, and print the sum of the even squares.\"\"\"\n\nfrom pathlib import Path\n\nimport tolquane as tq\n\n\n@tq.source\ndef number_lines():\n    # Real input source: one integer per line in numbers.txt.\n    yield from Path(\"numbers.txt\").read_text().splitlines()\n\n\n@tq.node\ndef parse_int(line: str) -> int:\n    # Keep parsing separate so tests can feed the same line-shaped stream.\n    return int(line.strip())\n\n\n@tq.node\ndef square(n: int) -> int:\n    # Pure CPU work, so it is the stage that runs on four workers.\n    return n * n\n\n\n@tq.node\ndef keep_even(square_value: int) -> int:\n    # Filter out odd squares; tq.SKIP means no item is sent downstream.\n    if square_value % 2 == 0:\n        return square_value\n    return tq.SKIP\n\n\nclass SumEvenSquares:\n    # Stateful accumulator: it emits one total when the input stream ends.\n    def __init__(self) -> None:\n        self.total = 0\n\n    def __call__(self, square_value: int) -> object:\n        self.total += square_value\n        return tq.SKIP\n\n    def on_end(self, ctx: tq.Context) -> None:\n        ctx.send(self.total)\n\n\n@tq.sink\ndef print_total(total: int) -> None:\n    # Final sink: print the single sum produced by the accumulator.\n    print(total)\n\n\ndef build(source=None):\n    start = tq.from_iterable(source) if source is not None else number_lines\n    graph = start >> parse_int >> tq.farm(square, workers=4) >> keep_even >> SumEvenSquares >> print_total\n    return graph\n\n\ndef main() -> None:\n    tq.run(build())\n\n\nif __name__ == \"__main__\":\n    main()\n"
+     }
+    }
+   ],
+   "usage": {
+    "input_tokens": 3168,
+    "output_tokens": 705
+   },
+   "model": "gpt-5.5-2026-04-23",
+   "at": 1788620936.2403765
+  },
+  {
+   "user": null,
+   "results": [
+    {
+     "call_id": "call_ZvAq5gLE8BFQYZBgQDmR6ZJ2",
+     "is_error": false,
+     "content": "wrote flow.py (64 lines)"
+    }
+   ],
+   "text": "",
+   "calls": [
+    {
+     "id": "call_bEkbhsX8a5gUoEb7p7KLxFDu",
+     "name": "check_flow",
+     "args": {}
+    },
+    {
+     "id": "call_pdqkK5BfwFUmM8kRNFMkfuP0",
+     "name": "run_flow",
+     "args": {
+      "sample": [
+       "1",
+       "2",
+       "3",
+       "4",
+       "5",
+       "6"
+      ],
+      "timeout": 60
+     }
+    }
+   ],
+   "usage": {
+    "input_tokens": 3892,
+    "output_tokens": 60
+   },
+   "model": "gpt-5.5-2026-04-23",
+   "at": 1788620937.6824255
+  },
+  {
+   "user": null,
+   "results": [
+    {
+     "call_id": "call_bEkbhsX8a5gUoEb7p7KLxFDu",
+     "is_error": false,
+     "content": "OK: 11 nodes.\nnumber_lines: source; 0 input(s), 1 output(s)\nparse_int: map; 1 input(s), 1 output(s)\nsquare.emitter: ctx, emit=round_robin; 1 input(s), 4 output(s)\nsquare.0: map; 1 input(s), 1 output(s)\nsquare.1: map; 1 input(s), 1 output(s)\nsquare.2: map; 1 input(s), 1 output(s)\nsquare.3: map; 1 input(s), 1 output(s)\nsquare.collector: ctx, collect=first_come; 4 input(s), 1 output(s)\nkeep_even: map; 1 input(s), 1 output(s)\nSumEvenSquares: map, one instance per node; 1 input(s), 1 output(s)\nprint_total: sink; 1 input(s), 0 output(s)\nedges:\n  number_lines -> parse_int  [1-1]\n  square.emitter -> square.0  [farm]\n  square.emitter -> square.1  [farm]\n  square.emitter -> square.2  [farm]\n  square.emitter -> square.3  [farm]\n  square.0 -> square.collector  [farm]\n  square.1 -> square.collector  [farm]\n  square.2 -> square.collector  [farm]\n  square.3 -> square.collector  [farm]\n  parse_int -> square.emitter  [1-1]\n  square.collector -> keep_even  [1-1]\n  keep_even -> SumEvenSquares  [1-1]\n  SumEvenSquares -> print_total  [1-1]"
+    },
+    {
+     "call_id": "call_pdqkK5BfwFUmM8kRNFMkfuP0",
+     "is_error": false,
+     "content": "OK.\nrun on sync: 0.002s\n  node                    in       out   dropped\n  from_iterable            0         6         0\n  parse_int                6         6         0\n  square.emitter           6         6         0\n  square.0                 2         2         0\n  square.1                 2         2         0\n  square.2                 1         1         0\n  square.3                 1         1         0\n  square.collector         6         6         0\n  keep_even                6         3         0\n  SumEvenSquares           3         1         0\n  print_total              1         0         0\n  edge high-water marks:\n    from_iterable -> parse_int: 7\n    square.emitter -> square.0: 3\n    square.emitter -> square.1: 3\n    square.emitter -> square.2: 2\n    square.emitter -> square.3: 2\n    square.0 -> square.collector: 3\n    square.1 -> square.collector: 3\n    square.2 -> square.collector: 2\n    square.3 -> square.collector: 2\n    parse_int -> square.emitter: 7\n    square.collector -> keep_even: 7\n    keep_even -> SumEvenSquares: 4\n    SumEvenSquares -> print_total: 2\nstdout:\n56\n"
+    }
+   ],
+   "text": "Built and validated `flow.py`. It reads `numbers.txt` one integer per line, squares values on a 4-worker farm, filters to even squares, accumulates them, and prints the final sum.\n\nRun it with:\n\n```bash\npython flow.py\n```\n\nMake sure `numbers.txt` is in the same directory.",
+   "calls": [],
+   "usage": {
+    "input_tokens": 4662,
+    "output_tokens": 71
+   },
+   "model": "gpt-5.5-2026-04-23",
+   "at": 1788620940.2448783
+  }
+ ],
+ "system_chars": 10334,
+ "tools": [
+  "write_flow",
+  "check_flow",
+  "run_flow",
+  "read_docs"
+ ]
+}

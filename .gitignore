@@ -6,7 +6,9 @@ build/
 dist/
 .eggs/
 
-# Environments
+# Environments and secrets
+.env
+keys.env
 .venv*/
 venv/
 .python-version

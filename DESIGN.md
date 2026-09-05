@@ -500,7 +500,7 @@ two-node pipeline (thesis Table 1) and farm scalability (Figure 13).
 Port the remaining `ff_tests` and the SOM use case as an example (it exercises feedback,
 custom emitter/collector and worker-to-worker edges).
 
-**Phase 3: AI builder (0.3).**
+**Phase 3: AI builder (0.3, done 2026-09-05).**
 `tolquane[ai]` extra, `tolquane build` command and `tolquane.ai.build()`, Anthropic
 provider first, OpenAI second, the four tools, the API card and `docs/style.md`, a
 recorded-fixture test suite so the loop is tested without a key, and ten end-to-end
@@ -560,16 +560,21 @@ can embed it in notebooks and internal tools.
 ### 9.2 Provider and model
 
 - Claude through the official `anthropic` SDK, model `claude-opus-5` by default with
-  adaptive thinking and `output_config.effort` set to `high`; the plan step uses
-  structured outputs so the block list is machine-checkable. Streaming is on for the
-  write step. The key comes from the environment (`ANTHROPIC_API_KEY`) or an
-  `ant auth login` profile; the builder never stores it.
-- GPT through the official `openai` SDK, selected with `--provider openai`.
+  adaptive thinking (the model's default) and `output_config.effort` set to `high`,
+  streamed, with `fallbacks="default"` so a declined request is re-run on Anthropic's
+  recommended fallback instead of failing. The key comes from the environment
+  (`ANTHROPIC_API_KEY`) or an `ant auth login` profile; the builder never stores it.
+- GPT through the official `openai` SDK's Responses API, `gpt-5.5` by default,
+  selected with `--provider openai`.
 - Both are optional extras: `pip install "tolquane[ai]"`. The core library never
   imports either SDK.
-- The generate/check/run loop is driven by the Anthropic SDK tool runner with four
-  tools: `write_flow`, `check_flow`, `run_flow`, `read_docs`. On OpenAI the same four
-  tools run through that SDK's function-calling loop.
+- One provider-neutral loop drives both: a provider turns a user message and tool
+  results into the model's text plus tool calls, and the builder executes the four
+  tools `write_flow`, `check_flow`, `run_flow`, `read_docs`. A recording provider
+  writes every turn to JSON and a replay provider plays it back, so the loop is tested
+  without a key; the tools still run for real during replay.
+- As built, the plan is plain text in the model's first message rather than a
+  structured-output block; the check and run tools make the plan verifiable anyway.
 
 ### 9.3 What the library must provide for the builder to be good
 

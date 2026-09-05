@@ -9,5 +9,7 @@
 - On this machine the root filesystem is full. uv's cache is set to `/mnt/1T/home/st4ck/.uv/cache` in `~/.config/uv/uv.toml`, and `~/.local/share/uv/python` is a symlink to `/mnt/1T/home/st4ck/.uv/python`, so interpreters land on the 1T disk too. Never point downloads or caches at `/` or `~`.
 - Before committing run: `.venv/bin/ruff check .`, `.venv/bin/ruff format --check .`, `.venv/bin/mypy`, `.venv/bin/pytest`.
 - Commits: plain messages, no `Co-Authored-By` and no session trailers (owner's request).
+- API keys never go into the repository, fixtures or docs. Live builder tests run only with `TOLQUANE_LIVE=1` and keys in the environment; the default suite replays `tests/fixtures/ai/*.json`. Record a new fixture with `tolquane build ... --record file.json`.
+- The builder's system prompt is assembled from `src/tolquane/ai/resources/` (the API card, the style guide, two example flows); `tests/test_ai.py` keeps those copies identical to `docs/` and `examples/`. Edit the originals and copy.
 - Layout: `src/tolquane/` package, `tests/` (with `tests/liveness/` for the section 6 rules), `docs/` (`api-card.md` is the one-page API, `style.md` the house style for flows), `examples/` (flows in the house style; the AI builder reads them), `benchmarks/`, `reference/`.
 - Run the tests on every local interpreter before a commit that touches the core: `.venv/bin/pytest`, `.venv311/bin/pytest`, `.venv314t/bin/pytest`.

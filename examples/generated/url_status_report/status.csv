@@ -1,0 +1,5 @@
+url,status,size
+http://localhost:9/health,URLError: <urlopen error [Errno 111] Connection refused>,0
+not-a-url,ValueError: unknown url type: 'not-a-url',0
+https://example.com,200,559
+http://localhost:9/other,URLError: <urlopen error [Errno 111] Connection refused>,0

@@ -780,6 +780,11 @@ def validate(g: Graph) -> None:
                 f"node {n.name!r} returns values but nothing reads them; add a stage after "
                 "it or mark it @tq.sink"
             )
+        elif n.target is forward and n.role == "collector" and not out:
+            raise GraphError(
+                f"farm {n.group!r} ends the graph but its results go nowhere; add a stage "
+                "after it, or give it a collector that is a sink"
+            )
         elif n.kind == "source" and not out:
             raise GraphError(f"source {n.name!r} has no output; add a stage after it")
     seen: set[str] = set()

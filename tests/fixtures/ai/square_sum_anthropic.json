@@ -1,0 +1,98 @@
+{
+ "provider": "anthropic",
+ "turns": [
+  {
+   "user": "Build this flow:\n\nread integers one per line from numbers.txt, square each on 4 workers, keep only the even squares, and print their sum at the end",
+   "results": [],
+   "text": "",
+   "calls": [
+    {
+     "id": "toolu_012V9LApaUn91dKMbfRzBEWc",
+     "name": "write_flow",
+     "args": {
+      "code": "\"\"\"Read integers from numbers.txt, square them on four workers, and print the sum of the even squares.\"\"\"\n\nimport tolquane as tq\n\nPATH = \"numbers.txt\"\n\n\n@tq.source\ndef lines():\n    # The real source: one line per item, streamed straight from the file.\n    with open(PATH) as f:\n        yield from f\n\n\n@tq.node\ndef parse(line: str) -> int:\n    # Text to integer; blank lines are dropped rather than sent on.\n    text = line.strip()\n    if not text:\n        return tq.SKIP\n    return int(text)\n\n\n@tq.node\ndef square(n: int) -> int:\n    # Pure function, so it can run on several workers at once.\n    return n * n\n\n\n@tq.node\ndef keep_even(n: int) -> int:\n    # Filter: SKIP sends nothing, so odd squares disappear here.\n    return n if n % 2 == 0 else tq.SKIP\n\n\nclass Total:\n    # Stateful and must see every item, so it is a single class sink, not a farm.\n    def __init__(self) -> None:\n        self.total = 0\n\n    def __call__(self, n: int) -> None:\n        self.total += n\n\n    def on_end(self, ctx: tq.Context) -> None:\n        print(f\"sum of even squares: {self.total}\")\n\n\ndef build(source=None):\n    start = tq.from_iterable(source) if source is not None else lines\n    return start >> parse >> tq.farm(square, workers=4) >> keep_even >> tq.sink(Total)\n\n\ndef main() -> None:\n    tq.run(build())\n\n\nif __name__ == \"__main__\":\n    main()\n"
+     }
+    }
+   ],
+   "usage": {
+    "input_tokens": 120,
+    "output_tokens": 905,
+    "cache_read_input_tokens": 0
+   },
+   "model": "claude-opus-5",
+   "at": 1788620912.208692
+  },
+  {
+   "user": null,
+   "results": [
+    {
+     "call_id": "toolu_012V9LApaUn91dKMbfRzBEWc",
+     "is_error": false,
+     "content": "wrote flow.py (58 lines)"
+    }
+   ],
+   "text": "",
+   "calls": [
+    {
+     "id": "toolu_01NrurZDJAbRpiiApgPiYYVA",
+     "name": "check_flow",
+     "args": {}
+    },
+    {
+     "id": "toolu_01JBCqDQgXDYdZQ6MwAiVx8d",
+     "name": "run_flow",
+     "args": {
+      "sample": [
+       "1",
+       "2",
+       "3",
+       "4",
+       "",
+       "5",
+       "6",
+       "10"
+      ]
+     }
+    }
+   ],
+   "usage": {
+    "input_tokens": 1043,
+    "output_tokens": 96,
+    "cache_read_input_tokens": 4849
+   },
+   "model": "claude-opus-5",
+   "at": 1788620914.7593606
+  },
+  {
+   "user": null,
+   "results": [
+    {
+     "call_id": "toolu_01NrurZDJAbRpiiApgPiYYVA",
+     "is_error": false,
+     "content": "OK: 10 nodes.\nlines: source; 0 input(s), 1 output(s)\nparse: map; 1 input(s), 1 output(s)\nsquare.emitter: ctx, emit=round_robin; 1 input(s), 4 output(s)\nsquare.0: map; 1 input(s), 1 output(s)\nsquare.1: map; 1 input(s), 1 output(s)\nsquare.2: map; 1 input(s), 1 output(s)\nsquare.3: map; 1 input(s), 1 output(s)\nsquare.collector: ctx, collect=first_come; 4 input(s), 1 output(s)\nkeep_even: map; 1 input(s), 1 output(s)\nTotal: sink, one instance per node; 1 input(s), 0 output(s)\nedges:\n  lines -> parse  [1-1]\n  square.emitter -> square.0  [farm]\n  square.emitter -> square.1  [farm]\n  square.emitter -> square.2  [farm]\n  square.emitter -> square.3  [farm]\n  square.0 -> square.collector  [farm]\n  square.1 -> square.collector  [farm]\n  square.2 -> square.collector  [farm]\n  square.3 -> square.collector  [farm]\n  parse -> square.emitter  [1-1]\n  square.collector -> keep_even  [1-1]\n  keep_even -> Total  [1-1]"
+    },
+    {
+     "call_id": "toolu_01JBCqDQgXDYdZQ6MwAiVx8d",
+     "is_error": false,
+     "content": "OK.\nrun on sync: 0.002s\n  node                    in       out   dropped\n  from_iterable            0         8         0\n  parse                    8         7         0\n  square.emitter           7         7         0\n  square.0                 2         2         0\n  square.1                 2         2         0\n  square.2                 2         2         0\n  square.3                 1         1         0\n  square.collector         7         7         0\n  keep_even                7         4         0\n  Total                    4         0         0\n  edge high-water marks:\n    from_iterable -> parse: 9\n    square.emitter -> square.0: 3\n    square.emitter -> square.1: 3\n    square.emitter -> square.2: 3\n    square.emitter -> square.3: 2\n    square.0 -> square.collector: 3\n    square.1 -> square.collector: 3\n    square.2 -> square.collector: 3\n    square.3 -> square.collector: 2\n    parse -> square.emitter: 8\n    square.collector -> keep_even: 8\n    keep_even -> Total: 5\nstdout:\nsum of even squares: 156\n"
+    }
+   ],
+   "text": "`flow.py` streams `numbers.txt` line by line, parses each line to an int (blank lines are skipped), squares them on a 4-worker farm, drops the odd squares with `tq.SKIP`, and accumulates the rest in a single stateful sink that prints the total in `on_end`. Run it with `python flow.py` from the directory containing `numbers.txt`; on a sample of 1\u20136 plus 10 it printed `sum of even squares: 156`.\n\nNote the summing sink is deliberately one instance (not a farm) so the total is complete, and `build(source=...)` swaps in `tq.from_iterable` for testing with a list of lines or numbers.",
+   "calls": [],
+   "usage": {
+    "input_tokens": 1997,
+    "output_tokens": 238,
+    "cache_read_input_tokens": 4849
+   },
+   "model": "claude-opus-5",
+   "at": 1788620919.8610506
+  }
+ ],
+ "system_chars": 10334,
+ "tools": [
+  "write_flow",
+  "check_flow",
+  "run_flow",
+  "read_docs"
+ ]
+}

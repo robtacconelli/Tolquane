@@ -1,0 +1,4 @@
+# one URL per line
+https://example.com/
+https://example.org/
+http://localhost:9/unreachable

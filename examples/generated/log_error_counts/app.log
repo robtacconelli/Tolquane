@@ -1,0 +1,8 @@
+2026-09-05T10:00:01 INFO api request ok
+2026-09-05T10:00:02 ERROR db connection reset
+2026-09-05T10:00:03 ERROR api timeout
+2026-09-05T10:00:04 WARN cache miss
+2026-09-05T10:00:05 ERROR db deadlock detected
+2026-09-05T10:00:06 ERROR api bad gateway
+2026-09-05T10:00:07 ERROR api timeout
+2026-09-05T10:00:08 INFO db reconnected

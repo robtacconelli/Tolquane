@@ -104,6 +104,8 @@ def test_validation_messages() -> None:
         tq.check(double)
     with pytest.raises(tq.GraphError, match="nothing reads them"):
         tq.check(src >> double)
+    with pytest.raises(tq.GraphError, match="results go nowhere"):
+        tq.check(src >> tq.farm(double, 2))
     with pytest.raises(tq.GraphError, match="has no inputs, so it cannot follow"):
         tq.check(src >> src)
     with pytest.raises(tq.GraphError, match="has no outputs, so nothing can follow"):

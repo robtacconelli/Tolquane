@@ -1,0 +1,154 @@
+{
+ "provider": "anthropic",
+ "turns": [
+  {
+   "user": "Build this flow:\n\nfor the numbers from 2 to 20000, test each for primality on 8 workers, and print the primes in increasing order followed by how many there are",
+   "results": [],
+   "text": "",
+   "calls": [
+    {
+     "id": "toolu_01REjXdjvCb5jpjtjwC6xsmT",
+     "name": "read_docs",
+     "args": {
+      "name": "api-card"
+     }
+    },
+    {
+     "id": "toolu_01Mxp8aW8dQ3kjRdwKvknAha",
+     "name": "write_flow",
+     "args": {
+      "code": "\"\"\"Test the numbers 2 to 20000 for primality on eight workers and print the primes in order, then their count.\"\"\"\n\nimport tolquane as tq\n\n\n@tq.source\ndef numbers():\n    # The candidates to test, in increasing order.\n    yield from range(2, 20001)\n\n\n@tq.node\ndef keep_primes(n: int) -> int:\n    # Trial division: CPU work, so it runs on the farm; non-primes are dropped.\n    if n < 2 or (n > 2 and n % 2 == 0):\n        return tq.SKIP\n    d = 3\n    while d * d <= n:\n        if n % d == 0:\n            return tq.SKIP\n        d += 2\n    return n\n\n\n@tq.sink\nclass Report:\n    # Stateful: it prints each prime as it arrives and the total in on_end.\n    def __init__(self) -> None:\n        self.count = 0\n\n    def __call__(self, n: int) -> None:\n        self.count += 1\n        print(n)\n\n    def on_end(self, ctx: tq.Context) -> None:\n        print(f\"{self.count} primes\")\n\n\ndef build(source=None):\n    src = tq.from_iterable(source) if source is not None else numbers\n    # ordered=True so the primes come out in increasing order despite 8 workers.\n    return src >> tq.farm(keep_primes, workers=8, ordered=True) >> Report\n\n\ndef main() -> None:\n    tq.run(build())\n\n\nif __name__ == \"__main__\":\n    main()\n"
+     }
+    }
+   ],
+   "usage": {
+    "input_tokens": 124,
+    "output_tokens": 920,
+    "cache_read_input_tokens": 4849
+   },
+   "model": "claude-opus-5",
+   "at": 1788621116.3574164
+  },
+  {
+   "user": null,
+   "results": [
+    {
+     "call_id": "toolu_01REjXdjvCb5jpjtjwC6xsmT",
+     "is_error": false,
+     "content": "# Tolquane API card\n\nThe whole public surface on one page. `import tolquane as tq`.\n\n## Nodes: a function is a node\n\n| Write | Meaning |\n|---|---|\n| `@tq.source` on `def f(): yield ...` | Produces items. No inputs. |\n| `@tq.node` on `def f(x): return y` | Map. The return value is sent. `return tq.SKIP` sends nothing. `None` is a normal value. |\n| `@tq.node` on `def f(x): yield ...` | Flat map. Each yielded value is sent. |\n| `@tq.node` on `def f(x, ctx): ctx.send(y)` | Explicit sends: `ctx.send(y)`, `ctx.send(y, to=i)`, `ctx.broadcast(y)`, `ctx.stop()`. Must not return a value. |\n| `@tq.sink` on `def f(x)` or `def f(x, ctx)` | Consumes items. No outputs. |\n| `@tq.raw` on `def f(ctx)` | Full control: `for src, item in ctx.inputs(): ...`, `ctx.recv(source=i)` reads one input and returns `None` when it ends; call `ctx.flush()` before blocking on anything outside Tolquane. Raw nodes can be farm workers, emitters or collectors, except in ordered and gather farms. |\n| a class with `__call__(self, x)` | Stateful node, one instance per worker. Optional `on_start(self, ctx)` and `on_end(self, ctx)`. |\n\n`ctx.index` is the worker number, `ctx.source` the input the current item came from,\n`ctx.name` the node name. Decorated functions stay callable: `f(3)` works in tests.\n\n## Blocks\n\n```python\na >> b >> c                       # pipeline; tq.pipeline(a, b, c) is the same\ntq.farm(work, workers=8)          # emitter -> 8 workers -> collector\ntq.farm(work, 8, emit=\"round_robin\" | \"on_demand\" | \"broadcast\" | \"scatter\", key=fn)\ntq.farm(work, 8, collect=\"first_come\" | \"round_robin\" | \"gather\")\ntq.farm(work, 8, ordered=True)    # output order == input order\ntq.farm(work, 8, emitter=my_router, collector=my_merge)   # custom ends\ntq.farm(work, 8, emitter=False)   # expose the workers' inputs (1xN wiring)\ntq.farm([f, g, h])                # one worker per callable\ntq.comb(a, b)                     # fuse two nodes on one thread\ntq.all2all(left_farm, right_farm) # every left worker to ever"
+    },
+    {
+     "call_id": "toolu_01Mxp8aW8dQ3kjRdwKvknAha",
+     "is_error": false,
+     "content": "wrote flow.py (50 lines)"
+    }
+   ],
+   "text": "",
+   "calls": [
+    {
+     "id": "toolu_018TPEpMz71Y6SeqcJ9buWE1",
+     "name": "check_flow",
+     "args": {}
+    }
+   ],
+   "usage": {
+    "input_tokens": 2982,
+    "output_tokens": 27,
+    "cache_read_input_tokens": 4849
+   },
+   "model": "claude-opus-5",
+   "at": 1788621117.8876727
+  },
+  {
+   "user": null,
+   "results": [
+    {
+     "call_id": "toolu_018TPEpMz71Y6SeqcJ9buWE1",
+     "is_error": false,
+     "content": "OK: 12 nodes.\nnumbers: source; 0 input(s), 1 output(s)\nkeep_primes.emitter: ctx, emit=round_robin; 1 input(s), 8 output(s)\nkeep_primes.0: map, tagged; 1 input(s), 1 output(s)\nkeep_primes.1: map, tagged; 1 input(s), 1 output(s)\nkeep_primes.2: map, tagged; 1 input(s), 1 output(s)\nkeep_primes.3: map, tagged; 1 input(s), 1 output(s)\nkeep_primes.4: map, tagged; 1 input(s), 1 output(s)\nkeep_primes.5: map, tagged; 1 input(s), 1 output(s)\nkeep_primes.6: map, tagged; 1 input(s), 1 output(s)\nkeep_primes.7: map, tagged; 1 input(s), 1 output(s)\nkeep_primes.collector: ctx, collect=ordered; 8 input(s), 1 output(s)\nReport: sink, one instance per node; 1 input(s), 0 output(s)\nedges:\n  keep_primes.emitter -> keep_primes.0  [farm]\n  keep_primes.emitter -> keep_primes.1  [farm]\n  keep_primes.emitter -> keep_primes.2  [farm]\n  keep_primes.emitter -> keep_primes.3  [farm]\n  keep_primes.emitter -> keep_primes.4  [farm]\n  keep_primes.emitter -> keep_primes.5  [farm]\n  keep_primes.emitter -> keep_primes.6  [farm]\n  keep_primes.emitter -> keep_primes.7  [farm]\n  keep_primes.0 -> keep_primes.collector  [farm]\n  keep_primes.1 -> keep_primes.collector  [farm]\n  keep_primes.2 -> keep_primes.collector  [farm]\n  keep_primes.3 -> keep_primes.collector  [farm]\n  keep_primes.4 -> keep_primes.collector  [farm]\n  keep_primes.5 -> keep_primes.collector  [farm]\n  keep_primes.6 -> keep_primes.collector  [farm]\n  keep_primes.7 -> keep_primes.collector  [farm]\n  numbers -> keep_primes.emitter  [1-1]\n  keep_primes.collector -> Report  [1-1]\nwindow keep_primes.window: at most 512 tagged items in flight"
+    }
+   ],
+   "text": "",
+   "calls": [
+    {
+     "id": "toolu_018ExeWmi9Pb1epG1UFgZP3V",
+     "name": "run_flow",
+     "args": {
+      "sample": [
+       2,
+       3,
+       4,
+       5,
+       6,
+       7,
+       8,
+       9,
+       10,
+       11,
+       12,
+       13
+      ]
+     }
+    }
+   ],
+   "usage": {
+    "input_tokens": 3844,
+    "output_tokens": 84,
+    "cache_read_input_tokens": 4849
+   },
+   "model": "claude-opus-5",
+   "at": 1788621120.260301
+  },
+  {
+   "user": null,
+   "results": [
+    {
+     "call_id": "toolu_018ExeWmi9Pb1epG1UFgZP3V",
+     "is_error": false,
+     "content": "OK.\nrun on sync: 0.002s\n  node                         in       out   dropped\n  from_iterable                 0        12         0\n  keep_primes.emitter          12        12         0\n  keep_primes.0                 2         3         0\n  keep_primes.1                 2         4         0\n  keep_primes.2                 2         2         0\n  keep_primes.3                 2         4         0\n  keep_primes.4                 1         1         0\n  keep_primes.5                 1         2         0\n  keep_primes.6                 1         1         0\n  keep_primes.7                 1         1         0\n  keep_primes.collector         6         6         0\n  Report                        6         0         0\n  edge high-water marks:\n    keep_primes.emitter -> keep_primes.0: 3\n    keep_primes.emitter -> keep_primes.1: 3\n    keep_primes.emitter -> keep_primes.2: 3\n    keep_primes.emitter -> keep_primes.3: 3\n    keep_primes.emitter -> keep_primes.4: 2\n    keep_primes.emitter -> keep_primes.5: 2\n    keep_primes.emitter -> keep_primes.6: 2\n    keep_primes.emitter -> keep_primes.7: 2\n    keep_primes.0 -> keep_primes.collector: 4\n    keep_primes.1 -> keep_primes.collector: 5\n    keep_primes.2 -> keep_primes.collector: 3\n    keep_primes.3 -> keep_primes.collector: 5\n    keep_primes.4 -> keep_primes.collector: 2\n    keep_primes.5 -> keep_primes.collector: 3\n    keep_primes.6 -> keep_primes.collector: 2\n    keep_primes.7 -> keep_primes.collector: 2\n    from_iterable -> keep_primes.emitter: 13\n    keep_primes.collector -> Report: 7\nstdout:\n2\n3\n5\n7\n11\n13\n6 primes\n"
+    }
+   ],
+   "text": "",
+   "calls": [
+    {
+     "id": "toolu_01KEanrkDVNL6x2z94T51F9X",
+     "name": "run_flow",
+     "args": {}
+    }
+   ],
+   "usage": {
+    "input_tokens": 4584,
+    "output_tokens": 81,
+    "cache_read_input_tokens": 4849
+   },
+   "model": "claude-opus-5",
+   "at": 1788621122.6120052
+  },
+  {
+   "user": null,
+   "results": [
+    {
+     "call_id": "toolu_01KEanrkDVNL6x2z94T51F9X",
+     "is_error": false,
+     "content": "OK.\nrun on sync: 0.250s\n  node                         in       out   dropped\n  numbers                       0     19999         0\n  keep_primes.emitter       19999     19999         0\n  keep_primes.0              2500      2501         0\n  keep_primes.1              2500      3071         0\n  keep_primes.2              2500      2500         0\n  keep_primes.3              2500      3069         0\n  keep_primes.4              2500      2500         0\n  keep_primes.5              2500      3065         0\n  keep_primes.6              2500      2500         0\n  keep_primes.7              2499      3055         0\n  keep_primes.collector      2262      2262         0\n  Report                     2262         0         0\n  edge high-water marks:\n    keep_primes.emitter -> keep_primes.0: 64\n    keep_primes.emitter -> keep_primes.1: 64\n    keep_primes.emitter -> keep_primes.2: 64\n    keep_primes.emitter -> keep_primes.3: 64\n    keep_primes.emitter -> keep_primes.4: 64\n    keep_primes.emitter -> keep_primes.5: 64\n    keep_primes.emitter -> keep_primes.6: 64\n    keep_primes.emitter -> keep_primes.7: 64\n    keep_primes.0 -> keep_primes.collector: 65\n    keep_primes.1 -> keep_primes.collector: 89\n    keep_primes.2 -> keep_primes.collector: 64\n    keep_primes.3 -> keep_primes.collector: 89\n    keep_primes.4 -> keep_primes.collector: 64\n    keep_primes.5 -> keep_primes.collector: 90\n    keep_primes.6 -> keep_primes.collector: 64\n    keep_primes.7 -> keep_primes.collector: 84\n    numbers -> keep_primes.emitter: 1024\n    keep_primes.collector -> Report: 97\nstdout:\n477\n13487\n13499\n13513\n13523\n13537\n13553\n13567\n13577\n13591\n13597\n13613\n13619\n13627\n13633\n13649\n13669\n13679\n13681\n13687\n13691\n13693\n13697\n13709\n13711\n13721\n13723\n13729\n13751\n13757\n13759\n13763\n13781\n13789\n13799\n13807\n13829\n13831\n13841\n13859\n13873\n13877\n13879\n13883\n13901\n13903\n13907\n13913\n13921\n13931\n13933\n13963\n13967\n13997\n13999\n14009\n14011\n14029\n14033\n14051\n14057\n14071\n14081\n14083\n14087\n14107\n14143\n14149\n14153\n14159\n14173\n"
+    }
+   ],
+   "text": "The flow generates 2\u202620000, tests each number by trial division on an 8\u2011worker farm with `ordered=True` so results come back in input order, drops composites with `tq.SKIP`, and a small stateful sink prints each prime and then the total. Run it with `python flow.py`; on the full range it prints 2262 primes ending with `2262 primes`, and `build(source=[...])` lets you feed any list of candidates for testing.",
+   "calls": [],
+   "usage": {
+    "input_tokens": 7315,
+    "output_tokens": 215,
+    "cache_read_input_tokens": 4849
+   },
+   "model": "claude-opus-5",
+   "at": 1788621127.9140484
+  }
+ ],
+ "system_chars": 10334,
+ "tools": [
+  "write_flow",
+  "check_flow",
+  "run_flow",
+  "read_docs"
+ ]
+}

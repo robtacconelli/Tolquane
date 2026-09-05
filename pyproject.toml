@@ -27,7 +27,11 @@ classifiers = [
 ]
 dependencies = []
 
+[project.scripts]
+tolquane = "tolquane.cli:main"
+
 [project.optional-dependencies]
+ai = ["anthropic>=1.0", "openai>=2.0"]
 msgpack = ["msgpack>=1.0"]
 numpy = ["numpy>=1.26"]
 cloudpickle = ["cloudpickle>=3.0"]
@@ -36,6 +40,8 @@ dev = [
   "pytest-timeout>=2.3",
   "ruff>=0.6",
   "mypy>=1.11",
+  "anthropic>=1.0",
+  "openai>=2.0",
 ]
 
 [project.urls]
@@ -57,7 +63,8 @@ include = ["src/tolquane", "tests", "README.md", "LICENSE", "pyproject.toml"]
 line-length = 100
 target-version = "py311"
 src = ["src", "tests"]
-extend-exclude = ["*.md"]
+# examples/generated holds unedited model output; it is tested, not linted.
+extend-exclude = ["*.md", "examples/generated"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "UP", "B", "SIM", "RUF", "PT"]

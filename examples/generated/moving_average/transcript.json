@@ -1,0 +1,122 @@
+{
+ "provider": "anthropic",
+ "turns": [
+  {
+   "user": "Build this flow:\n\ngenerate 100 random temperatures between 10 and 30 with a fixed seed, compute the moving average over a window of 5 readings, and print each reading with its moving average once the window is full",
+   "results": [],
+   "text": "",
+   "calls": [
+    {
+     "id": "toolu_01N2u9Vd32ZfwemhcMhEaevu",
+     "name": "write_flow",
+     "args": {
+      "code": "\"\"\"Generate 100 seeded random temperatures and print each reading with its 5-reading moving average.\"\"\"\n\nimport random\nfrom collections import deque\n\nimport tolquane as tq\n\nSEED = 42\nCOUNT = 100\nWINDOW = 5\n\n\n@tq.source\ndef readings():\n    # Fixed seed so the run is reproducible; its own generator, no state elsewhere.\n    rng = random.Random(SEED)\n    for _ in range(COUNT):\n        yield round(rng.uniform(10.0, 30.0), 2)\n\n\nclass MovingAverage:\n    # Stateful and order-sensitive, so it is a class on a single node (no farm):\n    # it holds the last WINDOW readings and emits nothing until the window is full.\n    def __init__(self) -> None:\n        self.window: deque[float] = deque(maxlen=WINDOW)\n\n    def __call__(self, value: float) -> object:\n        self.window.append(value)\n        if len(self.window) < WINDOW:\n            return tq.SKIP  # window not full yet\n        return (value, sum(self.window) / WINDOW)\n\n\n@tq.sink\ndef show(pair: tuple[float, float]) -> None:\n    value, avg = pair\n    print(f\"{value:6.2f}  avg{WINDOW}={avg:6.2f}\")\n\n\ndef build(source=None):\n    start = tq.from_iterable(source) if source is not None else readings\n    return start >> MovingAverage >> show\n\n\ndef main() -> None:\n    # Threads: one stage is inherently sequential, so a single worker each.\n    print(tq.run(build()))\n\n\nif __name__ == \"__main__\":\n    main()\n"
+     }
+    },
+    {
+     "id": "toolu_01HaUNhB73Lk9ghZebW72M9E",
+     "name": "check_flow",
+     "args": {}
+    }
+   ],
+   "usage": {
+    "input_tokens": 138,
+    "output_tokens": 673,
+    "cache_read_input_tokens": 4849
+   },
+   "model": "claude-opus-5",
+   "at": 1788621301.2469358
+  },
+  {
+   "user": null,
+   "results": [
+    {
+     "call_id": "toolu_01N2u9Vd32ZfwemhcMhEaevu",
+     "is_error": false,
+     "content": "wrote flow.py (51 lines)"
+    },
+    {
+     "call_id": "toolu_01HaUNhB73Lk9ghZebW72M9E",
+     "is_error": false,
+     "content": "OK: 3 nodes.\nreadings: source; 0 input(s), 1 output(s)\nMovingAverage: map, one instance per node; 1 input(s), 1 output(s)\nshow: sink; 1 input(s), 0 output(s)\nedges:\n  readings -> MovingAverage  [1-1]\n  MovingAverage -> show  [1-1]"
+    }
+   ],
+   "text": "",
+   "calls": [
+    {
+     "id": "toolu_01HPqbcUzTGxHvZ1ZU5wQUni",
+     "name": "run_flow",
+     "args": {
+      "sample": [
+       10.0,
+       20.0,
+       30.0,
+       20.0,
+       10.0,
+       15.0,
+       25.0
+      ]
+     }
+    }
+   ],
+   "usage": {
+    "input_tokens": 1001,
+    "output_tokens": 83,
+    "cache_read_input_tokens": 4849
+   },
+   "model": "claude-opus-5",
+   "at": 1788621304.0483623
+  },
+  {
+   "user": null,
+   "results": [
+    {
+     "call_id": "toolu_01HPqbcUzTGxHvZ1ZU5wQUni",
+     "is_error": false,
+     "content": "OK.\nrun on sync: 0.001s\n  node                 in       out   dropped\n  from_iterable         0         7         0\n  MovingAverage         7         3         0\n  show                  3         0         0\n  edge high-water marks:\n    from_iterable -> MovingAverage: 8\n    MovingAverage -> show: 4\nstdout:\n 10.00  avg5= 18.00\n 15.00  avg5= 19.00\n 25.00  avg5= 20.00\n"
+    }
+   ],
+   "text": "",
+   "calls": [
+    {
+     "id": "toolu_011srttSQ81fNfxtTBGKYh34",
+     "name": "run_flow",
+     "args": {}
+    }
+   ],
+   "usage": {
+    "input_tokens": 1242,
+    "output_tokens": 27,
+    "cache_read_input_tokens": 4849
+   },
+   "model": "claude-opus-5",
+   "at": 1788621306.0731733
+  },
+  {
+   "user": null,
+   "results": [
+    {
+     "call_id": "toolu_011srttSQ81fNfxtTBGKYh34",
+     "is_error": false,
+     "content": "OK.\nrun on sync: 0.001s\n  node                 in       out   dropped\n  readings              0       100         0\n  MovingAverage       100        96         0\n  show                 96         0         0\n  edge high-water marks:\n    readings -> MovingAverage: 101\n    MovingAverage -> show: 97\nstdout:\n 24.73  avg5= 17.60\n 23.53  avg5= 17.74\n 27.84  avg5= 21.21\n 11.74  avg5= 20.46\n 18.44  avg5= 21.26\n 10.60  avg5= 18.43\n 14.37  avg5= 16.60\n 20.11  avg5= 15.05\n 10.53  avg5= 14.81\n 13.98  avg5= 13.92\n 23.00  avg5= 16.40\n 20.90  avg5= 17.70\n 14.41  avg5= 16.56\n 21.79  avg5= 18.82\n 26.19  avg5= 21.26\n 10.13  avg5= 18.68\n 26.12  avg5= 19.73\n 23.96  avg5= 21.64\n 16.81  avg5= 20.64\n 13.11  avg5= 18.03\n 29.14  avg5= 21.83\n 16.73  avg5= 19.95\n 11.85  avg5= 17.53\n 11.93  avg5= 16.55\n 26.95  avg5= 19.32\n 22.07  avg5= 17.91\n 26.14  avg5= 19.79\n 24.59  avg5= 22.34\n 20.72  avg5= 24.09\n 29.46  avg5= 24.60\n 17.57  avg5= 23.70\n 21.04  avg5= 22.68\n 26.59  avg5= 23.08\n 22.37  avg5= 23.41\n 27.23  avg5= 22.96\n 21.55  avg5= 23.76\n 24.09  avg5= 24.37\n 10.92  avg5= 21.23\n 14.56  avg5= 19.67\n 15.79  avg5= 17.38\n 11.60  avg5= 15.39\n 14.66  avg5= 13.51\n 12.02  avg5= 13.73\n 15.56  avg5= 13.93\n 22.71  avg5= 15.31\n 17.30  avg5= 16.45\n 17.40  avg5= 17.00\n 14.19  avg5= 17.43\n 15.34  avg5= 17.39\n 28.73  avg5= 18.59\n 22.96  avg5= 19.72\n 22.18  avg5= 20.68\n 13.42  avg5= 20.53\n 24.58  avg5= 22.37\n 13.27  avg5= 19.28\n 17.59  avg5= 18.21\n 29.79  avg5= 19.73\n 22.80  avg5= 21.61\n 21.14  avg5= 20.92\n 23.69  avg5= 23.00\n 26.86  avg5= 24.86\n 25.52  avg5= 24.00\n 14.58  avg5= 22.36\n 10.64  avg5= 20.26\n 16.31  avg5= 18.78\n 15.35  avg5= 16.48\n 14.22  avg5= 14.22\n 28.86  avg5= 17.08\n 27.53  avg5= 20.45\n 16.29  avg5= 20.45\n 23.11  avg5= 22.00\n 17.91  avg5= 22.74\n 28.29  avg5= 22.63\n 19.18  avg5= 20.96\n 15.30  avg5= 20.76\n 14.93  avg5= 19.12\n 21.23  avg5= 19.79\n 15.25  avg5= 17.18\n 21.69  avg5= 17.68\n 27.96  avg5= 20.21\n 17.99  avg5= 20.82\n 14.39  avg5= 19.46\n 29.95  avg5= 22.40\n 20.19  avg5= 22.10\n 11.82  avg5= "
+    }
+   ],
+   "text": "The flow is three nodes: a seeded source of 100 temperatures in [10, 30], a stateful `MovingAverage` node that keeps the last 5 readings in a deque and returns `tq.SKIP` until the window is full, and a sink that prints each reading beside its average. Run it with `python flow.py`; it prints 96 lines plus the run report.\n\nNote the averaging stage is deliberately a single stateful node rather than a farm \u2014 a moving average depends on order, so parallelising it would corrupt the result; test it with `build(source=[...])` and `tq.to_list()`.",
+   "calls": [],
+   "usage": {
+    "input_tokens": 2723,
+    "output_tokens": 191,
+    "cache_read_input_tokens": 4849
+   },
+   "model": "claude-opus-5",
+   "at": 1788621310.3450704
+  }
+ ],
+ "system_chars": 10334,
+ "tools": [
+  "write_flow",
+  "check_flow",
+  "run_flow",
+  "read_docs"
+ ]
+}

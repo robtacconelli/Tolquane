@@ -1,0 +1,157 @@
+{
+ "provider": "anthropic",
+ "turns": [
+  {
+   "user": "Build this flow:\n\nfor each of the numbers 2, 3, 5, 7, 11, compute the square root with Newton's method where each iteration is one pass through a feedback loop: a worker refines the estimate, and the result is sent back until the change is below 1e-9, then printed with the number of iterations",
+   "results": [],
+   "text": "",
+   "calls": [
+    {
+     "id": "toolu_01V2wNJfVrLGYKYdWrwtK2Gc",
+     "name": "read_docs",
+     "args": {
+      "name": "msom"
+     }
+    },
+    {
+     "id": "toolu_017GHG83iP49SNJrY5eZVKqN",
+     "name": "read_docs",
+     "args": {
+      "name": "api-card"
+     }
+    }
+   ],
+   "usage": {
+    "input_tokens": 169,
+    "output_tokens": 586,
+    "cache_read_input_tokens": 4849
+   },
+   "model": "claude-opus-5",
+   "at": 1788621341.8984163
+  },
+  {
+   "user": null,
+   "results": [
+    {
+     "call_id": "toolu_01V2wNJfVrLGYKYdWrwtK2Gc",
+     "is_error": false,
+     "content": "\"\"\"The thesis use case, ported faithfully from BBFlow's tests/MSOM.\n\nA self-organizing map is cut into a grid of slices, one per worker. Adjacent slices\nare linked so that a learning step near a border trains cells across it, diagonal\nneighbours reached by redirecting through a side neighbour, with acknowledgements\nrouted back the same way. An emitter sequences the protocol (search on every slice,\nlearn on the winner, wait for the acknowledgement) through a feedback loop from the\ncollector. `sequential_search_and_learn` is the single-map reference the parallel\nversion must match exactly.\n\"\"\"\n\nfrom __future__ import annotations\n\nimport copy\nimport math\nimport random\nfrom dataclasses import dataclass\n\nimport tolquane as tq\nfrom tolquane.graph import expand\n\nTOP, LEFT, BOTTOM, RIGHT = 0, 1, 2, 3\nOPPOSITE = {TOP: BOTTOM, BOTTOM: TOP, LEFT: RIGHT, RIGHT: LEFT}\nCIRC = 5  # neighbourhood radius (Chebyshev)\n\nSEARCH, LEARN, SEARCH_AND_LEARN, FINISHED, LEARN_FINISHED, LEARN_NEIGHBOURS, SEARCH_FINISHED = (\n    range(1, 8)\n)\nLISTEN_NEIGHBOURS, LISTEN_COMMAND = 0, 1\nSLAVE, LEARNING = 0, 1\n\nMap = list[list[list[float]]]\n\n\n@dataclass\nclass Packet:\n    kind: int\n    packet_id: int = -1\n    neuron: list[float] | None = None\n    train_i: int = 0\n    train_j: int = 0\n    curve: float = 0.0\n    result: tuple[int, int, float, int] | None = None  # best_i, best_j, distance, slice\n    redirect: int | None = None\n    reply_redirect: int | None = None\n    listen: int = LISTEN_COMMAND\n\n\n@dataclass\nclass Config:\n    size: int\n    depth: int\n    split: int\n    initial: Map\n    links_out: dict[int, dict[int, int]]  # slice -> direction -> output index\n    links_in: dict[int, dict[int, int]]  # slice -> input index -> direction it comes from\n\n    @property\n    def parts(self) -> int:\n        return self.split * self.split\n\n    @property\n    def side(self) -> int:\n        return self.size // self.split\n\n\n_CFG: Config | None = None\n\n\n# --------------------------------------------------------------"
+    },
+    {
+     "call_id": "toolu_017GHG83iP49SNJrY5eZVKqN",
+     "is_error": false,
+     "content": "# Tolquane API card\n\nThe whole public surface on one page. `import tolquane as tq`.\n\n## Nodes: a function is a node\n\n| Write | Meaning |\n|---|---|\n| `@tq.source` on `def f(): yield ...` | Produces items. No inputs. |\n| `@tq.node` on `def f(x): return y` | Map. The return value is sent. `return tq.SKIP` sends nothing. `None` is a normal value. |\n| `@tq.node` on `def f(x): yield ...` | Flat map. Each yielded value is sent. |\n| `@tq.node` on `def f(x, ctx): ctx.send(y)` | Explicit sends: `ctx.send(y)`, `ctx.send(y, to=i)`, `ctx.broadcast(y)`, `ctx.stop()`. Must not return a value. |\n| `@tq.sink` on `def f(x)` or `def f(x, ctx)` | Consumes items. No outputs. |\n| `@tq.raw` on `def f(ctx)` | Full control: `for src, item in ctx.inputs(): ...`, `ctx.recv(source=i)` reads one input and returns `None` when it ends; call `ctx.flush()` before blocking on anything outside Tolquane. Raw nodes can be farm workers, emitters or collectors, except in ordered and gather farms. |\n| a class with `__call__(self, x)` | Stateful node, one instance per worker. Optional `on_start(self, ctx)` and `on_end(self, ctx)`. |\n\n`ctx.index` is the worker number, `ctx.source` the input the current item came from,\n`ctx.name` the node name. Decorated functions stay callable: `f(3)` works in tests.\n\n## Blocks\n\n```python\na >> b >> c                       # pipeline; tq.pipeline(a, b, c) is the same\ntq.farm(work, workers=8)          # emitter -> 8 workers -> collector\ntq.farm(work, 8, emit=\"round_robin\" | \"on_demand\" | \"broadcast\" | \"scatter\", key=fn)\ntq.farm(work, 8, collect=\"first_come\" | \"round_robin\" | \"gather\")\ntq.farm(work, 8, ordered=True)    # output order == input order\ntq.farm(work, 8, emitter=my_router, collector=my_merge)   # custom ends\ntq.farm(work, 8, emitter=False)   # expose the workers' inputs (1xN wiring)\ntq.farm([f, g, h])                # one worker per callable\ntq.comb(a, b)                     # fuse two nodes on one thread\ntq.all2all(left_farm, right_farm) # every left worker to ever"
+    }
+   ],
+   "text": "",
+   "calls": [
+    {
+     "id": "toolu_01QzWxfMEe45BFyNn9c5zK1C",
+     "name": "write_flow",
+     "args": {
+      "code": "\"\"\"Compute square roots of 2, 3, 5, 7 and 11 by Newton's method, one iteration per pass\nthrough a feedback loop, printing each root and its iteration count.\"\"\"\n\nimport math\n\nimport tolquane as tq\n\nTOLERANCE = 1e-9\n\n# State travelling through the loop: (n, estimate, last change, iterations).\n\n\n@tq.source\ndef numbers():\n    # The numbers to take the square root of.\n    yield from (2, 3, 5, 7, 11)\n\n\n@tq.node\ndef seed(n: int) -> tuple:\n    # Turns a bare number into the loop's state, starting the estimate at n itself.\n    return (n, float(n), math.inf, 0)\n\n\n@tq.node\ndef refine(state: tuple) -> tuple:\n    # One Newton iteration; pure and stateless, so several workers can run it at once.\n    n, x, _, i = state\n    nxt = 0.5 * (x + n / x)\n    return (n, nxt, abs(nxt - x), i + 1)\n\n\n@tq.node\ndef route(state: tuple, ctx: tq.Context) -> None:\n    # The loop's last stage: converged results go out, the rest go round again.\n    if state[2] < TOLERANCE:\n        ctx.send(state)\n    else:\n        ctx.feedback(state)\n\n\n@tq.sink\ndef show(state: tuple) -> None:\n    n, x, _, i = state\n    print(f\"sqrt({n}) = {x:.12f} after {i} iterations\")\n\n\ndef build(source=None):\n    src = tq.from_iterable(source) if source is not None else numbers\n    # The farm refines five estimates in parallel; its collector decides who loops.\n    loop = tq.feedback(tq.farm(refine, workers=5, collector=route))\n    return src >> seed >> loop >> show\n\n\ndef main() -> None:\n    print(tq.run(build()))\n\n\nif __name__ == \"__main__\":\n    main()\n"
+     }
+    }
+   ],
+   "usage": {
+    "input_tokens": 8376,
+    "output_tokens": 1886,
+    "cache_read_input_tokens": 4849
+   },
+   "model": "claude-opus-5",
+   "at": 1788621366.359004
+  },
+  {
+   "user": null,
+   "results": [
+    {
+     "call_id": "toolu_01QzWxfMEe45BFyNn9c5zK1C",
+     "is_error": false,
+     "content": "wrote flow.py (60 lines)"
+    }
+   ],
+   "text": "",
+   "calls": [
+    {
+     "id": "toolu_012qXQiwQEKtTCMFYq7sdY8V",
+     "name": "check_flow",
+     "args": {}
+    }
+   ],
+   "usage": {
+    "input_tokens": 10280,
+    "output_tokens": 27,
+    "cache_read_input_tokens": 4849
+   },
+   "model": "claude-opus-5",
+   "at": 1788621367.9964473
+  },
+  {
+   "user": null,
+   "results": [
+    {
+     "call_id": "toolu_012qXQiwQEKtTCMFYq7sdY8V",
+     "is_error": false,
+     "content": "OK: 10 nodes.\nnumbers: source; 0 input(s), 1 output(s)\nseed: map; 1 input(s), 1 output(s)\nrefine.emitter: ctx, emit=round_robin; 2 input(s), 5 output(s)\nrefine.0: map; 1 input(s), 1 output(s)\nrefine.1: map; 1 input(s), 1 output(s)\nrefine.2: map; 1 input(s), 1 output(s)\nrefine.3: map; 1 input(s), 1 output(s)\nrefine.4: map; 1 input(s), 1 output(s)\nrefine.collector: ctx, collect=first_come; 5 input(s), 2 output(s)\nshow: sink; 1 input(s), 0 output(s)\nedges:\n  numbers -> seed  [1-1]\n  refine.emitter -> refine.0  [farm]\n  refine.emitter -> refine.1  [farm]\n  refine.emitter -> refine.2  [farm]\n  refine.emitter -> refine.3  [farm]\n  refine.emitter -> refine.4  [farm]\n  refine.0 -> refine.collector  [farm]\n  refine.1 -> refine.collector  [farm]\n  refine.2 -> refine.collector  [farm]\n  refine.3 -> refine.collector  [farm]\n  refine.4 -> refine.collector  [farm]\n  refine.collector -> refine.emitter  [feedback 1-1]\n  seed -> refine.emitter  [1-1]\n  refine.collector -> show  [1-1]\nloop loop: 7 node(s), feedback into refine.emitter"
+    }
+   ],
+   "text": "",
+   "calls": [
+    {
+     "id": "toolu_01DfQPN6RWLnTkRNDWQVJACb",
+     "name": "run_flow",
+     "args": {}
+    },
+    {
+     "id": "toolu_013FFU4fpMhNqhNA1heimWic",
+     "name": "run_flow",
+     "args": {
+      "sample": [
+       4,
+       9,
+       2
+      ]
+     }
+    }
+   ],
+   "usage": {
+    "input_tokens": 10850,
+    "output_tokens": 81,
+    "cache_read_input_tokens": 4849
+   },
+   "model": "claude-opus-5",
+   "at": 1788621370.1644962
+  },
+  {
+   "user": null,
+   "results": [
+    {
+     "call_id": "toolu_01DfQPN6RWLnTkRNDWQVJACb",
+     "is_error": false,
+     "content": "OK.\nrun on sync: 0.004s\n  node                    in       out   dropped\n  numbers                  0         5         0\n  seed                     5         5         0\n  refine.emitter          30        30         0\n  refine.0                 6         6         0\n  refine.1                 6         6         0\n  refine.2                 6         6         0\n  refine.3                 6         6         0\n  refine.4                 6         6         0\n  refine.collector        30        30         0\n  show                     5         0         0\n  edge high-water marks:\n    numbers -> seed: 6\n    refine.emitter -> refine.0: 1\n    refine.emitter -> refine.1: 1\n    refine.emitter -> refine.2: 1\n    refine.emitter -> refine.3: 1\n    refine.emitter -> refine.4: 1\n    refine.0 -> refine.collector: 1\n    refine.1 -> refine.collector: 1\n    refine.2 -> refine.collector: 1\n    refine.3 -> refine.collector: 1\n    refine.4 -> refine.collector: 1\n    refine.collector -> refine.emitter: 5\n    seed -> refine.emitter: 6\n    refine.collector -> show: 3\nstdout:\nsqrt(2) = 1.414213562373 after 5 iterations\nsqrt(3) = 1.732050807569 after 6 iterations\nsqrt(5) = 2.236067977500 after 6 iterations\nsqrt(7) = 2.645751311065 after 6 iterations\nsqrt(11) = 3.316624790355 after 7 iterations\n"
+    },
+    {
+     "call_id": "toolu_013FFU4fpMhNqhNA1heimWic",
+     "is_error": false,
+     "content": "OK.\nrun on sync: 0.003s\n  node                    in       out   dropped\n  from_iterable            0         3         0\n  seed                     3         3         0\n  refine.emitter          18        18         0\n  refine.0                 4         4         0\n  refine.1                 4         4         0\n  refine.2                 4         4         0\n  refine.3                 3         3         0\n  refine.4                 3         3         0\n  refine.collector        18        18         0\n  show                     3         0         0\n  edge high-water marks:\n    from_iterable -> seed: 4\n    refine.emitter -> refine.0: 1\n    refine.emitter -> refine.1: 1\n    refine.emitter -> refine.2: 1\n    refine.emitter -> refine.3: 1\n    refine.emitter -> refine.4: 1\n    refine.0 -> refine.collector: 1\n    refine.1 -> refine.collector: 1\n    refine.2 -> refine.collector: 1\n    refine.3 -> refine.collector: 1\n    refine.4 -> refine.collector: 1\n    refine.collector -> refine.emitter: 3\n    seed -> refine.emitter: 4\n    refine.collector -> show: 1\nstdout:\nsqrt(2) = 1.414213562373 after 5 iterations\nsqrt(4) = 2.000000000000 after 6 iterations\nsqrt(9) = 3.000000000000 after 7 iterations\n"
+    }
+   ],
+   "text": "`flow.py` seeds each number as `(n, estimate, change, iterations)`, then loops it through `tq.feedback` around a five-worker farm: each pass a worker does one Newton refinement, and the farm's collector either sends a converged root out to the printer or feeds it back for another pass. Run it with `python flow.py`; it prints `sqrt(2) = 1.414213562373 after 5 iterations` and so on (2 to 11 need 5\u20137 passes each), and results come out in completion order, not input order \u2014 add `ordered=True` only if you need fixed order, since the loop naturally interleaves.",
+   "calls": [],
+   "usage": {
+    "input_tokens": 11974,
+    "output_tokens": 199,
+    "cache_read_input_tokens": 4849
+   },
+   "model": "claude-opus-5",
+   "at": 1788621375.2005463
+  }
+ ],
+ "system_chars": 10334,
+ "tools": [
+  "write_flow",
+  "check_flow",
+  "run_flow",
+  "read_docs"
+ ]
+}

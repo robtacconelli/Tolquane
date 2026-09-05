@@ -1,0 +1,133 @@
+{
+ "provider": "anthropic",
+ "turns": [
+  {
+   "user": "Build this flow:\n\nread a CSV file sales.csv with columns region and amount, sum the amount per region using a farm where all rows of one region go to the same worker, and print one line per region sorted by region",
+   "results": [],
+   "text": "",
+   "calls": [
+    {
+     "id": "toolu_01MLniFMhkMRTB58jB8iMmbh",
+     "name": "write_flow",
+     "args": {
+      "code": "\"\"\"Sum sales.csv amounts per region on a keyed farm and print one line per region, sorted.\"\"\"\n\nimport csv\nimport pathlib\n\nimport tolquane as tq\n\nPATH = pathlib.Path(\"sales.csv\")\n\n\n@tq.source\ndef rows():\n    # I/O: reads the CSV once and yields one dict per data row.\n    with PATH.open(newline=\"\") as f:\n        yield from csv.DictReader(f)\n\n\n@tq.node\ndef parse(row: dict) -> object:\n    # Turns a raw row into (region, amount); drops rows without a usable amount.\n    region = (row.get(\"region\") or \"\").strip()\n    amount = (row.get(\"amount\") or \"\").strip()\n    if not region or not amount:\n        return tq.SKIP\n    return (region, float(amount))\n\n\nclass SumRegion:\n    # Stateful, so it is a class: key= sends every row of a region to the same\n    # worker, so each total is complete; totals go out at the end of the stream.\n    def __init__(self) -> None:\n        self.totals: dict[str, float] = {}\n\n    def __call__(self, pair: tuple[str, float]) -> object:\n        region, amount = pair\n        self.totals[region] = self.totals.get(region, 0.0) + amount\n        return tq.SKIP\n\n    def on_end(self, ctx: tq.Context) -> None:\n        for region, total in self.totals.items():\n            ctx.send((region, total))\n\n\nclass Report:\n    # Sorting needs every total in one place, so the sink buffers and prints on_end.\n    def __init__(self) -> None:\n        self.totals: list[tuple[str, float]] = []\n\n    def __call__(self, pair: tuple[str, float]) -> None:\n        self.totals.append(pair)\n\n    def on_end(self, ctx: tq.Context) -> None:\n        for region, total in sorted(self.totals):\n            print(f\"{region:<12} {total:>12.2f}\")\n\n\ndef build(source=None):\n    start = tq.from_iterable(source) if source is not None else rows\n    return start >> parse >> tq.farm(SumRegion, 4, key=lambda p: p[0]) >> tq.sink(Report)\n\n\ndef main() -> None:\n    tq.run(build())\n\n\nif __name__ == \"__main__\":\n    main()\n"
+     }
+    }
+   ],
+   "usage": {
+    "input_tokens": 136,
+    "output_tokens": 1281,
+    "cache_read_input_tokens": 4849
+   },
+   "model": "claude-opus-5",
+   "at": 1788621086.99729
+  },
+  {
+   "user": null,
+   "results": [
+    {
+     "call_id": "toolu_01MLniFMhkMRTB58jB8iMmbh",
+     "is_error": false,
+     "content": "wrote flow.py (67 lines)"
+    }
+   ],
+   "text": "",
+   "calls": [
+    {
+     "id": "toolu_0116Tw4xNgin66CeEbUwj2vF",
+     "name": "check_flow",
+     "args": {}
+    }
+   ],
+   "usage": {
+    "input_tokens": 1435,
+    "output_tokens": 27,
+    "cache_read_input_tokens": 4849
+   },
+   "model": "claude-opus-5",
+   "at": 1788621088.4429874
+  },
+  {
+   "user": null,
+   "results": [
+    {
+     "call_id": "toolu_0116Tw4xNgin66CeEbUwj2vF",
+     "is_error": false,
+     "content": "OK: 9 nodes.\nrows: source; 0 input(s), 1 output(s)\nparse: map; 1 input(s), 1 output(s)\nSumRegion.emitter: ctx, emit=key; 1 input(s), 4 output(s)\nSumRegion.0: map, one instance per node; 1 input(s), 1 output(s)\nSumRegion.1: map, one instance per node; 1 input(s), 1 output(s)\nSumRegion.2: map, one instance per node; 1 input(s), 1 output(s)\nSumRegion.3: map, one instance per node; 1 input(s), 1 output(s)\nSumRegion.collector: ctx, collect=first_come; 4 input(s), 1 output(s)\nReport: sink, one instance per node; 1 input(s), 0 output(s)\nedges:\n  rows -> parse  [1-1]\n  SumRegion.emitter -> SumRegion.0  [farm]\n  SumRegion.emitter -> SumRegion.1  [farm]\n  SumRegion.emitter -> SumRegion.2  [farm]\n  SumRegion.emitter -> SumRegion.3  [farm]\n  SumRegion.0 -> SumRegion.collector  [farm]\n  SumRegion.1 -> SumRegion.collector  [farm]\n  SumRegion.2 -> SumRegion.collector  [farm]\n  SumRegion.3 -> SumRegion.collector  [farm]\n  parse -> SumRegion.emitter  [1-1]\n  SumRegion.collector -> Report  [1-1]"
+    }
+   ],
+   "text": "",
+   "calls": [
+    {
+     "id": "toolu_01K2m8xLzFo489nDaqqUpMqH",
+     "name": "run_flow",
+     "args": {
+      "sample": [
+       {
+        "region": "north",
+        "amount": "10.50"
+       },
+       {
+        "region": "south",
+        "amount": "3"
+       },
+       {
+        "region": "north",
+        "amount": "2.25"
+       },
+       {
+        "region": "east",
+        "amount": "100"
+       },
+       {
+        "region": "south",
+        "amount": "7.75"
+       },
+       {
+        "region": "west",
+        "amount": ""
+       },
+       {
+        "region": "east",
+        "amount": "0.5"
+       }
+      ]
+     }
+    }
+   ],
+   "usage": {
+    "input_tokens": 1996,
+    "output_tokens": 168,
+    "cache_read_input_tokens": 4849
+   },
+   "model": "claude-opus-5",
+   "at": 1788621091.3126016
+  },
+  {
+   "user": null,
+   "results": [
+    {
+     "call_id": "toolu_01K2m8xLzFo489nDaqqUpMqH",
+     "is_error": false,
+     "content": "OK.\nrun on sync: 0.002s\n  node                       in       out   dropped\n  from_iterable               0         7         0\n  parse                       7         6         0\n  SumRegion.emitter           6         6         0\n  SumRegion.0                 2         1         0\n  SumRegion.1                 4         2         0\n  SumRegion.2                 0         0         0\n  SumRegion.3                 0         0         0\n  SumRegion.collector         3         3         0\n  Report                      3         0         0\n  edge high-water marks:\n    from_iterable -> parse: 8\n    SumRegion.emitter -> SumRegion.0: 3\n    SumRegion.emitter -> SumRegion.1: 5\n    SumRegion.emitter -> SumRegion.2: 1\n    SumRegion.emitter -> SumRegion.3: 1\n    SumRegion.0 -> SumRegion.collector: 2\n    SumRegion.1 -> SumRegion.collector: 3\n    SumRegion.2 -> SumRegion.collector: 1\n    SumRegion.3 -> SumRegion.collector: 1\n    parse -> SumRegion.emitter: 7\n    SumRegion.collector -> Report: 4\nstdout:\neast               100.50\nnorth               12.75\nsouth               10.75\n"
+    }
+   ],
+   "text": "`flow.py` reads `sales.csv` with `csv.DictReader`, parses each row into `(region, amount)` (rows with a blank region or amount are skipped), sums them on a 4-worker farm keyed by region so every row of a region lands on the same worker, and a buffering sink prints one `region  total` line sorted by region.\n\nRun it with `python flow.py` in the directory holding `sales.csv`; `build(source=[...])` accepts a list of row dicts for testing, as verified on a sample (east 100.50, north 12.75, south 10.75).\n\nNote the totals only exist once the stream ends (each worker flushes in `on_end`), and amounts are parsed as floats \u2014 a malformed number will raise a `NodeError` naming `parse`.",
+   "calls": [],
+   "usage": {
+    "input_tokens": 2594,
+    "output_tokens": 263,
+    "cache_read_input_tokens": 4849
+   },
+   "model": "claude-opus-5",
+   "at": 1788621096.5759187
+  }
+ ],
+ "system_chars": 10334,
+ "tools": [
+  "write_flow",
+  "check_flow",
+  "run_flow",
+  "read_docs"
+ ]
+}
