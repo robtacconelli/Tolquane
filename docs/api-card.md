@@ -63,6 +63,8 @@ N to 1: all into one inbox. N to N: pairwise. N to M: every pair.
 ```python
 report = tq.run(graph)                        # threads
 report = tq.run(graph, runtime="sync")        # deterministic, single-threaded
+tq.run(graph, runtime="processes")   # every farm worker in its own process, the rest here
+tq.farm(work, 8, runtime="processes")   # only this farm's workers in processes
 tq.run(graph, capacity=64)                    # bound every edge (default 1024; None = unbounded)
 tq.run(graph, batch=1)                        # hand over every item alone (default 32, flushed within 1 ms)
 print(report)                                 # items in/out per node, queue high-water marks
@@ -74,7 +76,13 @@ with tq.session(tq.farm(work, 4)) as s:       # keep a graph running
 
 Errors: `tq.GraphError` (bad wiring, raised before anything runs), `tq.NodeError`
 (user code raised; `.node`, `.index`, `__cause__`), `tq.DeadlockError` (every node
-waiting; message names the cycle). Several failures come as an `ExceptionGroup`.
+waiting; message names the cycle), `tq.WorkerDied` (a worker process crashed).
+Several failures come as an `ExceptionGroup`.
+
+Processes: workers must be importable (module-level functions or classes, a
+`if __name__ == "__main__":` guard); lambdas and closures need `pip install cloudpickle`.
+Worker state lives in the child; send results out in `on_end`. Send rows, chunks or
+arrays rather than scalars, since each hand-off now crosses a pipe.
 
 ## Looking before running
 

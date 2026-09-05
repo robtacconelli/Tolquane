@@ -109,7 +109,7 @@ about this and make the runtime a one-word switch.
 |---|---|---|---|
 | `sync` | Function calls in the caller's thread, lock-step scheduler | Python `deque` | Tests, debugging, tiny graphs. Deterministic. |
 | `threads` (default) | One `threading.Thread` per node | `deque` + `Condition`, bounded | I/O-bound stages, numpy/C work, and **full parallelism on free-threaded CPython 3.14t**. Same model as BBFlow. |
-| `processes` | One process per node (or per farm worker) | `multiprocessing` pipe with pickle protocol 5; shared-memory ring for fixed-size records later | CPU-bound pure Python on a GIL build. |
+| `processes` | Farm workers in child processes (spawned), everything else as threads in the parent; `tq.farm(..., runtime="processes")` for one farm | pickle protocol 5 over a `multiprocessing` pipe, batched; a completion marker per item keeps credits and loop tokens exact; shared-memory ring for fixed-size records later | CPU-bound pure Python on a GIL build. |
 | `asyncio` | One task per node; nodes may be `async def` | `asyncio.Queue` | Network-heavy stages, thousands of light nodes. |
 | `tcp` (distributed) | Any of the above per host; cross-host edges become TCP channels | Length-prefixed frames, batched, reconnecting | Two or more machines. |
 | `interpreters` (experimental, later) | One subinterpreter per node (PEP 734, Python 3.14) | Interpreter channels | GIL-per-interpreter parallelism without process overhead. |
@@ -436,8 +436,17 @@ bind or a peer that stays dead past the reconnect budget surfaces as a graph err
 A15, A16)
 
 **R14. Processes always spawn.** Never fork with threads alive. Child death is detected
-through the process sentinel and raised as `WorkerDied`. SIGINT is handled in children.
-Connections are drained before join, avoiding the `multiprocessing.Queue` join hang.
+through the broken pipe and raised as `WorkerDied`; a child whose parent dies sees its
+pipe close and exits; SIGINT is ignored in children and handled by the parent. Pipes,
+not `multiprocessing.Queue`, so there is no feeder-thread join hang. As built: a remote
+worker keeps its inbox, outbox and edges in the parent as a proxy whose two threads
+forward across the pipe; in the child the worker runs unchanged between a pipe source
+and a pipe sink, so tags, batching, hooks and policies apply as on threads. The child
+sends a completion marker after each item, in order after its outputs, and only then
+does the parent release the producer's credit and the loop token, so `capacity` and
+`on_demand` mean the same across the pipe. The stall detector counts a proxy with
+items in flight as running, so a slow child is never reported as a deadlock; a stalled
+child is reported as the proxy waiting on it.
 
 **R15. Every rule has a test.** `tests/liveness/` runs under a pytest timeout and
 covers: put after close, multi-output close, gather with dropped items, slow consumer
@@ -506,7 +515,7 @@ provider first, OpenAI second, the four tools, the API card and `docs/style.md`,
 recorded-fixture test suite so the loop is tested without a key, and ten end-to-end
 examples with their generated flows checked into `examples/generated/`.
 
-**Phase 4: processes (0.4).**
+**Phase 4: processes (0.4, done 2026-09-05).**
 `processes` runtime with spawn, pickle protocol 5 channels, cloudpickle fallback for
 lambdas, per-farm process pools, numpy zero-copy on scatter/gather. Benchmarks:
 farm on a GIL build, pure Python CPU work, compared with threads on 3.14t.

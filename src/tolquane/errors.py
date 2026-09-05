@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 
 class TolquaneError(Exception):
     """Base class for every error raised by Tolquane."""
@@ -28,6 +30,13 @@ class NodeError(TolquaneError):
         self.original = exc
         super().__init__(f"node {node!r} failed: {type(exc).__name__}: {exc}")
         self.__cause__ = exc
+
+    def __reduce__(self) -> tuple[Any, ...]:
+        return (NodeError, (self.node, self.index, self.original))
+
+
+class WorkerDied(TolquaneError):
+    """A worker process ended without finishing its work (crash, kill, out of memory)."""
 
 
 class Cancelled(BaseException):

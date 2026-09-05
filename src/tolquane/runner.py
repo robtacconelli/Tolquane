@@ -64,6 +64,16 @@ class Context:
         return src is not None and self._inst.inbox.edges_in[src].feedback
 
     @property
+    def input_waiting(self) -> bool:
+        """True when another item is already queued for this node (raw nodes batch on it)."""
+        strat = self._inst.strategy
+        if strat is not None:
+            buffered: int = getattr(strat, "_buffered", 0)
+            if strat._batch is not None or buffered:
+                return True
+        return len(self._inst.inbox.q) > 0
+
+    @property
     def feedback_inputs(self) -> tuple[int, ...]:
         """Input indexes that are feedback edges, for ``recv(source=...)`` in raw heads."""
         return tuple(i for i, e in enumerate(self._inst.inbox.edges_in) if e.feedback)
@@ -120,6 +130,7 @@ class Context:
         r = strat.next(source)
         if r is not None:
             self.source = r[0]
+            self._inst.ctx_source = r[0]
             self._inst.stats.items_in += 1
             if self._inst.loop is not None:
                 self._token_pending = True
@@ -228,6 +239,7 @@ def _run_items(inst: NodeInstance, spec: NodeSpec, fn: Any, ctx: Context) -> Non
             if taken is not None:
                 src, items = taken
                 ctx.source = src
+                inst.ctx_source = src
                 stats.items_in += len(items)
                 if plain_map:
                     send = ctx.send
@@ -253,6 +265,7 @@ def _run_items(inst: NodeInstance, spec: NodeSpec, fn: Any, ctx: Context) -> Non
             break
         src, item = r
         ctx.source = src
+        inst.ctx_source = src
         stats.items_in += 1
         if tagging and isinstance(item, Tagged):
             outbox.begin_item(item)
@@ -288,6 +301,7 @@ def _run_comb(inst: NodeInstance, rc: RunContext, ctx: Context) -> None:
         src, item = r
         for c in contexts:
             c.source = src
+        inst.ctx_source = src
         inst.stats.items_in += 1
         _process(first_spec, first_fn, item, first_ctx)
         if loop is not None:

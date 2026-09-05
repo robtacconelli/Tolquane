@@ -68,3 +68,22 @@ scalars.
 
 Farm scaling (800 items of 20,000 loop iterations) on 3.14t with the default batch:
 speedup 1.34, 2.86 and 3.88 with 2, 4 and 8 workers.
+
+## Phase 4, processes (2026-09-05)
+
+`runtime="processes"` puts every farm worker in its own spawned child; the rest of the
+graph stays in the parent. Farm of CPU-bound workers, 3,000 items of 20,000 loop
+iterations each (about 2.4 s sequential):
+
+| Runtime | 1 worker | 2 | 4 | 8 |
+|---|---|---|---|---|
+| 3.13 threads (GIL) | 0.97 | 0.98 | 0.91 | 0.92 |
+| 3.13 processes | 0.97 | 1.87 | 3.51 | 5.47 |
+| 3.14t threads | 0.98 | 1.83 | 3.51 | 5.56 |
+
+Speedup over the sequential loop. Processes on the GIL build now match the
+free-threaded interpreter's threads. Efficiency at 8 workers is 0.68 on both; the
+missing part is process startup (about 0.1 s per run, all children at once), pickling
+each item across the pipe, and the emitter and collector sharing one core with the
+parent's threads. On a 0.5 s workload the same farm reaches only 3.3x, so keep
+processes for work that runs longer than a second or send bigger items.

@@ -47,6 +47,7 @@ class NodeSpec:
     tagged: bool = False
     key: Callable[[Any], Any] | None = None
     window: str | None = None
+    remote: bool = False
 
     @property
     def label(self) -> str:
@@ -460,7 +461,10 @@ class Farm(Block):
         window: int | None = None,
         name: str | None = None,
         capacity: int | None = DEFAULT_CAPACITY,
+        runtime: str | None = None,
     ) -> None:
+        if runtime not in (None, "threads", "processes"):
+            raise GraphError(f"farm runtime must be 'threads' or 'processes', not {runtime!r}")
         raw_workers: list[Any]
         if isinstance(worker, list | tuple):
             if not worker:
@@ -520,6 +524,7 @@ class Farm(Block):
         self.name = name or (parts[0].name if len(names) == 1 else "farm")
         self.capacity = capacity
         self.tagged = tagged
+        self.runtime = runtime
 
     def __repr__(self) -> str:
         return (
@@ -540,6 +545,7 @@ class Farm(Block):
             "window": self.window,
             "name": self.name,
             "capacity": self.capacity,
+            "runtime": self.runtime,
         }
         options.update(changes)
         return Farm(options.pop("worker"), **options)
@@ -556,7 +562,14 @@ class Farm(Block):
             wname = f"{base}.{i}"
             worker_names.append(wname)
             g.nodes.append(
-                self.parts[i].spec(wname, index=i, group=base, role="worker", tagged=self.tagged)
+                self.parts[i].spec(
+                    wname,
+                    index=i,
+                    group=base,
+                    role="worker",
+                    tagged=self.tagged,
+                    remote=self.runtime == "processes",
+                )
             )
         in_cap = self.prefetch if self.emit == "on_demand" else self.capacity
         in_batch = 1 if self.emit == "on_demand" else DEFAULT_BATCH

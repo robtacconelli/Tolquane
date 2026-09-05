@@ -35,8 +35,8 @@ class Session:
         batch: int = 32,
         deadlock_timeout: float | None = 0.3,
     ) -> None:
-        if runtime != "threads":
-            raise GraphError("session() runs on the threads runtime only")
+        if runtime not in ("threads", "processes"):
+            raise GraphError("session() runs on the threads or processes runtime, not sync")
         inner = block if isinstance(block, Graph) else expand(block)
         if not inner.inlets:
             raise GraphError("session() needs a block with inputs; it starts with a source")

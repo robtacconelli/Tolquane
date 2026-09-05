@@ -7,12 +7,16 @@ import threading
 import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING, Any
 
 from .channel import Edge, Inbox, Loop, Outbox, Window
-from .errors import Cancelled, DeadlockError, NodeError, TolquaneError
+from .errors import Cancelled, DeadlockError, GraphError, NodeError, TolquaneError, WorkerDied
 from .graph import DEFAULT_BATCH, DEFAULT_CAPACITY, Graph, NodeSpec
 from .policies import Strategy, make_strategy
 from .runner import run_node
+
+if TYPE_CHECKING:
+    from .processes import RemoteWorker
 
 TICK = 0.05
 
@@ -46,6 +50,8 @@ class NodeInstance:
         self.outbox = Outbox(self, rc)
         self.strategy: Strategy | None = None
         self.loop: Loop | None = None
+        self.remote: RemoteWorker | None = None
+        self.ctx_source: int = 0
         self.parked_on: threading.Condition | None = self.inbox.not_empty
         self.predicate: Callable[[], bool] | None = None
         self.thread: threading.Thread | None = None
@@ -57,6 +63,13 @@ class NodeInstance:
     @property
     def live(self) -> bool:
         return self.state not in (State.DONE, State.FAILED)
+
+    @property
+    def idle(self) -> bool:
+        """Waiting with nothing in hand: a remote worker with items in flight is busy."""
+        if self.state is not State.WAITING:
+            return False
+        return self.remote is None or self.remote.in_flight <= 0
 
 
 class RunContext:
@@ -283,9 +296,13 @@ def execute(
     capacity: int | None = 1024,
     batch: int = 1,
     deadlock_timeout: float | None = 0.3,
+    remote_loops: dict[str, tuple[Loop, list[Any]]] | None = None,
 ) -> Report:
-    if runtime not in ("threads", "sync"):
-        raise TolquaneError(f"unknown runtime {runtime!r}; use 'threads' or 'sync'")
+    if runtime not in ("threads", "sync", "processes"):
+        raise TolquaneError(f"unknown runtime {runtime!r}; use 'threads', 'processes' or 'sync'")
+    all_workers_remote = runtime == "processes"
+    if all_workers_remote:
+        runtime = "threads"
     rc = RunContext(deterministic=runtime == "sync")
     insts = [NodeInstance(spec, i, rc) for i, spec in enumerate(graph.nodes)]
     by_name = {i.name: i for i in insts}
@@ -314,6 +331,10 @@ def execute(
     for inst in insts:
         spec = inst.spec
         inst.loop = loop_of.get(spec.name)
+        if remote_loops and spec.name in remote_loops:
+            loop, inst_ref = remote_loops[spec.name]
+            inst.loop = loop
+            inst_ref[0] = inst
         window = windows.get(spec.window) if spec.window else None
         if window is not None and spec.role == "emitter":
             inst.outbox.window = window
@@ -321,14 +342,22 @@ def execute(
             inst.strategy = make_strategy(
                 inst.inbox, spec.collect, window if spec.role == "collector" else None
             )
+    remotes = _place_remote_workers(insts, rc, runtime, all_workers_remote, capacity, batch)
     rc.scheduler = ThreadScheduler(rc) if runtime == "threads" else BatonScheduler(rc, insts)
 
     start = time.perf_counter()
     for inst in insts:
+        body: Callable[..., None] = run_node
+        if inst.remote is not None:
+            from .processes import run_proxy
+
+            body = run_proxy
         t = threading.Thread(
-            target=run_node, args=(inst, rc), name=f"tolquane:{inst.name}", daemon=True
+            target=body, args=(inst, rc), name=f"tolquane:{inst.name}", daemon=True
         )
         inst.thread = t
+    for remote in remotes:
+        remote.start()
     for inst in insts:
         assert inst.thread is not None
         inst.thread.start()
@@ -345,8 +374,10 @@ def execute(
                 break
             if runtime == "threads" and deadlock_timeout is not None:
                 live = [i for i in insts if i.live]
-                if live and all(i.state is State.WAITING for i in live):
-                    progress = sum(i.inbox.progress for i in insts)
+                if live and all(i.idle for i in live):
+                    progress = sum(i.inbox.progress for i in insts) + sum(
+                        r.messages for r in remotes
+                    )
                     stall_ticks = stall_ticks + 1 if progress == last_progress else 0
                     last_progress = progress
                     if stall_ticks * TICK >= deadlock_timeout:
@@ -358,15 +389,19 @@ def execute(
     except KeyboardInterrupt:
         rc.cancel()
         _join(insts)
+        for remote in remotes:
+            remote.shutdown()
         raise
     _join(insts)
+    for remote in remotes:
+        remote.shutdown()
     elapsed = time.perf_counter() - start
 
     if rc.deadlock_message is not None:
         raise DeadlockError(rc.deadlock_message)
     if rc.failures:
         for _, exc in rc.failures:
-            if isinstance(exc, KeyboardInterrupt | SystemExit):
+            if isinstance(exc, KeyboardInterrupt | SystemExit | WorkerDied):
                 raise exc
         errors = [NodeError(i.name, i.spec.index, exc) for i, exc in rc.failures]
         if len(errors) == 1:
@@ -378,6 +413,36 @@ def execute(
     for edge in edges:
         report.edges[(edge.src.name, edge.dst.name)] = edge.high_water
     return report
+
+
+def _place_remote_workers(
+    insts: list[NodeInstance],
+    rc: RunContext,
+    runtime: str,
+    all_workers: bool,
+    capacity: int | None,
+    batch: int,
+) -> list[RemoteWorker]:
+    """Decide which nodes run in child processes and prepare their proxies."""
+    if runtime == "sync":
+        return []  # the debugging runtime keeps everything in one place
+    chosen = [i for i in insts if i.spec.role == "worker" and (all_workers or i.spec.remote)]
+    if not chosen:
+        return []
+    from .processes import RemoteWorker
+
+    remotes: list[RemoteWorker] = []
+    for inst in chosen:
+        if inst.outbox.feedback_edges:
+            raise GraphError(
+                f"worker {inst.name!r} sends feedback and cannot run in a process yet; keep "
+                "that farm on threads or route feedback through the collector"
+            )
+        for edge in inst.outbox.edges:
+            edge.batch = 1  # the child already batches across the pipe
+        inst.remote = RemoteWorker(inst, rc, capacity, batch)
+        remotes.append(inst.remote)
+    return remotes
 
 
 def _join(insts: list[NodeInstance], timeout: float = 5.0) -> None:

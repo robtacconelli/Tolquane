@@ -569,6 +569,17 @@ class Outbox:
             self._acquire_credit(e, 1)
             e.inbox.push(e, EOS)
 
+    def close_one(self, index: int) -> None:
+        """Close output ``index`` only (a remote worker's input has ended on that side)."""
+        e = self.edges[index]
+        if e.closed:
+            return
+        if e.pending:
+            self._flush_edge(e)
+        e.closed = True
+        self._acquire_credit(e, 1)
+        e.inbox.push(e, EOS)
+
 
 def split_sequence(item: Any, n: int, node: str) -> list[Any]:
     """Split a sequence into at most n contiguous chunks, as evenly as possible."""

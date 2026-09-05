@@ -44,6 +44,7 @@ from .errors import (
     GraphError,
     NodeError,
     TolquaneError,
+    WorkerDied,
 )
 from .graph import AllToAll, Block, Comb, Farm, Feedback, Graph, Node, Pipeline
 from .run import check, run
@@ -51,7 +52,7 @@ from .runner import Context
 from .runtime import NodeStats, Report
 from .session import Session, SessionClosed
 
-__version__ = "0.2.0.dev0"
+__version__ = "0.4.0.dev0"
 
 __all__ = [
     "EOS",
@@ -75,6 +76,7 @@ __all__ = [
     "Session",
     "SessionClosed",
     "TolquaneError",
+    "WorkerDied",
     "__version__",
     "all2all",
     "check",

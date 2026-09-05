@@ -57,5 +57,5 @@ def test_sink_only_graph_has_no_get() -> None:
 def test_session_needs_inputs_and_threads() -> None:
     with pytest.raises(tq.GraphError, match="needs a block with inputs"):
         tq.session(tq.from_iterable([1]) >> tq.to_list())
-    with pytest.raises(tq.GraphError, match="threads runtime only"):
+    with pytest.raises(tq.GraphError, match="not sync"):
         tq.session(double, runtime="sync")

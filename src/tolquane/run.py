@@ -27,7 +27,8 @@ def run(
 ) -> Report:
     """Run a block to completion and return a ``Report``.
 
-    ``runtime`` is ``"threads"`` (default) or ``"sync"`` (deterministic, one node at a
+    ``runtime`` is ``"threads"`` (default), ``"processes"`` (every farm worker in its own
+    child process, the rest in this one) or ``"sync"`` (deterministic, one node at a
     time, exact deadlock detection). ``capacity`` bounds every edge that does not set
     its own; ``None`` means unbounded. ``batch`` lets a channel carry up to that many
     items per hand-off (a partial batch is sent after one millisecond or when the
