@@ -25,3 +25,19 @@ when it ships; add a line here whenever a review or a phase defers something.
 | Subinterpreter runtime | DESIGN.md runtime table, Phase 6 | One subinterpreter per node (PEP 734, 3.14) behind `runtime="interpreters"`, channels through interpreter queues. |
 | Farm of blocks with ordered or gather collection | 1.1 nested blocks | Tags would have to travel through every node of the copy; today ordered and gather farms keep plain node workers. |
 | Distributed runtime on Windows | `tests/test_net.py` runs on loopback only | Verify sockets and the launcher on Windows and macOS; the CI matrix covers threads and processes there. |
+
+## Tolquane Web
+
+Deferred while the first release was built (`web.md`, "Later, not in the first
+release", and the I3 hardening pass).
+
+| Item | Where it came up | The work |
+|---|---|---|
+| Multi-user workspaces | `web.md`, one server one workspace | Accounts, a workspace per user and per-flow permissions, in place of today's one shared token. Everything the server does today runs as the user who started it, so this is a change of model, not a setting. |
+| HTTPS | I3 security review | A `--tls-cert` and `--tls-key` pair, or a documented reverse proxy. Today a token on a shared machine travels in clear, and the guide says to use an SSH tunnel instead. |
+| Breakpoints that pause a node | `web.md` | Hold an item at a node until the user releases it, on the sync runtime first; needs a control channel into the run's child process, which the events stream does not have. |
+| Deploy editor | `web.md` | Assign cards to groups on the canvas, write `deploy.toml`, launch every group with `tolquane launch` and watch them all in one page. |
+| Gallery of templates | `web.md` | More than `empty` and `hello`: the examples, and the flows the AI builder wrote, offered as starting points from the New flow dialog. |
+| Sharing a flow as a link | `web.md` | A read-only page for one flow and one run, addressable and safe to send; needs the multi-user model, or a signed link that carries its own token. |
+| Per-user rate limiting on the AI panel | I3 hardening | The chat spends the owner's key and has no limit of its own beyond the provider's; a request counter per hour would make an accident cheaper. |
+| Events on disk for a long run | I3 hardening | Events are kept in memory and bounded (`MAX_EVENTS`), so a very long run loses its middle. Writing them to a file under `.tolquane-web/` would let the drawer scroll the whole run back. |

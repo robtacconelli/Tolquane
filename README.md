@@ -16,7 +16,8 @@ to be simple to use and impossible to hang.
 > rule, batching, sessions, deadlock detection, an optimizer that cuts threads; threads,
 > processes, coroutine pools, a distributed runtime over TCP with a one-command launcher,
 > and a deterministic sync runtime; a run report that names the bottleneck; an AI builder
-> that writes, checks and runs flows from a sentence. See [DESIGN.md](DESIGN.md) for the
+> that writes, checks and runs flows from a sentence; and Tolquane Web, a local GUI with
+> the blocks on a canvas, live runs and schedules. See [DESIGN.md](DESIGN.md) for the
 > design and the liveness rules, [docs/api-card.md](docs/api-card.md) for the whole API
 > on one page, [examples/](examples/) for flows in the house style, and
 > [CHANGELOG.md](CHANGELOG.md).
@@ -90,6 +91,20 @@ The same loop is a function: `tolquane.ai.build(description, workdir=".")`.
 Generated code runs on your machine, in a subprocess, with a timeout. Keys are read
 from the environment and never stored. `tolquane check`, `run`, `explain` and `draw`
 work on any file that defines `build(source=None)`.
+
+## Tolquane Web
+
+```
+pip install "tolquane[web]"
+tolquane web
+```
+
+A local page for the flows in one directory: the blocks on a canvas, the Python beside
+it and editable both ways, runs with live per-node counts and tapped items, a run
+history, cron schedules and the AI builder in a side panel. Flows run in child
+processes, so a hung or crashing flow cannot take the server down, and the file stays a
+plain `flow.py` that runs with `python flow.py` anywhere Tolquane is installed. The tour,
+with screenshots, is [docs/web-user.md](docs/web-user.md).
 
 ## Principles
 

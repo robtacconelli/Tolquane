@@ -40,7 +40,18 @@ Return `tq.SKIP` to drop an item; `None` is an ordinary value; a generator yield
   run and name the node, and a watchdog reports deadlocks by name.
 - **An AI builder**: `tolquane build "..."` writes, checks and runs a flow from a
   sentence with your own Claude or GPT key.
+- **A GUI**: `tolquane web` opens a canvas of the blocks with the Python beside it,
+  live runs, a history and schedules.
 
 Install with `pip install tolquane`. Pure Python, 3.11 or newer, no required
 dependencies. Then read the [tutorial](tutorial.md), keep the [API card](api-card.md)
 open, and pick a [runtime](runtimes.md).
+
+## Tolquane Web
+
+`pip install "tolquane[web]"` and `tolquane web` open a local page for the flows in one
+directory: the blocks on a canvas, the Python one click away and editable both ways,
+runs with per-node counts and tapped items as they happen, a run history, cron schedules
+and the AI builder in a side panel. The file is still a plain `flow.py`, so anything
+made there runs with `python flow.py` wherever Tolquane is installed. The
+[user guide](web-user.md) is the tour.

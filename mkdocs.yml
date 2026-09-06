@@ -30,6 +30,7 @@ nav:
   - Design: design.md
   - Backlog: backlog.md
   - Tolquane Web:
+      - User guide: web-user.md
       - The plan: web.md
       - Interfaces: web-interfaces.md
   - Decisions:

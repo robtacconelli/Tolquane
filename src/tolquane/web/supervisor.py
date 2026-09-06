@@ -12,6 +12,11 @@ when the server exits, whichever way it exits.
 The one-shot commands (parse, graph, check, explain, draw, optimize) go the same way,
 through :func:`run_command`, with a timeout: they import the flow, so they cannot be
 allowed to import it here.
+
+No child inherits a secret. A flow is code the server did not write, and the environment
+it starts in is the server's own, so :func:`child_env` takes the API keys and the access
+token out of it before any child sees them; the AI builder is the one thing that needs a
+key, and it is handed one explicitly.
 """
 
 from __future__ import annotations
@@ -21,6 +26,8 @@ import atexit
 import contextlib
 import json
 import logging
+import os
+import shutil
 import subprocess
 import sys
 import threading
@@ -38,11 +45,35 @@ log = logging.getLogger(__name__)
 WORK_DIR = ".tolquane-web"
 """Where the server keeps what a run needs: samples, traces, the builder's scratch."""
 
+SWEPT_DIRS = ("traces", "samples", "tmp", "ai")
+"""What a restart clears out of ``.tolquane-web`` once it is older than the retention."""
+
 RETENTION = 600.0
 """Seconds a finished run's events stay in memory for a client that arrives late."""
 
+MAX_EVENTS = 5000
+"""Events kept per run for a late client. A flow that prints a million lines must cost
+the server a bounded amount of memory, so the oldest are dropped (the ``start`` event
+never is: it carries the graph) and counted, and the socket says how many once."""
+
 KILL_AFTER_SHUTDOWN = 3.0
 """How long a child gets between the server's SIGTERM and its SIGKILL at exit."""
+
+SECRET_ENV = ("ANTHROPIC_API_KEY", "OPENAI_API_KEY", "TOLQUANE_WEB_TOKEN")
+"""Environment variables no child of this server is allowed to inherit."""
+
+
+def child_env(token: str | None = None) -> dict[str, str]:
+    """The environment a child gets: this process's, without the secrets in it.
+
+    A flow the server runs is a stranger's code with the server's own privileges. It has
+    no business reading the key the AI panel uses or the token that guards the API, and
+    a value that happens to be the token goes too, whatever it is called.
+    """
+    env = {key: value for key, value in os.environ.items() if key not in SECRET_ENV}
+    if token:
+        env = {key: value for key, value in env.items() if value != token}
+    return env
 
 
 class SupervisorError(Exception):
@@ -84,8 +115,14 @@ class ChildResult:
         return f"the command failed with exit code {self.code}"
 
 
-def run_command(argv: list[str], cwd: Path, timeout: float) -> ChildResult:
-    """Run one command to completion. Raises :class:`ChildTimeout` past ``timeout``."""
+def run_command(
+    argv: list[str], cwd: Path, timeout: float, env: dict[str, str] | None = None
+) -> ChildResult:
+    """Run one command to completion. Raises :class:`ChildTimeout` past ``timeout``.
+
+    The command imports a flow, so it runs with :func:`child_env` unless the caller
+    passes an environment of its own.
+    """
     try:
         proc = subprocess.run(
             argv,
@@ -95,6 +132,7 @@ def run_command(argv: list[str], cwd: Path, timeout: float) -> ChildResult:
             encoding="utf-8",
             errors="replace",
             timeout=timeout,
+            env=child_env() if env is None else env,
         )
     except subprocess.TimeoutExpired as exc:
         raise ChildTimeout(
@@ -194,6 +232,7 @@ class LiveRun:
     events: list[dict[str, Any]] = field(default_factory=list)
     log_parts: list[str] = field(default_factory=list)
     log_size: int = 0
+    dropped: int = 0
     report: dict[str, Any] | None = None
     status: str | None = None
     error: str | None = None
@@ -201,12 +240,14 @@ class LiveRun:
     sample_file: Path | None = None
     cancelled: bool = False
     finished: bool = False
+    finishing: bool = False
     ended_at: float | None = None
     lock: threading.Lock = field(default_factory=threading.Lock)
     watchers: list[_Watcher] = field(default_factory=list)
     readers: list[threading.Thread] = field(default_factory=list)
     reaper: threading.Thread | None = None
     killer: threading.Timer | None = None
+    abandoner: threading.Timer | None = None
 
     @property
     def alive(self) -> bool:
@@ -222,10 +263,24 @@ class LiveRun:
         """The events so far and, while the run is going, where the next ones arrive.
 
         Both under one lock: an event that lands between the copy and the subscription
-        would otherwise be the one event a late client never sees.
+        would otherwise be the one event a late client never sees. A run too loud to keep
+        whole says so once, in the place where the missing events were.
         """
         with self.lock:
             backlog = list(self.events)
+            if self.dropped:
+                after = 1 if backlog and backlog[0].get("event") == "start" else 0
+                backlog.insert(
+                    after,
+                    {
+                        "event": "dropped",
+                        "count": self.dropped,
+                        "message": (
+                            f"{self.dropped} earlier events are not kept: this run has "
+                            f"sent more than {MAX_EVENTS}. The log and the report are whole."
+                        ),
+                    },
+                )
             if self.finished:
                 return backlog, None
             watcher = _Watcher(loop, asyncio.Queue())
@@ -310,6 +365,7 @@ class Supervisor:
                 encoding="utf-8",
                 errors="replace",
                 bufsize=1,
+                env=child_env(self.settings.app.token),
             )
         except OSError as exc:  # pragma: no cover - a broken interpreter path
             self.store.finish_run(run.id, "failed", None, "", None, str(exc))
@@ -420,6 +476,7 @@ class Supervisor:
         watchers: list[_Watcher]
         with live.lock:
             live.events.append(event)
+            self._bound_events(live)
             if kind in ("stdout", "stderr"):
                 self._append_log(live, str(event.get("text", "")))
             elif kind == "error":
@@ -439,6 +496,23 @@ class Supervisor:
             watcher.push(event)
 
     @staticmethod
+    def _bound_events(live: LiveRun) -> None:
+        """Keep at most :data:`MAX_EVENTS` of a run, and count what went.
+
+        Dropped in blocks, so a flow printing a million lines costs one list slice per
+        thousand events rather than one per event. The ``start`` event stays: it carries
+        the graph the canvas draws, and a late client has no other way to get it. Called
+        under ``live.lock``.
+        """
+        if len(live.events) <= MAX_EVENTS:
+            return
+        first = 1 if live.events[0].get("event") == "start" else 0
+        drop = min(len(live.events) - MAX_EVENTS + MAX_EVENTS // 4, len(live.events) - first)
+        if drop > 0:
+            del live.events[first : first + drop]
+            live.dropped += drop
+
+    @staticmethod
     def _append_log(live: LiveRun, text: str) -> None:
         """Keep the tail: the end of a failure is what a person needs to read."""
         if not text:
@@ -456,20 +530,36 @@ class Supervisor:
         # child wrote would be recorded after the run was declared finished.
         for reader in live.readers:
             reader.join(timeout=5.0)
-        if live.killer is not None:
-            live.killer.cancel()
-        status = live.status or "done"
+        for timer in (live.killer, live.abandoner):
+            if timer is not None:
+                timer.cancel()
+        status = live.status or (
+            "cancelled" if live.cancelled else ("done" if code == 0 else "failed")
+        )
+        error = live.error
+        if error is None and status == "failed":
+            error = f"the run exited with code {code}"
+        self._finish(live, status, error)
+
+    def _finish(self, live: LiveRun, status: str, error: str | None) -> None:
+        """Write a run's end, once, whoever gets here first.
+
+        Normally that is the reaper, when the child is gone. It can also be
+        :meth:`_abandon`, when a child survived ``SIGKILL``, or :meth:`shutdown`, when
+        the server is going away: a run has to reach an end state in the store either
+        way, or the history keeps a row that says "running" for ever.
+        """
+        with live.lock:
+            if live.finishing:
+                return
+            live.finishing = True
         if live.status is None:
-            status = "cancelled" if live.cancelled else ("done" if code == 0 else "failed")
             live.status = status
             # A child that died without saying so still owes the client a last event.
             self._record(
                 live,
                 {"event": "done", "status": status, "elapsed": time.monotonic() - live.started},
             )
-        error = live.error
-        if error is None and status == "failed":
-            error = f"the run exited with code {code}"
         trace = live.trace_path if live.trace_path and Path(live.trace_path).exists() else None
         try:
             stored = self.store.finish_run(
@@ -508,12 +598,31 @@ class Supervisor:
         live.killer.start()
         return True
 
-    @staticmethod
-    def _kill(live: LiveRun) -> None:
+    def _kill(self, live: LiveRun) -> None:
         if live.proc.poll() is None:
             log.warning("run %s ignored SIGTERM; killing it", live.id)
             with contextlib.suppress(OSError, ValueError):
                 live.proc.kill()
+            # SIGKILL is not always the end: a process stuck in the kernel outlives it.
+            # Give it the same grace again, then call the run failed and let the slot go.
+            live.abandoner = threading.Timer(
+                max(1.0, self.settings.cancel_grace), self._abandon, args=(live,)
+            )
+            live.abandoner.daemon = True
+            live.abandoner.start()
+
+    def _abandon(self, live: LiveRun) -> None:
+        """A child that survived ``SIGKILL``: report the run, stop counting it as live."""
+        if live.finished or live.proc.poll() is not None:
+            return
+        log.error("run %s is still there after SIGKILL; recording it as failed", live.id)
+        self._finish(
+            live,
+            "failed",
+            f"the run ignored SIGTERM and SIGKILL and process {live.proc.pid} is still "
+            "there; it may be stuck in the kernel. Look for it with ps, and kill its "
+            "process group if it is not doing anything.",
+        )
 
     def _purge(self) -> None:
         now = time.monotonic()
@@ -521,6 +630,31 @@ class Supervisor:
             for run_id, live in list(self.runs.items()):
                 if live.ended_at is not None and now - live.ended_at > RETENTION:
                     del self.runs[run_id]
+
+    def sweep(self, days: int | None = None) -> int:
+        """Clear old traces, samples and scratch out of ``.tolquane-web``, and say how
+        many went. Called at startup: nothing under there outlives ``keep_traces_days``,
+        so a workspace does not fill up with the traces of runs nobody will read again.
+        """
+        keep = self.settings.keep_traces_days if days is None else days
+        cutoff = time.time() - max(0, keep) * 86400.0
+        removed = 0
+        for name in SWEPT_DIRS:
+            directory = self.workspace / WORK_DIR / name
+            if not directory.is_dir():
+                continue
+            for entry in sorted(directory.iterdir()):
+                try:
+                    if entry.lstat().st_mtime >= cutoff:
+                        continue
+                    if entry.is_dir() and not entry.is_symlink():
+                        shutil.rmtree(entry, ignore_errors=True)
+                    else:
+                        entry.unlink(missing_ok=True)
+                    removed += 1
+                except OSError:  # pragma: no cover - a file someone else is holding
+                    log.warning("could not remove %s", entry)
+        return removed
 
     def shutdown(self) -> None:
         """Kill every child. Registered with ``atexit`` as well as the app's lifespan."""
@@ -547,9 +681,15 @@ class Supervisor:
         for live in alive:
             if live.reaper is not None:
                 live.reaper.join(timeout=KILL_AFTER_SHUTDOWN)
+            # A reaper still waiting on a child that will not die: end the run here, so
+            # the history has no row left saying "running" after the server has gone.
+            if not live.finished:
+                self._finish(live, "cancelled", "the server stopped while the run was going")
 
 
 __all__ = [
+    "MAX_EVENTS",
+    "SECRET_ENV",
     "ChildFailed",
     "ChildResult",
     "ChildTimeout",
@@ -557,6 +697,7 @@ __all__ = [
     "Supervisor",
     "SupervisorError",
     "TooManyRuns",
+    "child_env",
     "json_command",
     "model_command",
     "optimize_command",

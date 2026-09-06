@@ -20,9 +20,13 @@ Three rules shape the code:
 from __future__ import annotations
 
 import asyncio
+import base64
 import contextlib
+import hashlib
+import hmac
 import json
 import logging
+import re
 import shutil
 import threading
 import uuid
@@ -31,6 +35,7 @@ from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated, Any
+from urllib.parse import parse_qs
 
 from fastapi import Body, Depends, FastAPI, Header, Query, Request, WebSocket
 from fastapi.exceptions import RequestValidationError
@@ -43,6 +48,7 @@ from fastapi.responses import (
 )
 from pydantic import BaseModel, Field
 from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.types import ASGIApp, Receive, Scope, Send
 from starlette.websockets import WebSocketDisconnect
 
 import tolquane as tq
@@ -345,7 +351,9 @@ class SettingsModel(BaseModel):
     default_batch: int
     exec_timeout: float
     max_concurrent_runs: int
+    max_source_bytes: int
     cancel_grace: float
+    keep_traces_days: int
     theme: str
     ai: AiSettings
     server: ServerSettings
@@ -413,6 +421,12 @@ def create_app(settings: AppSettings) -> FastAPI:
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+        # Traces and samples of runs nobody will look at again go on the way in, so a
+        # workspace that has been worked in for months is not mostly .tolquane-web.
+        with contextlib.suppress(OSError):
+            swept = supervisor.sweep()
+            if swept:
+                log.info("removed %s file(s) older than keep_traces_days", swept)
         if settings.start_scheduler:
             scheduler.start()
         try:
@@ -440,6 +454,11 @@ def create_app(settings: AppSettings) -> FastAPI:
     _errors(app)
     _routes(app, settings, store, web, supervisor, scheduler)
     _frontend(app, settings)
+    # No CORS middleware, on purpose: the page and the API are the same origin, so a
+    # site in another tab gets no answer it could read. Added last, so they run first.
+    app.add_middleware(BodyLimit, web=web)
+    app.add_middleware(TokenWall, token=settings.token)
+    hide_tokens_in_logs()
     return app
 
 
@@ -476,31 +495,163 @@ def _errors(app: FastAPI) -> None:
         )
 
 
+UNAUTHORIZED = (
+    "this server was started with a token; send it as 'Authorization: Bearer <token>', "
+    "or ?token= on the WebSocket and on a download link"
+)
+
+
+def token_ok(expected: str | None, authorization: str | None, query_token: str | None) -> bool:
+    """Does this request carry the token? Constant time, so a wrong one says nothing.
+
+    The header is what a client sends; ``?token=`` is there for the WebSocket, for an
+    event stream and for a download link, none of which can set a header.
+    """
+    if not expected:
+        return True
+    sent = query_token or ""
+    if authorization and authorization.lower().startswith("bearer "):
+        sent = authorization.split(" ", 1)[1].strip()
+    return hmac.compare_digest(sent.encode("utf-8"), expected.encode("utf-8"))
+
+
 def _token_guard(settings: AppSettings) -> Callable[..., None]:
     """The dependency every ``/api`` route carries when the server was given a token.
 
-    The header is what a client sends; ``?token=`` is there for the WebSocket and for
-    an event stream, neither of which can set headers.
+    :class:`TokenWall` checks the same thing one layer out, for the routes FastAPI adds
+    itself (``/api/openapi.json``, ``/api/docs``) and for anything added here later
+    without this dependency. Two checks, one answer; neither is the only one.
     """
 
     def check(
         authorization: str | None = Header(default=None),
         token: str | None = Query(default=None, include_in_schema=False),
     ) -> None:
-        if not settings.token:
-            return
-        sent = token
-        if authorization and authorization.lower().startswith("bearer "):
-            sent = authorization.split(" ", 1)[1].strip()
-        if sent != settings.token:
-            raise ApiError(
-                401,
-                "Unauthorized",
-                "this server was started with a token; send it as "
-                "'Authorization: Bearer <token>', or ?token= on the WebSocket",
-            )
+        if not token_ok(settings.token, authorization, token):
+            raise ApiError(401, "Unauthorized", UNAUTHORIZED)
 
     return check
+
+
+class TokenWall:
+    """Every request under ``/api``, HTTP and WebSocket alike, holds the token or stops.
+
+    A guard on each route can be forgotten, and the routes FastAPI adds for its own
+    schema and documentation never had one. This is the layer that does not care which
+    route the path belongs to. The static files are served without a token: they are the
+    page that asks the user for it.
+    """
+
+    def __init__(self, app: ASGIApp, token: str | None = None) -> None:
+        self.app = app
+        self.token = token
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if (
+            self.token
+            and scope["type"] in ("http", "websocket")
+            and _is_api(scope)
+            and not token_ok(self.token, _header(scope, b"authorization"), _query_token(scope))
+        ):
+            await self._refuse(scope, receive, send)
+            return
+        await self.app(scope, receive, send)
+
+    async def _refuse(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] == "websocket":
+            await send({"type": "websocket.close", "code": 1008})
+            return
+        body = ApiError(401, "Unauthorized", UNAUTHORIZED).body()
+        await JSONResponse(body, status_code=401)(scope, receive, send)
+
+
+class BodyLimit:
+    """A request body bigger than ``max_source_bytes`` is refused before it is read.
+
+    A flow is a file a person wrote; two megabytes of it is already far past anything
+    the canvas can draw. Without a limit, one enormous ``PUT`` is a way to make the
+    server hold as much memory as the client cares to send.
+    """
+
+    def __init__(self, app: ASGIApp, web: WebSettings | None = None) -> None:
+        self.app = app
+        self.web = web
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        declared = (
+            _header(scope, b"content-length")
+            if scope["type"] == "http" and self.web is not None and _is_api(scope)
+            else None
+        )
+        # The setting is read from the store, so only a request that carries a body asks.
+        if declared and declared.isdigit():
+            size, limit = int(declared), self.web.max_source_bytes  # type: ignore[union-attr]
+            if size > limit:
+                error = ApiError(413, "TooLarge", too_large(size, limit))
+                await JSONResponse(error.body(), status_code=413)(scope, receive, send)
+                return
+        await self.app(scope, receive, send)
+
+
+def too_large(size: int, limit: int) -> str:
+    return (
+        f"that is {size} bytes and the limit is {limit}: raise max_source_bytes in "
+        "settings if a flow really is this big"
+    )
+
+
+def _check_size(source: str, limit: int) -> None:
+    """The same limit for a body that arrived without a length to check it by."""
+    size = len(source.encode("utf-8"))
+    if size > limit:
+        raise ApiError(413, "TooLarge", too_large(size, limit))
+
+
+def _is_api(scope: Scope) -> bool:
+    path = str(scope.get("path", ""))
+    return path == "/api" or path.startswith("/api/")
+
+
+def _header(scope: Scope, name: bytes) -> str | None:
+    for key, value in scope.get("headers", ()):
+        if bytes(key).lower() == name:
+            return bytes(value).decode("latin-1")
+    return None
+
+
+def _query_token(scope: Scope) -> str | None:
+    query = scope.get("query_string", b"").decode("latin-1")
+    values = parse_qs(query).get("token") if query else None
+    return values[0] if values else None
+
+
+class TokenFilter(logging.Filter):
+    """Keeps the token out of the log.
+
+    A WebSocket and a download link carry ``?token=`` in the URL, and an access log
+    writes the URL. Nobody needs to read a secret out of a terminal or a log file.
+    """
+
+    PATTERN = re.compile(r"(token=)[^&\s\"']+")
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        if isinstance(record.args, tuple):
+            record.args = tuple(self._clean(arg) for arg in record.args)
+        record.msg = self._clean(record.msg)
+        return True
+
+    def _clean(self, value: Any) -> Any:
+        if isinstance(value, str) and "token=" in value:
+            return self.PATTERN.sub(r"\1<hidden>", value)
+        return value
+
+
+def hide_tokens_in_logs() -> None:
+    """Put :class:`TokenFilter` on the loggers that write request lines."""
+    for name in ("uvicorn.access", "uvicorn.error", __name__):
+        logger = logging.getLogger(name)
+        if not any(isinstance(existing, TokenFilter) for existing in logger.filters):
+            logger.addFilter(TokenFilter())
 
 
 # --------------------------------------------------------------------------- paths
@@ -509,8 +660,10 @@ def _token_guard(settings: AppSettings) -> Callable[..., None]:
 def safe_path(workspace: Path, given: str, *, suffix: str | None = ".py") -> Path:
     """Where ``given`` is in the workspace, or 400 saying why it is not allowed.
 
-    Rejects an absolute path, a Windows drive, ``..`` and anything that resolves outside
-    the workspace, which is what catches a symlink pointing away.
+    Rejects an absolute path, a Windows drive or share, ``..`` and anything that resolves
+    outside the workspace, which is what catches a symlink pointing away. Every route
+    that reads, writes, renames or deletes goes through here, targets included: a name
+    the server is about to create is checked the same way as one it is about to read.
     """
     text = (given or "").strip().replace("\\", "/")
     if not text:
@@ -527,11 +680,36 @@ def safe_path(workspace: Path, given: str, *, suffix: str | None = ".py") -> Pat
     if suffix and not parts[-1].endswith(suffix):
         raise bad_request(f"{given!r} is not a {suffix} file")
     candidate = workspace.joinpath(*parts)
+    if not inside(workspace, candidate):
+        raise bad_request(f"{given!r} leads outside the workspace {workspace.resolve()}")
+    return candidate
+
+
+def inside(workspace: Path, candidate: Path) -> bool:
+    """Does ``candidate`` land in the workspace once every symlink is followed?
+
+    ``resolve`` follows the links of the parts that exist and leaves the rest alone, so
+    this answers for a file that is not there yet as well as for one that is.
+    """
     resolved = candidate.resolve()
     root = workspace.resolve()
-    if resolved != root and root not in resolved.parents:
-        raise bad_request(f"{given!r} leads outside the workspace {root}")
-    return candidate
+    return resolved == root or root in resolved.parents
+
+
+def layout_target(workspace: Path, flow: Path) -> Path:
+    """The sidecar of a flow, checked the way the flow itself was.
+
+    The name is derived, never given, so the only way out of the workspace is a sidecar
+    that is itself a symlink pointing away. Writing through one would put a person's
+    canvas positions somewhere they did not ask for; refuse instead.
+    """
+    sidecar = flow_model.layout_path(flow)
+    if not inside(workspace, sidecar):
+        raise bad_request(
+            f"the layout file for {relative(workspace, flow)} leads outside the workspace; "
+            "it is a symlink pointing away, and Tolquane Web will not write through it"
+        )
+    return sidecar
 
 
 def relative(workspace: Path, path: Path) -> str:
@@ -547,7 +725,7 @@ def _sample_items(workspace: Path, flow: str, name: str | None) -> list[Any] | N
     if not name:
         return None
     file = safe_path(workspace, flow)
-    layout = flow_model.read_layout(file)
+    layout = flow_model.read_layout(layout_target(workspace, file))
     if layout is not None:
         for sample in layout.samples:
             if sample.name == name:
@@ -601,7 +779,7 @@ def _routes(
     def detail(file: Path) -> dict[str, Any]:
         if not file.is_file():
             raise not_found(f"no flow at {relative(workspace, file)}")
-        layout = flow_model.read_layout(file)
+        layout = flow_model.read_layout(layout_target(workspace, file))
         return {
             "path": relative(workspace, file),
             "source": file.read_text(encoding="utf-8"),
@@ -671,6 +849,7 @@ def _routes(
             raise bad_request(
                 f"unknown template {body.template!r}; use 'empty', 'hello' or {{'model': ...}}"
             )
+        _check_size(source, web.max_source_bytes)
         file.parent.mkdir(parents=True, exist_ok=True)
         file.write_text(source, encoding="utf-8")
         return detail(file)
@@ -683,6 +862,7 @@ def _routes(
     )
     async def parse_flow(body: ParseRequest) -> dict[str, Any]:
         """Read source that is not saved yet: the model, or why it is code-only."""
+        _check_size(body.source, web.max_source_bytes)
         scratch_dir = scratch() / uuid.uuid4().hex[:8]
         scratch_dir.mkdir(parents=True, exist_ok=True)
         file = scratch_dir / f"{Path(body.name).stem or 'flow'}.py"
@@ -723,11 +903,12 @@ def _routes(
         file = safe_path(workspace, path)
         if not file.is_file():
             raise not_found(f"no flow at {path}")
+        sidecar = layout_target(workspace, file)
         try:
             layout = flow_model.Layout.from_dict(body)
         except (TypeError, ValueError, AttributeError) as exc:
             raise bad_request(f"that is not a layout: {exc}") from exc
-        flow_model.write_layout(file, layout)
+        flow_model.write_layout(sidecar, layout)
         return {"ok": True}
 
     @app.post(
@@ -744,11 +925,12 @@ def _routes(
             raise not_found(f"no flow at {path}")
         if target.exists():
             raise ApiError(409, "Conflict", f"{body.path} already exists")
+        sidecar = layout_target(workspace, file)
+        moved = layout_target(workspace, target)
         target.parent.mkdir(parents=True, exist_ok=True)
         file.rename(target)
-        sidecar = flow_model.layout_path(file)
         if sidecar.is_file():
-            sidecar.rename(flow_model.layout_path(target))
+            sidecar.rename(moved)
         return detail(target)
 
     @app.post(
@@ -819,6 +1001,7 @@ def _routes(
     async def save_flow(path: str, body: SaveFlow) -> dict[str, Any]:
         """Write a flow. A ``modified`` that no longer matches answers 409 with the file."""
         file = safe_path(workspace, path)
+        _check_size(body.source, web.max_source_bytes)
         if file.is_file() and body.modified is not None:
             current = modified_of(file)
             if current != body.modified:
@@ -841,8 +1024,9 @@ def _routes(
     async def delete_flow(path: str) -> dict[str, Any]:
         """Delete a flow and its sidecar."""
         file = _existing(workspace, path)
+        sidecar = layout_target(workspace, file)
         file.unlink()
-        flow_model.layout_path(file).unlink(missing_ok=True)
+        sidecar.unlink(missing_ok=True)
         return {"ok": True}
 
     # Runs ----------------------------------------------------------------
@@ -919,7 +1103,11 @@ def _routes(
     @app.websocket("/api/runs/{run_id}/events")
     async def run_events(websocket: WebSocket, run_id: int) -> None:
         """Every event of a run, in order: what happened so far, then what happens next."""
-        if settings.token and websocket.query_params.get("token") != settings.token:
+        if not token_ok(
+            settings.token,
+            websocket.headers.get("authorization"),
+            websocket.query_params.get("token"),
+        ):  # pragma: no cover - TokenWall refuses the socket one layer out
             await websocket.close(code=1008, reason="this server needs its token")
             return
         await websocket.accept()
@@ -1103,12 +1291,17 @@ def _routes(
 
 
 def _walk(workspace: Path) -> Iterator[Path]:
-    """Every flow file in the workspace, skipping what is not a person's code."""
+    """Every flow file in the workspace, skipping what is not a person's code.
+
+    Hidden directories, ``.tolquane-web`` and the usual machinery are walked past, and
+    so is a symlink whose target is outside: the listing only ever names files this
+    server would agree to open.
+    """
     for file in workspace.rglob("*.py"):
         parts = file.relative_to(workspace).parts
         if any(part in SKIP_DIRS or part.startswith(".") for part in parts[:-1]):
             continue
-        if file.is_file():
+        if file.is_file() and inside(workspace, file):
             yield file
 
 
@@ -1363,11 +1556,52 @@ def _provider(
 # --------------------------------------------------------------------------- the frontend
 
 
+INLINE_SCRIPT = re.compile(
+    rb"<script(?![^>]*\ssrc=)[^>]*>(.*?)</script>", re.DOTALL | re.IGNORECASE
+)
+"""The inline scripts of ``index.html``. Vite leaves one there: the three lines that set
+the theme before the first paint. Each is allowed by its hash, not by ``unsafe-inline``."""
+
+SECURITY_HEADERS = {"X-Content-Type-Options": "nosniff", "Referrer-Policy": "no-referrer"}
+
+
+def content_security_policy(index: Path) -> str:
+    """What the page may load: its own files, and nothing from anywhere else.
+
+    ``style-src`` allows ``'unsafe-inline'`` because CodeMirror and the canvas write
+    their stylesheets into the document as they load; every other source is the app's
+    own origin. ``connect-src`` covers the API and the run WebSocket. Scripts are the
+    bundle plus the hash of each inline script the built page carries, so a script
+    injected into the page by anything else does not run.
+    """
+    scripts = ["'self'"]
+    with contextlib.suppress(OSError):
+        for body in INLINE_SCRIPT.findall(index.read_bytes()):
+            digest = base64.b64encode(hashlib.sha256(body).digest()).decode("ascii")
+            scripts.append(f"'sha256-{digest}'")
+    return "; ".join(
+        [
+            "default-src 'self'",
+            "script-src " + " ".join(scripts),
+            "style-src 'self' 'unsafe-inline'",
+            "img-src 'self' data: blob:",
+            "font-src 'self' data:",
+            "connect-src 'self' ws: wss:",
+            "object-src 'none'",
+            "base-uri 'self'",
+            "form-action 'self'",
+            "frame-ancestors 'none'",
+        ]
+    )
+
+
 def _frontend(app: FastAPI, settings: AppSettings) -> None:
     """Serve the built app at ``/``, or say how to build it. Registered last, so every
     ``/api`` route is matched before the single-page fallback sees the request."""
     static = settings.static_dir
     index = static / "index.html"
+    policy = content_security_policy(index)
+    headers = {**SECURITY_HEADERS, "Content-Security-Policy": policy}
 
     @app.get("/{full_path:path}", include_in_schema=False)
     async def spa(full_path: str) -> Response:
@@ -1383,12 +1617,24 @@ def _frontend(app: FastAPI, settings: AppSettings) -> None:
                     "build' in web/",
                 },
                 status_code=200 if full_path in ("", "/") else 404,
+                headers=headers,
             )
         candidate = (static / full_path).resolve() if full_path else index
         root = static.resolve()
         if candidate.is_file() and (candidate == root or root in candidate.parents):
-            return FileResponse(candidate)
-        return FileResponse(index)  # any other path is a route inside the app
+            return FileResponse(candidate, headers=headers)
+        return FileResponse(index, headers=headers)  # any other path is a route in the app
 
 
-__all__ = ["ApiError", "create_app", "safe_path"]
+__all__ = [
+    "ApiError",
+    "BodyLimit",
+    "TokenFilter",
+    "TokenWall",
+    "content_security_policy",
+    "create_app",
+    "inside",
+    "layout_target",
+    "safe_path",
+    "token_ok",
+]

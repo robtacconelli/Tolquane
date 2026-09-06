@@ -241,24 +241,40 @@ FastAPI, started by `tolquane web [--host 127.0.0.1] [--port 8765] [--workspace 
 [--token T] [--no-browser] [--check]`. Everything under `/api`; OpenAPI at
 `/api/openapi.json` (the frontend client is generated from it); the built frontend is
 served at `/` with an SPA fallback (unknown paths return `index.html`). With `--token`,
-every request needs `Authorization: Bearer T` (the WebSocket takes `?token=T`, and so
-does any other request, since neither a socket nor an `EventSource` can set a header);
-without it the server binds only to loopback and refuses `--host` other than
-`127.0.0.1`.
+every request under `/api` needs `Authorization: Bearer T` (the WebSocket takes
+`?token=T`, and so does any other request, since neither a socket nor an `EventSource`
+can set a header); without it the server binds only to loopback and refuses `--host`
+other than `127.0.0.1`.
 `--check` starts, hits `/api/health`, stops, for CI.
+
+The token is enforced one layer outside the routes as well as on each of them, so
+`/api/openapi.json` and `/api/docs`, which FastAPI adds itself, need it too, and an
+unknown `/api` path answers 401 rather than 404. It is compared with
+`hmac.compare_digest` and redacted (`token=<hidden>`) in every log line. The static files
+are served without it: the page is what asks the user for the token, and it reads the
+token from `localStorage` under `tolquane.token`. No CORS header is ever sent. The SPA
+response carries `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer` and a
+Content-Security-Policy whose `script-src` is `'self'` plus the sha256 of each inline
+script in `index.html`, `connect-src` is `'self' ws: wss:`, and `style-src` is
+`'self' 'unsafe-inline'` (the code editor and the canvas insert their own stylesheets).
 
 ### Workspace and flow paths
 
 The workspace is one directory (`--workspace`, default the current directory, stored in
 settings). A flow is a `.py` file inside it, addressed by its path relative to the
-workspace with forward slashes (`{path}` below, URL-encoded; `..` and absolute paths are
-rejected with 400). A flow's sidecar is `<stem>.layout.json` next to it.
+workspace with forward slashes (`{path}` below, URL-encoded; `..`, absolute paths, a
+Windows drive or share, and anything that resolves outside the workspace through a
+symlink are rejected with 400, whether the path is being read, written, renamed or
+created). A flow's sidecar is `<stem>.layout.json` next to it, checked the same way: a
+sidecar that is itself a symlink pointing out is refused. The flow listing skips hidden
+directories, `.tolquane-web/` and anything the server would refuse to open.
 
 ### Errors
 
 Every error is `{"error": {"type": "GraphError", "message": "...", "detail": {...}}}`
 with 400 for a bad request or a flow that does not validate, 404 for unknown paths and
-ids, 409 for a stale save, 401 for a bad token, 500 for the rest. `GraphError` and
+ids, 409 for a stale save, 401 for a bad token, 413 for a body or a source over
+`max_source_bytes`, 429 for the concurrent run limit, 500 for the rest. `GraphError` and
 `TolquaneError` messages are passed through unchanged: they already say the fix.
 
 ### Flows
@@ -309,17 +325,26 @@ WS   /api/runs/{id}/events          -> every event line of the run as a JSON mes
                                      in memory until the run ends and for 10 minutes after), then live ones; the
                                      socket closes after the "done" event. A run whose events have been forgotten
                                      answers with one "done" carrying its stored status; an unknown id, with one
-                                     "error"
+                                     "error". At most MAX_EVENTS (5000) are kept per run: when a flow sends more,
+                                     the oldest go (never the "start" event) and a late client is told once, right
+                                     after "start", with {"event": "dropped", "count": N, "message": "..."}; the
+                                     log and the report are whole either way
 ```
 
 The supervisor owns the child processes: `python -m tolquane run <path> --events
 --progress-interval 0.5 --tap N [--sample tmpfile] [--runtime R] [--batch B] [--trace
 file] [--optimize]` with the workspace as the working directory and the flow's directory
-on `sys.path`. It limits concurrent runs (setting `max_concurrent_runs`, default 4;
+on `sys.path`. No child inherits a secret: `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`,
+`TOLQUANE_WEB_TOKEN` and any variable whose value is the access token are taken out of
+the environment of every child, the one-shot commands included; the AI chat is the only
+thing that needs a key, and it is handed one directly. It limits concurrent runs (setting `max_concurrent_runs`, default 4;
 beyond it `POST /api/runs` answers 429), records every event into the run's log (the
 store keeps the last 64 KB), writes the report and status to the store on `done`, sends
 SIGTERM on cancel and SIGKILL after `cancel_grace` seconds (default 10), and kills every
-child when the server exits. A sample is written to a temporary `.json` file the CLI
+child when the server exits. A child that outlives SIGKILL by another `cancel_grace` is
+given up on: the run is recorded as `failed` with an error naming the process rather than
+left `running` for ever. At startup the supervisor clears everything under
+`.tolquane-web/` (traces, samples, scratch) older than `keep_traces_days`. A sample is written to a temporary `.json` file the CLI
 reads with `--sample`.
 
 ### Schedules
@@ -340,7 +365,8 @@ The scheduler's `fire` starts a run with trigger `schedule:<id>` through the sup
 
 ```
 GET /api/settings  -> {"workspace": "...", "default_runtime": "threads", "default_batch": 32, "exec_timeout": 30,
-                       "max_concurrent_runs": 4, "cancel_grace": 10, "theme": "dark",
+                       "max_concurrent_runs": 4, "max_source_bytes": 2000000, "cancel_grace": 10,
+                       "keep_traces_days": 7, "theme": "dark",
                        "ai": {"provider": "anthropic", "model": null, "has_anthropic_key": true, "has_openai_key": false},
                        "server": {"host": "127.0.0.1", "port": 8765, "token_set": false}}
 PUT /api/settings  any subset of the above; "ai.anthropic_key" and "ai.openai_key" may be sent to store a key

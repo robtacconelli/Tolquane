@@ -17,6 +17,9 @@ result = build("count words per line in log.txt, 8 workers", workdir="out")
 print(result.summary)
 ```
 
+The same builder is a panel in the GUI: `tolquane web`, then **AI builder** beside the
+editor, with the open flow as its context (see the [user guide](web-user.md)).
+
 Every flow the builder writes defines `build(source=None)`, which returns the graph and
 swaps in `tq.from_iterable(source)` when a sample is given, and `main()`. That is what
 `tolquane check`, `run`, `explain` and `draw` expect from any file.

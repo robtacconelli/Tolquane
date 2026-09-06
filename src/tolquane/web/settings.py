@@ -299,7 +299,9 @@ VALIDATORS: dict[str, Callable[[Any], Any]] = {
     "default_batch": _positive_int("default_batch"),
     "exec_timeout": _positive_number("exec_timeout", 1.0),
     "max_concurrent_runs": _positive_int("max_concurrent_runs"),
+    "max_source_bytes": _positive_int("max_source_bytes", 1024),
     "cancel_grace": _positive_number("cancel_grace"),
+    "keep_traces_days": _positive_int("keep_traces_days", 0),
     "theme": _one_of("theme", ("dark", "light", "system")),
     "ai.provider": _text("ai.provider"),
     "ai.model": _model,
@@ -314,7 +316,9 @@ DEFAULTS: dict[str, Any] = {
     "default_batch": 32,
     "exec_timeout": 30.0,
     "max_concurrent_runs": 4,
+    "max_source_bytes": 2_000_000,
     "cancel_grace": 10.0,
+    "keep_traces_days": 7,
     "theme": "dark",
     "ai.provider": "anthropic",
     "ai.model": None,
@@ -356,8 +360,18 @@ class WebSettings:
         return int(self.get("max_concurrent_runs"))
 
     @property
+    def max_source_bytes(self) -> int:
+        """The largest flow the server will write. A paste that big is a mistake."""
+        return int(self.get("max_source_bytes"))
+
+    @property
     def cancel_grace(self) -> float:
         return float(self.get("cancel_grace"))
+
+    @property
+    def keep_traces_days(self) -> int:
+        """How long traces and samples under ``.tolquane-web`` survive a restart."""
+        return int(self.get("keep_traces_days"))
 
     @property
     def ai_provider(self) -> str:
@@ -378,7 +392,9 @@ class WebSettings:
             "default_batch": self.default_batch,
             "exec_timeout": self.exec_timeout,
             "max_concurrent_runs": self.max_concurrent_runs,
+            "max_source_bytes": self.max_source_bytes,
             "cancel_grace": self.cancel_grace,
+            "keep_traces_days": self.keep_traces_days,
             "theme": str(self.get("theme")),
             "ai": {
                 "provider": self.ai_provider,
