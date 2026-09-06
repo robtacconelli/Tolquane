@@ -1,23 +1,23 @@
-# Tolquane Studio: the web GUI, broken down
+# Tolquane Web: the web GUI, broken down
 
-**Status:** plan, 2026-09-06. Nothing below is built yet. This page is the contract the
+**Status:** approved 2026-09-06, wave 0 in progress. This page is the contract the
 sub-problems are built against; each one is small enough for one agent to finish and test
 on its own.
 
 ## What it is
 
-A local web application, started with `tolquane studio`, that lets anyone create, see,
+A local web application, started with `tolquane web`, that lets anyone create, see,
 test, run, debug and schedule Tolquane flows on a canvas the way n8n does with
 workflows, with the Python code always one click away and editable, and the AI builder
-in a side panel. It is an optional extra (`pip install "tolquane[studio]"`). The library
-stays dependency-free, and every flow the Studio makes is a plain `flow.py` that runs
+in a side panel. It is an optional extra (`pip install "tolquane[web]"`). The library
+stays dependency-free, and every flow Tolquane Web makes is a plain `flow.py` that runs
 with `python flow.py` on a machine that has only `tolquane` installed.
 
 ## Decisions that shape everything
 
 1. **The Python file is the artifact; the canvas is a view of it.** A flow is a
    `flow.py` in the house style, with `build(source=None)` and `main()`, exactly what the
-   AI builder writes and the CLI runs today. The Studio keeps a *flow model* (JSON) that
+   AI builder writes and the CLI runs today. The Tolquane Web keeps a *flow model* (JSON) that
    it reads out of the file by importing it and walking the block tree, and writes back
    as Python by the same code generator the builder's style asks for. Node bodies are
    kept verbatim as source text in the model, so a round trip changes nothing a person
@@ -32,27 +32,27 @@ with `python flow.py` on a machine that has only `tolquane` installed.
 3. **Flows run in a child process, never in the server.** A run is
    `tolquane run flow.py --events` in a subprocess; it streams JSON lines (node state,
    counts, busy time, sampled items, stdout, the report, errors, deadlock reports) that
-   the server relays over a WebSocket. A hung or crashing flow cannot take the Studio
+   the server relays over a WebSocket. A hung or crashing flow cannot take Tolquane Web
    down, and cancel is a signal.
 4. **One server, local by default.** FastAPI and uvicorn, bound to `127.0.0.1`, no
    login. `--host 0.0.0.0 --token ...` for a shared machine. SQLite in
-   `~/.tolquane/studio.db` for runs, schedules and settings; flows are files in a
+   `~/.tolquane/web.db` for runs, schedules and settings; flows are files in a
    workspace directory the user picks.
 5. **Frontend: React, TypeScript, Vite, `@xyflow/react` for the canvas, CodeMirror 6
    for code, Zustand for state.** Built assets ship inside the wheel, so `pip install`
    is all a user does. Node is a build-time tool only.
 6. **The AI builder is the same `tolquane.ai.Builder`,** given the open flow as context,
    streaming its turns and tool calls into the panel; when it writes a flow the canvas
-   updates. Keys live in the Studio settings file with owner-only permissions, or in the
+   updates. Keys live in Tolquane Web settings file with owner-only permissions, or in the
    environment; never in the database, never in a flow.
 
 ## Layout in the repository
 
 ```
-src/tolquane/studio/      the Python side: model, codegen, events, server, storage, scheduler
-web/                      the frontend source (Vite project); builds into src/tolquane/studio/static/
-docs/studio.md            this page; docs/studio-user.md later, the user guide
-tests/studio/             Python tests; web/tests for frontend unit tests; e2e under web/e2e
+src/tolquane/web/      the Python side: model, codegen, events, server, storage, scheduler
+web/                      the frontend source (Vite project); builds into src/tolquane/web/static/
+docs/web.md               this page; docs/web-interfaces.md the contracts; docs/web-user.md later, the user guide
+tests/web/                Python tests; web/tests for frontend unit tests; e2e under web/e2e
 ```
 
 ## The sub-problems
@@ -62,7 +62,7 @@ done. "Interface" means the thing the others build against.
 
 ### Wave 0: foundations (Python only, all three in parallel)
 
-**S1. Flow model, code generator, parser.** `tolquane.studio.model`.
+**S1. Flow model, code generator, parser.** `tolquane.web.model`.
 - Interface: a JSON schema `FlowModel` (nodes with `id, name, kind, params, source`;
   a composition tree of `pipeline | farm | comb | feedback | all2all | node` with their
   options; sample inputs; metadata), `to_python(model) -> str`, `from_python(path) ->
@@ -84,7 +84,7 @@ progress_interval=, tap=)` and `tolquane run --events`.
   cancel ends within the deadlock timeout; overhead under 2 percent on the pipeline
   benchmark with a 0.5 s interval.
 
-**S3. Storage and scheduler.** `tolquane.studio.store`, `tolquane.studio.schedule`.
+**S3. Storage and scheduler.** `tolquane.web.store`, `tolquane.web.schedule`.
 - Interface: SQLite schema and a repository for `runs` (id, flow path, started, ended,
   status, report JSON, log excerpt, trace path), `schedules` (id, flow, cron, sample,
   runtime, enabled, last and next run), `settings` (key, value); a five-field cron
@@ -96,16 +96,16 @@ progress_interval=, tap=)` and `tolquane run --events`.
 
 ### Wave 1: the server and the app shell (parallel once wave 0 interfaces are fixed)
 
-**S4. Server.** `tolquane.studio.server`, FastAPI.
+**S4. Server.** `tolquane.web.server`, FastAPI.
 - Interface: REST for the workspace (list, open, save, create, delete, rename flows),
   model (parse, generate, check, explain, draw, optimize), runs (start with sample or
   source, cancel, list, get, log, trace download), schedules, settings, AI chat
   (server-sent events with turns and tool calls, apply result); a WebSocket per run
   relaying S2's events; a supervisor that owns child processes, limits concurrent runs
-  and kills orphans on exit; static serving of the built frontend; `tolquane studio`
+  and kills orphans on exit; static serving of the built frontend; `tolquane web`
   opens the browser. OpenAPI is the contract the frontend client is generated from.
 - Done when: `httpx` tests cover every route, a run's events arrive over the socket, a
-  crashing flow leaves the server healthy, and `tolquane studio --check` starts and
+  crashing flow leaves the server healthy, and `tolquane web --check` starts and
   stops the server in CI.
 
 **F1. App shell.** Vite, React, TypeScript; routes for Flows, Editor, Runs, Schedules,
@@ -147,11 +147,11 @@ directory, default runtime and batch, run limits, server host, port and token, t
 ### Wave 3: packaging, tests, docs
 
 **I1. Build and ship.** Hatch build hook that runs `npm ci && npm run build` and puts
-the assets in the wheel; CI job with Node; `tolquane[studio]` extra; the wheel works
+the assets in the wheel; CI job with Node; `tolquane[web]` extra; the wheel works
 without Node installed.
 **I2. End-to-end tests.** Playwright journeys: create a flow from the palette, run it
 with a sample, see items in a tap, ask the AI to change it, schedule it.
-**I3. User guide and hardening.** `docs/studio-user.md` with screenshots; token auth,
+**I3. User guide and hardening.** `docs/web-user.md` with screenshots; token auth,
 CORS, path checks so the workspace cannot be escaped, Windows and macOS paths.
 
 ### Later, not in the first release
@@ -168,7 +168,7 @@ is final. Wave 1 is two agents. Wave 2 is up to five agents, each owning one are
 frontend against the running server. Wave 3 closes. The orchestrating session writes
 the interface documents, reviews every merge against the "done when" line, and keeps
 the library's own tests green throughout: S2 is the only sub-problem that touches
-`src/tolquane/` outside `studio/`.
+`src/tolquane/` outside `web/`.
 
 ## Risks
 
@@ -176,7 +176,7 @@ the library's own tests green throughout: S2 is the only sub-problem that touche
   tractable (one function per node, `build()` composes blocks); anything else falls back
   to code-only mode rather than losing code.
 - Event overhead: snapshots read counters without locks; taps copy reprs, so `tap`
-  defaults to off outside the Studio.
+  defaults to off outside Tolquane Web.
 - Frontend size: CodeMirror and the canvas library together stay under 1 MB gzipped;
   Monaco was rejected for that reason.
 - Agents cannot see the browser. Every frontend sub-problem carries unit tests on its

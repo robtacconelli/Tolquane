@@ -29,7 +29,9 @@ nav:
   - House style: style.md
   - Design: design.md
   - Backlog: backlog.md
-  - Studio (plan): studio.md
+  - Tolquane Web:
+      - The plan: web.md
+      - Interfaces: web-interfaces.md
   - Decisions:
       - Naming: decisions/0001-naming.md
       - FastFlow review: decisions/0002-fastflow-review.md
