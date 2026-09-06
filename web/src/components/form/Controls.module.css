@@ -1,0 +1,223 @@
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tq-space-3);
+  min-width: 0;
+}
+
+.labelRow {
+  display: flex;
+  align-items: center;
+  gap: var(--tq-space-3);
+  min-height: 18px;
+}
+
+.label {
+  font-size: var(--tq-text-md);
+  font-weight: var(--tq-weight-medium);
+  color: var(--tq-text);
+}
+
+.aside {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: var(--tq-space-2);
+}
+
+.hint,
+.error {
+  font-size: var(--tq-text-sm);
+  line-height: var(--tq-leading-normal);
+}
+
+.hint {
+  color: var(--tq-text-subtle);
+}
+
+.error {
+  color: var(--tq-danger);
+}
+
+/* ------------------------------------------------------------------ inputs */
+.input {
+  width: 100%;
+  height: 30px;
+  padding: 0 var(--tq-space-4);
+  border: 1px solid var(--tq-border);
+  border-radius: var(--tq-radius-md);
+  background: var(--tq-surface-sunken);
+  color: var(--tq-text);
+  font-size: var(--tq-text-base);
+  outline: none;
+  transition:
+    border-color var(--tq-duration-fast) var(--tq-ease),
+    background-color var(--tq-duration-fast) var(--tq-ease);
+}
+
+.input::placeholder {
+  color: var(--tq-text-subtle);
+}
+
+.input:hover:not(:disabled) {
+  border-color: var(--tq-border-strong);
+}
+
+.input:focus {
+  border-color: var(--tq-accent);
+}
+
+.input:disabled {
+  color: var(--tq-text-subtle);
+  cursor: not-allowed;
+}
+
+.invalid,
+.invalid:hover:not(:disabled),
+.invalid:focus {
+  border-color: var(--tq-danger);
+}
+
+.mono {
+  font-family: var(--tq-font-mono);
+  font-size: var(--tq-text-sm);
+}
+
+.numeric {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ------------------------------------------------------------------ select */
+.selectWrap {
+  position: relative;
+  display: block;
+  width: 100%;
+}
+
+.select {
+  appearance: none;
+  padding-right: var(--tq-space-8);
+  cursor: pointer;
+}
+
+/* A caret drawn from a border, so the control needs no icon and no request. */
+.caret {
+  position: absolute;
+  top: 50%;
+  right: var(--tq-space-4);
+  width: 7px;
+  height: 7px;
+  margin-top: -5px;
+  border-right: 1.5px solid var(--tq-text-subtle);
+  border-bottom: 1.5px solid var(--tq-text-subtle);
+  transform: rotate(45deg);
+  pointer-events: none;
+}
+
+/* ------------------------------------------------------------------ toggle */
+.toggle {
+  flex: none;
+  position: relative;
+  width: 34px;
+  height: 20px;
+  padding: 0;
+  border: 1px solid var(--tq-border);
+  border-radius: var(--tq-radius-pill);
+  background: var(--tq-surface-active);
+  transition:
+    background-color var(--tq-duration-fast) var(--tq-ease),
+    border-color var(--tq-duration-fast) var(--tq-ease);
+}
+
+.toggle:hover:not(:disabled) {
+  border-color: var(--tq-border-strong);
+}
+
+.toggle:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: var(--tq-radius-pill);
+  background: var(--tq-text-subtle);
+  transition:
+    transform var(--tq-duration-fast) var(--tq-ease),
+    background-color var(--tq-duration-fast) var(--tq-ease);
+}
+
+.toggleOn {
+  background: var(--tq-accent);
+  border-color: var(--tq-accent);
+}
+
+.toggleOn .knob {
+  background: var(--tq-accent-contrast);
+  transform: translateX(14px);
+}
+
+/* ------------------------------------------------------------------- badge */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--tq-space-2);
+  height: 18px;
+  padding: 0 var(--tq-space-3);
+  border: 1px solid transparent;
+  border-radius: var(--tq-radius-pill);
+  font-size: var(--tq-text-xs);
+  font-weight: var(--tq-weight-medium);
+  letter-spacing: var(--tq-tracking-wide);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.neutral {
+  background: var(--tq-surface-sunken);
+  border-color: var(--tq-border);
+  color: var(--tq-text-subtle);
+}
+
+.accent {
+  background: var(--tq-accent-soft);
+  border-color: var(--tq-accent-line);
+  color: var(--tq-accent);
+}
+
+.success {
+  background: var(--tq-success-soft);
+  color: var(--tq-success);
+}
+
+.warning {
+  background: var(--tq-warning-soft);
+  color: var(--tq-warning);
+}
+
+.danger {
+  background: var(--tq-danger-soft);
+  color: var(--tq-danger);
+}
+
+/* --------------------------------------------------------------- checkline */
+.checkLine {
+  display: flex;
+  align-items: center;
+  gap: var(--tq-space-3);
+  color: var(--tq-text);
+  font-size: var(--tq-text-base);
+  cursor: pointer;
+}
+
+.checkbox {
+  flex: none;
+  width: 15px;
+  height: 15px;
+  accent-color: var(--tq-accent);
+  cursor: pointer;
+}

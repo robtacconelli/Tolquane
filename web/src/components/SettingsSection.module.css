@@ -1,0 +1,113 @@
+.description {
+  padding: var(--tq-space-4) var(--tq-space-6);
+  border-bottom: 1px solid var(--tq-border-subtle);
+  background: var(--tq-surface-sunken);
+  color: var(--tq-text-muted);
+  font-size: var(--tq-text-sm);
+  line-height: var(--tq-leading-relaxed);
+}
+
+.row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 320px);
+  gap: var(--tq-space-7);
+  align-items: start;
+  padding: var(--tq-space-5) var(--tq-space-6);
+}
+
+.row + .row,
+.row + .stack,
+.stack + .row {
+  border-top: 1px solid var(--tq-border-subtle);
+}
+
+.rowText {
+  min-width: 0;
+}
+
+.labelRow {
+  display: flex;
+  align-items: center;
+  gap: var(--tq-space-3);
+}
+
+.label {
+  font-size: var(--tq-text-base);
+  font-weight: var(--tq-weight-medium);
+  color: var(--tq-text);
+}
+
+.help {
+  max-width: 62ch;
+  margin-top: var(--tq-space-2);
+  color: var(--tq-text-muted);
+  font-size: var(--tq-text-sm);
+  line-height: var(--tq-leading-relaxed);
+}
+
+.control {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--tq-space-2);
+  padding-top: 2px;
+}
+
+.stack {
+  padding: var(--tq-space-5) var(--tq-space-6);
+}
+
+.stackBody {
+  margin-top: var(--tq-space-4);
+}
+
+/* ------------------------------------------------------------------ footer */
+.footer {
+  display: flex;
+  align-items: center;
+  gap: var(--tq-space-3);
+  padding: var(--tq-space-4) var(--tq-space-6);
+  border-top: 1px solid var(--tq-border-subtle);
+  background: var(--tq-surface-sunken);
+  min-height: 49px;
+}
+
+.note,
+.dirty,
+.saved,
+.error {
+  margin-right: auto;
+  font-size: var(--tq-text-sm);
+  line-height: var(--tq-leading-normal);
+}
+
+/* Only the one-line states are flex rows: a note is prose and has to wrap as prose. */
+.dirty,
+.saved,
+.error {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--tq-space-2);
+}
+
+.note {
+  color: var(--tq-text-subtle);
+  max-width: 78ch;
+}
+
+.note code {
+  white-space: nowrap;
+}
+
+.dirty {
+  color: var(--tq-warning);
+}
+
+.saved {
+  color: var(--tq-success);
+}
+
+.error {
+  color: var(--tq-danger);
+  max-width: 70ch;
+}

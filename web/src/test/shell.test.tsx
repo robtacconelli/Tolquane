@@ -46,7 +46,7 @@ describe('the app shell', () => {
     const cases: [string, string][] = [
       ['/flows', 'No flows yet'],
       ['/runs', 'Nothing has run yet'],
-      ['/schedules', 'No schedules'],
+      ['/schedules', 'Scheduled flows'],
       ['/settings', 'Appearance'],
     ];
     for (const [path, marker] of cases) {

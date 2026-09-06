@@ -1,0 +1,5 @@
+.hint {
+  color: var(--tq-text-subtle);
+  font-size: var(--tq-text-sm);
+  line-height: var(--tq-leading-normal);
+}

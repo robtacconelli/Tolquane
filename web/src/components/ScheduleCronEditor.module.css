@@ -1,0 +1,147 @@
+.editor {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tq-space-4);
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--tq-space-2);
+}
+
+.chip {
+  height: 26px;
+  padding: 0 var(--tq-space-4);
+  border: 1px solid var(--tq-border);
+  border-radius: var(--tq-radius-pill);
+  background: var(--tq-surface-sunken);
+  color: var(--tq-text-muted);
+  font-size: var(--tq-text-sm);
+  font-weight: var(--tq-weight-medium);
+  transition:
+    background-color var(--tq-duration-fast) var(--tq-ease),
+    border-color var(--tq-duration-fast) var(--tq-ease),
+    color var(--tq-duration-fast) var(--tq-ease);
+}
+
+.chip:hover {
+  background: var(--tq-surface-hover);
+  border-color: var(--tq-border-strong);
+  color: var(--tq-text);
+}
+
+.chipActive,
+.chipActive:hover {
+  background: var(--tq-accent-soft);
+  border-color: var(--tq-accent-line);
+  color: var(--tq-accent);
+}
+
+/* The parameters read as a sentence: "Every 5 minutes", "On Monday at 09:00". */
+.params {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--tq-space-3);
+  padding: var(--tq-space-2) var(--tq-space-4);
+  border: 1px solid var(--tq-border-subtle);
+  border-radius: var(--tq-radius-md);
+  background: var(--tq-surface-sunken);
+}
+
+.word {
+  color: var(--tq-text-muted);
+  font-size: var(--tq-text-base);
+}
+
+.control {
+  display: block;
+  width: 96px;
+}
+
+.controlWide {
+  display: block;
+  width: 150px;
+}
+
+/* ----------------------------------------------------------------- preview */
+.preview {
+  padding: var(--tq-space-4) var(--tq-space-5);
+  border: 1px solid var(--tq-border-subtle);
+  border-radius: var(--tq-radius-lg);
+  background: var(--tq-surface-sunken);
+  transition: opacity var(--tq-duration-fast) var(--tq-ease);
+}
+
+/* Tinted only when it has an answer: a coloured panel saying nothing is a false promise. */
+.preview[data-filled] {
+  border-color: var(--tq-accent-line);
+  background: var(--tq-accent-soft);
+}
+
+.preview[data-loading] {
+  opacity: 0.55;
+}
+
+.previewHead {
+  display: flex;
+  align-items: center;
+  gap: var(--tq-space-3);
+  color: var(--tq-accent);
+}
+
+.description {
+  color: var(--tq-text);
+  font-size: var(--tq-text-md);
+  font-weight: var(--tq-weight-medium);
+  line-height: var(--tq-leading-tight);
+}
+
+.times {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: var(--tq-space-2);
+  margin-top: var(--tq-space-3);
+}
+
+.time {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tq-space-1);
+  align-items: center;
+  padding: var(--tq-space-2);
+  border: 1px solid var(--tq-border-subtle);
+  border-radius: var(--tq-radius-md);
+  background: var(--tq-surface-raised);
+  text-align: center;
+}
+
+.timeDay {
+  color: var(--tq-text-subtle);
+  font-size: var(--tq-text-xs);
+  white-space: nowrap;
+}
+
+.timeClock {
+  color: var(--tq-text);
+  font-size: var(--tq-text-md);
+  font-weight: var(--tq-weight-medium);
+  font-variant-numeric: tabular-nums;
+}
+
+.zone {
+  margin-top: var(--tq-space-3);
+  color: var(--tq-text-subtle);
+  font-size: var(--tq-text-xs);
+}
+
+.previewIdle {
+  max-width: 60ch;
+  margin: 0 auto;
+  padding: var(--tq-space-3) 0;
+  color: var(--tq-text-subtle);
+  font-size: var(--tq-text-base);
+  line-height: var(--tq-leading-normal);
+  text-align: center;
+}

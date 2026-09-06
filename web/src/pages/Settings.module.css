@@ -1,77 +1,56 @@
-.row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(240px, 340px);
-  gap: var(--tq-space-7);
-  align-items: start;
-  padding: var(--tq-space-5) var(--tq-space-6);
+.loading {
+  padding: var(--tq-space-9) var(--tq-space-6);
+  text-align: center;
+  color: var(--tq-text-subtle);
 }
 
-.row + .row {
-  border-top: 1px solid var(--tq-border-subtle);
-}
-
-.label {
-  font-size: var(--tq-text-base);
-  font-weight: var(--tq-weight-medium);
-  color: var(--tq-text);
-}
-
-.help {
-  max-width: 68ch;
-  margin-top: var(--tq-space-2);
-  color: var(--tq-text-muted);
-  font-size: var(--tq-text-sm);
-  line-height: var(--tq-leading-relaxed);
-}
-
-.control {
+/* A number and what it counts, so the field itself needs no suffix in its label. */
+.withUnit {
   display: flex;
-  justify-content: flex-end;
   align-items: center;
   gap: var(--tq-space-3);
 }
 
-.input,
-.select {
-  width: 100%;
+.number {
+  flex: 0 0 104px;
+}
+
+.unit {
+  color: var(--tq-text-subtle);
+  font-size: var(--tq-text-sm);
+}
+
+.fieldError {
+  color: var(--tq-danger);
+  font-size: var(--tq-text-sm);
+  line-height: var(--tq-leading-normal);
+}
+
+/* A value the API reports but does not take back: shaped like a field, never focusable. */
+.readonly {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
   height: 30px;
   padding: 0 var(--tq-space-4);
-  border: 1px solid var(--tq-border);
+  border: 1px dashed var(--tq-border);
   border-radius: var(--tq-radius-md);
   background: var(--tq-surface-sunken);
-  color: var(--tq-text);
-  font-size: var(--tq-text-base);
-  outline: none;
-  transition: border-color var(--tq-duration-fast) var(--tq-ease);
-}
-
-.input:focus,
-.select:focus {
-  border-color: var(--tq-accent);
-}
-
-.input:disabled,
-.select:disabled {
-  color: var(--tq-text-subtle);
-}
-
-.mono {
+  color: var(--tq-text-muted);
   font-family: var(--tq-font-mono);
   font-size: var(--tq-text-sm);
 }
 
-/* A row whose control is too wide for the right-hand column: the label sits above it. */
-.stackRow {
-  padding: var(--tq-space-5) var(--tq-space-6);
-  border-top: 1px solid var(--tq-border-subtle);
+.themeControl {
+  display: flex;
+  justify-content: flex-start;
 }
 
-/* The five run-state colours, shown so the palette is documented where people see it. */
+/* The five run-state colours, documented where people can see them. */
 .legend {
   display: flex;
   flex-wrap: wrap;
   gap: var(--tq-space-3);
-  margin-top: var(--tq-space-4);
 }
 
 .chip {

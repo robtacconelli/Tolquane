@@ -1,0 +1,37 @@
+/* The two strips under the panel header: what just happened, and what went wrong. */
+.notice,
+.failure {
+  display: flex;
+  align-items: center;
+  gap: var(--tq-space-3);
+  padding: var(--tq-space-3) var(--tq-space-6);
+  border-bottom: 1px solid var(--tq-border-subtle);
+  font-size: var(--tq-text-base);
+}
+
+.notice {
+  background: var(--tq-accent-soft);
+  color: var(--tq-accent);
+}
+
+.failure {
+  background: var(--tq-danger-soft);
+  color: var(--tq-danger);
+}
+
+.dismiss {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--tq-radius-sm);
+  color: inherit;
+  opacity: 0.75;
+}
+
+.dismiss:hover {
+  opacity: 1;
+  background: var(--tq-surface-hover);
+}

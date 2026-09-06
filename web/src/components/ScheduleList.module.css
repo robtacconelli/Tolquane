@@ -1,0 +1,129 @@
+.list {
+  display: flex;
+  flex-direction: column;
+}
+
+.row {
+  display: grid;
+  gap: var(--tq-space-5);
+  align-items: center;
+  padding: var(--tq-space-4) var(--tq-space-6);
+  transition: background-color var(--tq-duration-fast) var(--tq-ease);
+}
+
+.row + .row {
+  border-top: 1px solid var(--tq-border-subtle);
+}
+
+.row:hover {
+  background: var(--tq-surface-hover);
+}
+
+.cell {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tq-space-1);
+  min-width: 0;
+}
+
+/* Paused schedules stay legible; only what they would have done goes quiet. */
+.row[data-paused] .flow,
+.row[data-paused] .cron,
+.row[data-paused] .meta {
+  opacity: 0.62;
+}
+
+.flow {
+  font-family: var(--tq-font-mono);
+  font-size: var(--tq-text-sm);
+  font-weight: var(--tq-weight-medium);
+  color: var(--tq-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cron {
+  font-family: var(--tq-font-mono);
+  font-size: var(--tq-text-sm);
+  color: var(--tq-accent);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.meta {
+  color: var(--tq-text-subtle);
+  font-size: var(--tq-text-sm);
+  line-height: var(--tq-leading-normal);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.metaOne {
+  display: block;
+  white-space: nowrap;
+}
+
+.when {
+  color: var(--tq-text);
+  font-size: var(--tq-text-base);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.paused {
+  color: var(--tq-text-subtle);
+  font-size: var(--tq-text-base);
+}
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--tq-space-3);
+  color: var(--tq-text);
+  font-size: var(--tq-text-base);
+  white-space: nowrap;
+}
+
+.toggleCell {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--tq-space-2);
+}
+
+.delete:hover:not(:disabled) {
+  color: var(--tq-danger);
+  background: var(--tq-danger-soft);
+}
+
+/* ---------------------------------------------------------------- skeleton */
+.bar,
+.barSmall,
+.barToggle {
+  display: block;
+  height: 9px;
+  border-radius: var(--tq-radius-pill);
+  background: var(--tq-surface-active);
+}
+
+.barSmall {
+  height: 7px;
+  opacity: 0.6;
+}
+
+.barToggle {
+  width: 34px;
+  height: 20px;
+  border-radius: var(--tq-radius-pill);
+}
