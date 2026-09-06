@@ -574,6 +574,8 @@ missing. Taken: any block as a farm worker, the static optimizer, `tolquane laun
 (FastFlow's `dff_run`), busy and wait time per node in the report, eleven composition
 tests ported. Deferred: divide and conquer, parallel-for helpers, per-input end hooks, a
 byte cap on network batches, thread pinning, changing a farm's size while it runs, MPI.
+Everything deferred, from this review and from earlier phases, is listed in
+`docs/backlog.md`; that file is where future work waits.
 
 ---
 
