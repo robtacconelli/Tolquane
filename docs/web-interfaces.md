@@ -241,8 +241,10 @@ FastAPI, started by `tolquane web [--host 127.0.0.1] [--port 8765] [--workspace 
 [--token T] [--no-browser] [--check]`. Everything under `/api`; OpenAPI at
 `/api/openapi.json` (the frontend client is generated from it); the built frontend is
 served at `/` with an SPA fallback (unknown paths return `index.html`). With `--token`,
-every request needs `Authorization: Bearer T` (the WebSocket takes `?token=T`); without
-it the server binds only to loopback and refuses `--host` other than `127.0.0.1`.
+every request needs `Authorization: Bearer T` (the WebSocket takes `?token=T`, and so
+does any other request, since neither a socket nor an `EventSource` can set a header);
+without it the server binds only to loopback and refuses `--host` other than
+`127.0.0.1`.
 `--check` starts, hits `/api/health`, stops, for CI.
 
 ### Workspace and flow paths
@@ -278,13 +280,18 @@ POST /api/flows/generate            {"model": <FlowModel>} -> {"source": "..."}
 POST /api/flows/{path}/check        -> {"ok": true, "nodes": 12, "edges": 14} or 400 with the GraphError
 POST /api/flows/{path}/explain      -> {"text": "..."}
 POST /api/flows/{path}/draw         -> {"mermaid": "..."}
-POST /api/flows/{path}/optimize     {"all2all": false} -> {"source": "...", "notes": ["..."], "graph": <graph_view>}
+POST /api/flows/{path}/optimize     {"all2all": false} -> {"source": null, "notes": ["..."], "graph": <graph_view>}
 ```
 
 `parse`, `generate`, `check`, `explain`, `draw` and `optimize` run user code, so the
 server runs them in a child process through `python -m tolquane.web.model ...` and
 `python -m tolquane ...` with a timeout (settings `exec_timeout`, default 30 s), never
-by importing the flow itself.
+by importing the flow itself. (`optimize` has no command line form that answers with
+data, so its child runs `tq.optimize` and prints the notes and the graph as JSON.)
+As built, `optimize` answers `"source": null`: `tq.optimize` rewrites the block tree at
+run time and there is no way back from it to Python yet, so the notes and the optimized
+graph are what the canvas shows, and the last note says to run with `optimize` set.
+`generate` is pure text and runs in the server itself; nothing is imported.
 
 ### Runs
 
@@ -292,7 +299,7 @@ by importing the flow itself.
 POST /api/runs                      {"path": "hello.py", "runtime": "threads" | "processes" | "sync",
                                      "sample": "three lines" | null, "batch": 32, "tap": 5, "trace": false,
                                      "optimize": false} -> <Run>
-GET  /api/runs?flow=hello.py&limit=50 -> {"runs": [<Run>]}
+GET  /api/runs?flow=hello.py&limit=50 -> {"runs": [<Run>]}   (with "log": "", which can be 64 KB each)
 GET  /api/runs/{id}                 -> <Run> (the store's Run.to_dict(), plus "live": true while running)
 POST /api/runs/{id}/cancel          -> <Run>
 GET  /api/runs/{id}/log             -> text/plain, the captured stdout and stderr
@@ -300,7 +307,9 @@ GET  /api/runs/{id}/trace           -> the Chrome trace file, 404 when the run h
 WS   /api/runs/{id}/events          -> every event line of the run as a JSON message, in order; a client that
                                      connects late first receives the events so far (the supervisor keeps them
                                      in memory until the run ends and for 10 minutes after), then live ones; the
-                                     socket closes after the "done" event
+                                     socket closes after the "done" event. A run whose events have been forgotten
+                                     answers with one "done" carrying its stored status; an unknown id, with one
+                                     "error"
 ```
 
 The supervisor owns the child processes: `python -m tolquane run <path> --events
@@ -340,7 +349,11 @@ PUT /api/settings  any subset of the above; "ai.anthropic_key" and "ai.openai_ke
 Keys never enter the SQLite store: the server writes them to `~/.tolquane/web.toml`
 with mode 600 (or the file named by `TOLQUANE_WEB_CONFIG`), reads them from there or
 from `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` in the environment, and only ever reports
-whether one is set. Every other setting lives in the store.
+whether one is set. Every other setting lives in the store. `workspace`, `server.host`
+and `server.port` are what the *next* `tolquane web` starts with when no flag says
+otherwise: a running server keeps the ones it was given, and `GET /api/health` is where
+the live workspace is. A setting the server does not know, or a value it cannot use, is
+a 400 naming it rather than a value nothing reads.
 
 ### AI chat
 
@@ -351,13 +364,16 @@ POST /api/ai/chat   {"path": "hello.py" | null, "messages": [{"role": "user", "c
 ```
 
 Events: `{"type": "text", "delta": "..."}` for the assistant's words, `{"type":
-"tool", "name": "write_flow", "status": "started" | "done", "summary": "..."}` for each
-tool call the builder makes, `{"type": "flow", "source": "...", "model": ..., "graph":
-...}` when the builder has written or changed the flow (the frontend offers "apply"),
-`{"type": "done", "usage": {...}}`, `{"type": "error", "message": "..."}`. The server
-runs `tolquane.ai.Builder` with the workspace as its workdir, the open flow's source in
-the first user turn's context, and the sample when given; it never writes over the
-open file itself: the client applies the result through `PUT /api/flows/{path}`.
+"tool", "name": "write_flow", "status": "started" | "done", "summary": "...", "error":
+false}` for each tool call the builder makes, `{"type": "flow", "source": "...",
+"model": ..., "graph": ...}` when the builder has written or changed the flow (the
+frontend offers "apply"), `{"type": "done", "usage": {...}, "ok": true, "summary":
+"..."}`, `{"type": "error", "message": "..."}`. The server runs `tolquane.ai.Builder`
+in a directory of its own under the workspace (`.tolquane-web/ai/<id>`, removed when the
+stream ends) seeded with the open flow's source, so `write_flow` can never touch the
+open file: the client applies the result through `PUT /api/flows/{path}`. The open
+flow's source and the sample are in the first user turn's context, along with the
+earlier messages of the conversation.
 
 ### Health
 

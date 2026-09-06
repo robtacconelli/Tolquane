@@ -31,8 +31,9 @@ from pathlib import Path
 from typing import Any
 
 import tolquane as tq
+from tolquane._events import graph_view as expanded_graph_view
 from tolquane.errors import GraphError
-from tolquane.graph import DEFAULT_BATCH, DEFAULT_CAPACITY, Block, Graph, expand
+from tolquane.graph import Block, Graph, expand
 
 from . import model_codegen, model_parse
 
@@ -218,36 +219,15 @@ def _looks_like_path(text: str) -> bool:
 
 
 def _view(graph: Graph) -> dict[str, Any]:
-    return {
-        "nodes": [
-            {
-                "name": n.name,
-                "kind": n.kind,
-                "role": n.role,
-                "group": n.group,
-                "is_sink": n.is_sink,
-                "is_async": n.is_async,
-                "tagged": n.tagged,
-            }
-            for n in graph.nodes
-        ],
-        "edges": [
-            {
-                "src": e.src,
-                "dst": e.dst,
-                "rule": e.rule,
-                "feedback": e.feedback,
-                "capacity": None if e.capacity == DEFAULT_CAPACITY else e.capacity,
-                "batch": None if e.batch == DEFAULT_BATCH else e.batch,
-            }
-            for e in graph.edges
-        ],
-        "loops": [
-            {"name": loop.name, "nodes": list(loop.nodes), "heads": list(loop.heads)}
-            for loop in graph.loops
-        ],
-        "windows": dict(graph.windows),
-    }
+    """One shape for the expanded graph, and it belongs to the library.
+
+    ``tolquane._events.graph_view`` is what ``tolquane run --events`` puts in its
+    ``start`` event, and it is what the canvas draws; the two must be the same JSON or a
+    running flow would not line up with the file it came from. The library cannot import
+    the web package, so the library's is the one, and this is a way in for the things
+    only the model has names for (a path, a block, a model).
+    """
+    return expanded_graph_view(graph)
 
 
 def check_model(model: FlowModel) -> list[str]:

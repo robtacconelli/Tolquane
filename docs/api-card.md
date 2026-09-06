@@ -73,6 +73,7 @@ tq.run(tq.optimize(graph))                    # fewer threads: stages fused into
 tq.run(graph, capacity=64)                    # bound every edge (default 1024; None = unbounded)
 tq.run(graph, batch=1)                        # hand over every item alone (default 32, flushed within 1 ms)
 tq.run(graph, trace="trace.json")             # Chrome trace of every node's runs and waits (Perfetto, chrome://tracing)
+#   tolquane run flow.py --trace trace.json     # shell: the same file
 print(report)                                 # items in/out, busy and wait time per node; report.busiest() names the bottleneck
 
 with tq.session(tq.farm(work, 4)) as s:       # keep a graph running
@@ -134,3 +135,16 @@ out = tq.to_list()
 tq.run(tq.from_iterable(range(10)) >> double >> out)
 assert out.items == [0, 2, 4, ...]
 ```
+
+## Tolquane Web
+
+```
+pip install "tolquane[web]"
+tolquane web [--host 127.0.0.1] [--port 8765] [--workspace DIR] [--token T] [--no-browser]
+```
+
+A local page for the flows in one directory: a canvas of the blocks, the Python beside
+it, runs with live per-node counts, schedules and the AI builder. The file is still a
+plain `flow.py`; the canvas is a view of it. Flows run in child processes, so a hung or
+crashing flow cannot take the server down. `--token` is needed for any host other than
+`127.0.0.1`; `--check` starts the server, asks `/api/health` and stops, for CI.

@@ -8,6 +8,7 @@ import json
 import sys
 import threading
 import time
+import webbrowser
 from pathlib import Path
 from typing import Any
 
@@ -74,7 +75,12 @@ def cmd_run(args: argparse.Namespace) -> int:
     if args.events:
         return _run_with_events(args)
     report = run(
-        _graph(args), runtime=args.runtime, batch=args.batch, deploy=args.deploy, group=args.group
+        _graph(args),
+        runtime=args.runtime,
+        batch=args.batch,
+        deploy=args.deploy,
+        group=args.group,
+        trace=args.trace,
     )
     if args.stats:
         print(report, file=sys.stderr)
@@ -104,6 +110,7 @@ def _run_with_events(args: argparse.Namespace) -> int:
                 batch=args.batch,
                 deploy=args.deploy,
                 group=args.group,
+                trace=args.trace,
                 on_progress=stream.progress,
                 progress_interval=args.progress_interval,
                 tap=args.tap,
@@ -149,6 +156,91 @@ def cmd_launch(args: argparse.Namespace) -> int:
         dry_run=args.dry_run,
         optimize=args.optimize,
     )
+
+
+def cmd_web(args: argparse.Namespace) -> int:
+    """Start Tolquane Web: the server, and a browser looking at it."""
+    try:
+        import uvicorn
+
+        from .web.server import create_app
+        from .web.settings import startup_settings
+    except ImportError as exc:
+        print(
+            f"tolquane web needs FastAPI and uvicorn ({exc.name}): pip install 'tolquane[web]'",
+            file=sys.stderr,
+        )
+        return 1
+    settings = startup_settings(
+        workspace=args.workspace, host=args.host, port=args.port, token=args.token
+    )
+    if not settings.local_only and not settings.token:
+        print(
+            f"refusing to listen on {settings.host} without a token: anyone who can reach "
+            "this machine could run code on it. Add --token SECRET, or leave the host at "
+            "127.0.0.1.",
+            file=sys.stderr,
+        )
+        return 2
+    try:
+        app = create_app(settings)
+    except ValueError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
+    if args.check:
+        return _web_check(uvicorn, app, settings)
+    url = f"http://{_url_host(settings.host)}:{settings.port}/"
+    print(f"Tolquane Web: {url}  (workspace {settings.workspace})")
+    if not any(importlib.util.find_spec(name) for name in ("websockets", "wsproto")):
+        # uvicorn speaks HTTP on its own but needs one of these to answer an upgrade.
+        print(
+            "note: live run events need a WebSocket library: pip install websockets",
+            file=sys.stderr,
+        )
+    if not args.no_browser:
+        # After a moment, so the page is served rather than refused.
+        threading.Timer(1.0, webbrowser.open, args=(url,)).start()
+    uvicorn.run(app, host=settings.host, port=settings.port, log_level="info")
+    return 0
+
+
+def _url_host(host: str) -> str:
+    return f"[{host}]" if ":" in host else host
+
+
+def _web_check(uvicorn: Any, app: Any, settings: Any) -> int:
+    """Start the server on a free port, ask it how it is, stop it. For CI."""
+    import json as _json
+    import urllib.request
+
+    server = uvicorn.Server(uvicorn.Config(app, host=settings.host, port=0, log_level="warning"))
+    thread = threading.Thread(target=server.run, name="tolquane-web-check", daemon=True)
+    thread.start()
+    deadline = time.monotonic() + 30
+    while not server.started and thread.is_alive() and time.monotonic() < deadline:
+        time.sleep(0.05)
+    if not server.started:
+        print("the server did not start", file=sys.stderr)
+        return 1
+    try:
+        port = server.servers[0].sockets[0].getsockname()[1]
+        request = urllib.request.Request(
+            f"http://{_url_host(settings.host)}:{port}/api/health",
+            headers={"Authorization": f"Bearer {settings.token}"} if settings.token else {},
+        )
+        with urllib.request.urlopen(request, timeout=15) as response:
+            payload = _json.loads(response.read().decode())
+    except Exception as exc:
+        print(f"the server did not answer: {exc}", file=sys.stderr)
+        return 1
+    finally:
+        server.should_exit = True
+        thread.join(15)
+    if not payload.get("ok"):
+        print(f"the server is unwell: {payload}", file=sys.stderr)
+        return 1
+    print(f"tolquane web {payload.get('version')}: ok, workspace {payload.get('workspace')}")
+    return 0
 
 
 def cmd_build(args: argparse.Namespace) -> int:
@@ -265,6 +357,13 @@ def main(argv: list[str] | None = None) -> int:
             )
             p.add_argument("--optimize", action="store_true", help="cut threads before running")
             p.add_argument(
+                "--trace",
+                default=None,
+                metavar="FILE",
+                help="write a Chrome trace file of every node's work and waits "
+                "(open it in Perfetto or chrome://tracing)",
+            )
+            p.add_argument(
                 "--deploy", default=None, help="deploy file (TOML) cutting the graph into groups"
             )
             p.add_argument("--group", default=None, help="which group this host runs")
@@ -284,6 +383,15 @@ def main(argv: list[str] | None = None) -> int:
     )
     launch_p.add_argument("--dry-run", action="store_true", help="print the commands and stop")
     launch_p.set_defaults(func=cmd_launch)
+
+    web_p = sub.add_parser("web", help="open the Tolquane Web GUI (pip install 'tolquane[web]')")
+    web_p.add_argument("--host", default=None, help="address to listen on (default 127.0.0.1)")
+    web_p.add_argument("--port", type=int, default=None, help="port to listen on (default 8765)")
+    web_p.add_argument("--workspace", default=None, help="directory the flows live in")
+    web_p.add_argument("--token", default=None, help="require this bearer token on every request")
+    web_p.add_argument("--no-browser", action="store_true", help="do not open a browser")
+    web_p.add_argument("--check", action="store_true", help="start, ask /api/health, stop")
+    web_p.set_defaults(func=cmd_web)
 
     args = parser.parse_args(argv)
     try:
