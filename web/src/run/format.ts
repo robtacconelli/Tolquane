@@ -55,6 +55,21 @@ export function formatSeconds(seconds: number | null | undefined): string {
   return `${seconds.toFixed(2)} s`;
 }
 
+/*
+ * Colour codes, out.
+ *
+ * `tolquane check` writes its error with the same colours it would in a terminal, and
+ * the server passes the child's message through unchanged (S4: a GraphError already says
+ * the fix). In a browser those bytes are not colour, they are `[1;35m` in the middle of
+ * the sentence, so they come off before the message is shown.
+ */
+// eslint-disable-next-line no-control-regex
+const ANSI = /\u001B\[[0-9;]*[A-Za-z]/g;
+
+export function withoutAnsi(text: string): string {
+  return text.replace(ANSI, '');
+}
+
 /** `numbers->double.emitter` as two halves, so an edge can be drawn with an arrow. */
 export function splitEdgeKey(key: string): { src: string; dst: string } {
   const at = key.indexOf('->');
@@ -62,10 +77,77 @@ export function splitEdgeKey(key: string): { src: string; dst: string } {
   return { src: key.slice(0, at), dst: key.slice(at + 2) };
 }
 
-/** `manual`, `api`, `schedule:3` as a word. */
+/**
+ * What started a run: `manual`, `api`, `schedule:3`, `retry:3:2` (section N).
+ *
+ * A retry names the schedule it belongs to and which attempt it is, which is what lets
+ * the run dialog draw the chain: the firing and everything that followed it.
+ */
+export interface Trigger {
+  kind: 'manual' | 'api' | 'schedule' | 'retry' | 'other';
+  /** The schedule this belongs to, for `schedule:` and `retry:`. */
+  schedule: number | null;
+  /** Which attempt a retry is; `0` for the firing itself. */
+  attempt: number;
+  label: string;
+}
+
+export function parseTrigger(trigger: string): Trigger {
+  if (trigger === 'manual') return { kind: 'manual', schedule: null, attempt: 0, label: 'Manual' };
+  if (trigger === 'api') return { kind: 'api', schedule: null, attempt: 0, label: 'API' };
+  const retry = /^retry:(\d+):(\d+)$/.exec(trigger);
+  if (retry) {
+    return {
+      kind: 'retry',
+      schedule: Number(retry[1]),
+      attempt: Number(retry[2]),
+      label: `Retry ${String(retry[2])}`,
+    };
+  }
+  const scheduled = /^schedule:(\d+)$/.exec(trigger);
+  if (scheduled) {
+    return {
+      kind: 'schedule',
+      schedule: Number(scheduled[1]),
+      attempt: 0,
+      label: `Schedule ${String(scheduled[1])}`,
+    };
+  }
+  return { kind: 'other', schedule: null, attempt: 0, label: trigger };
+}
+
+/** `manual`, `api`, `schedule:3`, `retry:3:2` as a word. */
 export function formatTrigger(trigger: string): string {
-  if (trigger.startsWith('schedule:')) return `Schedule ${trigger.slice('schedule:'.length)}`;
-  if (trigger === 'manual') return 'Manual';
-  if (trigger === 'api') return 'API';
-  return trigger;
+  return parseTrigger(trigger).label;
+}
+
+/** The least a run has to be for the chain below to line it up with its siblings. */
+export interface ChainRun {
+  id: number;
+  trigger: string;
+  started: string;
+}
+
+/**
+ * One firing of a schedule and every retry that followed it, oldest first.
+ *
+ * The trigger says which schedule a run belongs to but not which *firing*: two failures
+ * a day apart both leave `schedule:3` and `retry:3:1`. Ordering by start time and
+ * beginning a new chain at every `schedule:` run puts each retry with the firing it
+ * actually followed. A run that is not a schedule's is its own chain of one.
+ */
+export function retryChain<T extends ChainRun>(runs: readonly T[], run: T): T[] {
+  const trigger = parseTrigger(run.trigger);
+  if (trigger.schedule === null) return [run];
+  const mine = runs
+    .filter((other) => parseTrigger(other.trigger).schedule === trigger.schedule)
+    .slice()
+    .sort((a, b) => a.started.localeCompare(b.started) || a.id - b.id);
+  const chains: T[][] = [];
+  for (const other of mine) {
+    if (parseTrigger(other.trigger).kind === 'schedule' || chains.length === 0)
+      chains.push([other]);
+    else chains[chains.length - 1]?.push(other);
+  }
+  return chains.find((chain) => chain.some((other) => other.id === run.id)) ?? [run];
 }

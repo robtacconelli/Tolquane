@@ -14,6 +14,9 @@
 
 import { useMemo } from 'react';
 import { create } from 'zustand';
+// A type only: the store still talks to nothing. `Committed` is what a save answers with
+// when it committed, and the History tab and the toolbar both read it from here.
+import type { Committed } from '../api/history';
 import {
   appendStage as appendStageEdit,
   emptyLayout,
@@ -27,10 +30,15 @@ import {
   pathsAfterEdit,
   removeAt as removeAtEdit,
   replaceAt as replaceAtEdit,
+  addParam as addParamEdit,
+  newParamName,
+  removeParam as removeParamEdit,
+  renameParam as renameParamEdit,
   setBlockName as setBlockNameEdit,
   setCrossBlock as setCrossBlockEdit,
   setFarmOptions as setFarmOptionsEdit,
   setMerge as setMergeEdit,
+  setParam as setParamEdit,
   setWorkers as setWorkersEdit,
   terminalKind,
   unwrap as unwrapEdit,
@@ -45,6 +53,7 @@ import type {
   NodeDef,
   FarmOptions,
   FlowModel,
+  FlowParam,
   FlowResponse,
   GraphView,
   Layout,
@@ -89,6 +98,20 @@ export interface FlowState {
   /** The canvas is showing the expanded graph (threads), read-only. */
   expanded: boolean;
 
+  /**
+   * The message the next save should commit with, or null for a plain save.
+   *
+   * It lives here rather than in the History panel because the two things that set it --
+   * the save-with-message dialog and "apply to editor", which proposes `AI: <the
+   * request>` -- both happen away from the panel, and the save that uses it is the
+   * page's. `markSaved` clears it: a message belongs to one save.
+   */
+  pendingCommit: string | null;
+  /** The commit the last save made, when it made one (section H). */
+  lastCommit: Committed | null;
+  /** How many times this flow has been written; the History tab refreshes on it. */
+  saves: number;
+
   /** From `validateModel`, refreshed on every edit. */
   problems: Problem[];
   /** From `POST /check`, kept until the next check or edit. */
@@ -115,7 +138,9 @@ export interface FlowState {
   ) => void;
   /** The property panel's body editor: this node's text is now that. */
   setNodeSource: (id: string, source: string) => void;
-  markSaved: (response: { source: string; modified: string }) => void;
+  markSaved: (response: { source: string; modified: string; commit?: Committed | null }) => void;
+  /** The message the next save commits with; `null` puts it back to a plain save. */
+  setPendingCommit: (message: string | null) => void;
   clear: () => void;
 
   select: (path: string | null) => void;
@@ -131,6 +156,20 @@ export interface FlowState {
   ) => void;
   /** The node the flow starts from when it is run without a sample. */
   setStart: (id: string | null) => void;
+
+  /*
+   * `build()`'s keyword-only parameters (section E). They are not part of the tree, so
+   * they do not go through `edit()`: nothing on the canvas moves when one is added, and
+   * there are no paths to re-key. They are still a model edit -- undoable, and the code
+   * is generated again from the model as for any other.
+   */
+  /** Add a parameter; without a name it gets one nothing else has. */
+  addParam: (param?: Partial<FlowParam>) => void;
+  /** Rename one. `paramNameError` says first whether the new name will do. */
+  renameParam: (from: string, to: string) => void;
+  /** Retype one: a new default literal, a new annotation, or both. */
+  setParam: (name: string, patch: Partial<FlowParam>) => void;
+  removeParam: (name: string) => void;
 
   appendBlock: (block: Tree, addNodes?: NodeDef[]) => void;
   insertAfter: (path: string, block: Tree, addNodes?: NodeDef[]) => void;
@@ -176,6 +215,9 @@ const INITIAL = {
   dirty: false,
   layoutDirty: false,
   sourceStale: false,
+  pendingCommit: null,
+  lastCommit: null as Committed | null,
+  saves: 0,
   selected: null,
   view: 'canvas' as EditorView,
   expanded: false,
@@ -199,6 +241,24 @@ export const useFlowStore = create<FlowState>((set, get) => {
     const state = get();
     if (!state.model) return state.past;
     return [...state.past, snapshot()].slice(-HISTORY_LIMIT);
+  }
+
+  /** The one way the parameter list changes: snapshot, rewrite, revalidate. */
+  function editParams(
+    model: FlowModel,
+    rewrite: (params: readonly FlowParam[]) => FlowParam[],
+  ): void {
+    const params = rewrite(model.params);
+    const next: FlowModel = { ...model, params };
+    set({
+      past: pushHistory(),
+      future: [],
+      model: next,
+      dirty: true,
+      sourceStale: true,
+      problems: validateModel(next),
+      serverProblems: [],
+    });
   }
 
   function restore(entry: Snapshot, other: Snapshot[], into: 'past' | 'future'): void {
@@ -231,6 +291,10 @@ export const useFlowStore = create<FlowState>((set, get) => {
         dirty: false,
         layoutDirty: false,
         sourceStale: false,
+        // A message belongs to the flow it was written for; this is another file, or the
+        // same one read back from the server. "Apply to editor" sets its own afterwards.
+        pendingCommit: null,
+        lastCommit: null,
         selected: null,
         expanded: model === null,
         problems: model ? validateModel(model) : [],
@@ -287,12 +351,17 @@ export const useFlowStore = create<FlowState>((set, get) => {
     },
 
     markSaved: (response) =>
-      set({
+      set((state) => ({
         source: response.source,
         modified: response.modified,
         dirty: false,
         sourceStale: false,
-      }),
+        pendingCommit: null,
+        lastCommit: response.commit ?? null,
+        saves: state.saves + 1,
+      })),
+
+    setPendingCommit: (message) => set({ pendingCommit: message?.trim() ? message.trim() : null }),
 
     clear: () => set({ ...INITIAL, layout: emptyLayout() }),
 
@@ -352,6 +421,37 @@ export const useFlowStore = create<FlowState>((set, get) => {
         problems: validateModel(next),
         serverProblems: [],
       });
+    },
+
+    addParam: (param) => {
+      const model = get().model;
+      if (!model) return;
+      const name = param?.name ?? newParamName(model.params);
+      editParams(model, (params) =>
+        addParamEdit(params, {
+          name,
+          default: param?.default ?? 'None',
+          annotation: param?.annotation ?? null,
+        }),
+      );
+    },
+
+    renameParam: (from, to) => {
+      const model = get().model;
+      if (!model) return;
+      editParams(model, (params) => renameParamEdit(params, from, to));
+    },
+
+    setParam: (name, patch) => {
+      const model = get().model;
+      if (!model) return;
+      editParams(model, (params) => setParamEdit(params, name, patch));
+    },
+
+    removeParam: (name) => {
+      const model = get().model;
+      if (!model) return;
+      editParams(model, (params) => removeParamEdit(params, name));
     },
 
     /**

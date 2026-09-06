@@ -1,0 +1,18 @@
+/* The one paint between "the page loaded" and "the server said who you are". It waits
+   four hundred milliseconds before showing anything: on the loopback server it is asked
+   for, the answer is already here, and a mark that flashes is worse than a blank. */
+.booting {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100%;
+  color: var(--tq-accent);
+  opacity: 0;
+  animation: appear var(--tq-duration-base) var(--tq-ease) 400ms forwards;
+}
+
+@keyframes appear {
+  to {
+    opacity: 1;
+  }
+}

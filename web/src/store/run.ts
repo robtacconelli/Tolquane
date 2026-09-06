@@ -73,6 +73,10 @@ export interface RunOptions {
   sample: string | null;
   tap: number;
   trace: boolean;
+  /** Section E: the keywords `build()` is called with, as JSON values. */
+  params: Record<string, unknown>;
+  /** Section E: the variables the child process is given, over the workspace's own. */
+  env: Record<string, string>;
 }
 
 export const DEFAULT_RUN_OPTIONS: RunOptions = {
@@ -81,6 +85,8 @@ export const DEFAULT_RUN_OPTIONS: RunOptions = {
   sample: null,
   tap: 5,
   trace: false,
+  params: {},
+  env: {},
 };
 
 /** The socket's own state, so the drawer can say when it is not listening. */
@@ -370,6 +376,10 @@ export const useRunStore = create<RunState>((set) => ({
         sample: run.sample,
         tap: state.options.tap,
         trace: run.trace_path !== null,
+        // The inputs are stored with the run, so opening an old one and running it
+        // again repeats what it was actually given, not what the popover holds now.
+        params: run.params,
+        env: run.env,
       },
       problems: run.error
         ? [

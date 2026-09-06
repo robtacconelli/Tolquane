@@ -59,10 +59,23 @@ export function ProblemsPane({
           <span className={styles.problemHead}>
             <StatusDot state={problem.severity === 'error' ? 'failed' : 'waiting'} />
             <span className={styles.problemText}>{problem.message}</span>
-            <span className={styles.problemWhere}>
-              {problem.source === 'server' ? 'tq.check' : (problem.path ?? 'flow')}
+            <span
+              className={
+                problem.severity === 'warning'
+                  ? `${styles.problemWhere} ${styles.problemWarning}`
+                  : styles.problemWhere
+              }
+            >
+              {problem.severity === 'warning'
+                ? 'warning'
+                : problem.source === 'server'
+                  ? 'tq.check'
+                  : (problem.path ?? 'flow')}
             </span>
           </span>
+          {/* The one line that ends it: `pip install opencv-python`, ready to be copied
+              into the terminal the interpreter lives in. */}
+          {problem.hint ? <code className={styles.problemHint}>{problem.hint}</code> : null}
         </button>
       ))}
 

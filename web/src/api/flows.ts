@@ -45,6 +45,16 @@ export { listFlows } from './flowsList';
 
 export const getFlow = (path: string) => api.get<FlowDetail>(at(path));
 
+/**
+ * `PUT /api/flows/{path}`.
+ *
+ * `commit: {message}` (section H) asks for the save to be committed as well as written,
+ * and the answer's `commit` is the revision that was made -- `null` when nothing changed,
+ * when the `auto_commit` setting was off and no message was given, or when git refused a
+ * commit the save had already gone through without. A commit asked for in a workspace
+ * that is not a repository is a 400 with the file untouched, so the caller may offer it
+ * only where `workspaceHistory()` says there is a repository.
+ */
 export const saveFlow = (path: string, body: SaveFlowRequest) =>
   api.put<FlowDetail>(at(path), body);
 

@@ -158,3 +158,20 @@
   max-width: 30ch;
   line-height: var(--tq-leading-relaxed);
 }
+
+/* One parameter of build(): its name, the kind of value it takes and its default,
+ * boxed together so a panel with four of them still reads as four things. */
+.param {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tq-space-3);
+  padding: var(--tq-space-4);
+  border-radius: var(--tq-radius-md);
+  border: 1px solid var(--tq-border-subtle);
+  background: var(--tq-surface);
+}
+
+.paramActions {
+  display: flex;
+  justify-content: flex-end;
+}

@@ -75,6 +75,7 @@
       ]
     },
     "start": null,
+    "params": [],
     "main": null,
     "epilogue": [],
     "build_notes": [

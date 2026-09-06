@@ -13,6 +13,8 @@ import { useParams } from 'react-router-dom';
 import { AiPanel } from '../ai/AiPanel';
 import { ApiError } from '../api/client';
 import { checkFlow, generateSource, getFlow, saveFlow, saveLayout } from '../api/flows';
+import { withoutAnsi } from '../run/format';
+import { importProblems, importsFromError } from '../run/imports';
 import { Button } from '../components/Button';
 import { Icon } from '../components/Icon';
 import { Notice } from '../components/Notice';
@@ -23,6 +25,10 @@ import { CodeDialogs, CodeStage } from '../editor/code';
 import { reportSaveFailure, useCodeSync } from '../editor/code/sync';
 import { useCodeSyncStore } from '../editor/code/syncStore';
 import { DRAWER_COLLAPSED_HEIGHT, DRAWER_MIN_HEIGHT, useEditorLayout } from '../editor/layout';
+import { HistoryPanel } from '../history/HistoryPanel';
+import { SaveMessageDialog } from '../history/SaveMessageDialog';
+import { commitBody, savedText } from '../history/save';
+import { useFlowHistory, useHistoryStore } from '../history/store';
 import { locateProblem, type Problem } from '../model';
 import { RunButton } from '../run/RunButton';
 import { RunDrawer, type DrawerTab } from '../run/RunDrawer';
@@ -89,6 +95,13 @@ export function EditorPage(): JSX.Element {
   const aiOpen = useAiStore((state) => state.open);
   const setAiOpen = useAiStore((state) => state.setOpen);
 
+  // The third thing the right column can be (section H): the flow's history. `uncommitted`
+  // is the dot on Save -- the file differs from the last commit -- and is kept up to date
+  // by `useFlowHistory` below whether or not the tab has ever been opened.
+  const historyOpen = useHistoryStore((state) => state.open);
+  const setHistoryOpen = useHistoryStore((state) => state.setOpen);
+  const uncommitted = useHistoryStore((state) => state.uncommitted);
+
   // The furniture around the canvas, remembered between visits (see editor/layout.ts).
   const paletteOpen = useEditorLayout((state) => state.paletteOpen);
   const drawerOpen = useEditorLayout((state) => state.drawerOpen);
@@ -102,10 +115,16 @@ export function EditorPage(): JSX.Element {
    * closed, and because nothing it imports pulls CodeMirror into this bundle. */
   useCodeSync();
 
+  /* The open flow's history, kept fresh here rather than in the panel: the Save button
+   * wears the dot whether or not anybody has looked at the History tab. */
+  useFlowHistory(path);
+
   const [tab, setTab] = useState<Tab>('Console');
   const [notice, setNotice] = useState<PageNotice | null>(null);
   const [failure, setFailure] = useState<{ path: string; message: string } | null>(null);
   const [busy, setBusy] = useState<'idle' | 'saving' | 'checking'>('idle');
+  /** Cmd/Ctrl+Shift+S, and the Commit button on the History tab: save with a message. */
+  const [askCommit, setAskCommit] = useState(false);
 
   /* Open the flow named by the route. The store holds one flow at a time, which is what
    * the editor is: one file, one canvas, one undo stack. */
@@ -144,13 +163,22 @@ export function EditorPage(): JSX.Element {
         text = generated.source;
         setSource(text);
       }
-      const saved = await saveFlow(state.path, { source: text, modified: state.modified });
-      markSaved({ source: saved.source, modified: saved.modified });
+      /* A message waiting in the store -- written in the save dialog, or proposed by
+       * "apply to editor" after a builder answer -- makes this save a commit as well
+       * (section H). Without one the server still commits when `auto_commit` is on, and
+       * the notice says which of the two happened. */
+      const asked = state.pendingCommit;
+      const saved = await saveFlow(state.path, {
+        source: text,
+        modified: state.modified,
+        ...commitBody(asked),
+      });
+      markSaved({ source: saved.source, modified: saved.modified, commit: saved.commit });
       if (useFlowStore.getState().layoutDirty) {
         await saveLayout(state.path, useFlowStore.getState().layout);
         markLayoutSaved();
       }
-      setNotice({ tone: 'success', text: 'Saved' });
+      setNotice({ tone: 'success', text: savedText(saved.commit, asked !== null) });
     } catch (error: unknown) {
       if (reportSaveFailure(error)) {
         // The dialog now has both versions and the question to ask about them.
@@ -173,20 +201,30 @@ export function EditorPage(): JSX.Element {
     setNotice(null);
     try {
       const result = await checkFlow(state.path);
-      setServerProblems([]);
+      // A sound flow can still be one this interpreter cannot import: those are
+      // warnings with their pip line, not failures (section E).
+      const missing = importProblems(result.imports);
+      setServerProblems(missing);
+      if (missing.length > 0) setTab('Problems');
       setNotice({
         tone: 'success',
         text: `The flow is sound: ${String(result.nodes)} nodes, ${String(result.edges)} edges.`,
       });
     } catch (error: unknown) {
-      const message = error instanceof ApiError ? error.message : 'The check could not run';
+      const message = withoutAnsi(
+        error instanceof ApiError ? error.message : 'The check could not run',
+      );
       const found: Problem = {
         path: state.model ? locateProblem(message, state.model) : null,
         message,
         severity: 'error',
         source: 'server',
       };
-      setServerProblems([found]);
+      // The probe travels with the failure too: a check that fails *because* a module is
+      // missing says so on the line above the traceback.
+      const missing =
+        error instanceof ApiError ? importProblems(importsFromError(error.detail)) : [];
+      setServerProblems([found, ...missing]);
       setTab('Problems');
     } finally {
       setBusy('idle');
@@ -211,7 +249,9 @@ export function EditorPage(): JSX.Element {
       if (inEditor && key !== 's') return;
       if (key === 's') {
         event.preventDefault();
-        void save();
+        // With Shift, the save is given a name: the commit message (section H).
+        if (event.shiftKey) setAskCommit(true);
+        else void save();
       } else if (key === 'z') {
         event.preventDefault();
         if (event.shiftKey) redo();
@@ -318,10 +358,26 @@ export function EditorPage(): JSX.Element {
           variant={aiOpen ? 'secondary' : 'ghost'}
           size="sm"
           aria-pressed={aiOpen}
-          onClick={() => setAiOpen(!aiOpen)}
+          onClick={() => {
+            setAiOpen(!aiOpen);
+            setHistoryOpen(false);
+          }}
         >
           <Icon name="sparkle" size={15} />
           AI builder
+        </Button>
+        <Button
+          variant={historyOpen ? 'secondary' : 'ghost'}
+          size="sm"
+          aria-pressed={historyOpen}
+          onClick={() => {
+            setHistoryOpen(!historyOpen);
+            setAiOpen(false);
+            setPanelOpen(true);
+          }}
+        >
+          <Icon name="clock" size={15} />
+          History
         </Button>
         <Button
           variant="secondary"
@@ -337,9 +393,17 @@ export function EditorPage(): JSX.Element {
           size="sm"
           onClick={() => void save()}
           disabled={!opened || busy !== 'idle'}
+          title={
+            uncommitted
+              ? 'Save. This flow has changes that are not committed; Shift adds a message.'
+              : 'Save'
+          }
         >
           <Icon name="folder" size={15} />
           {busy === 'saving' ? 'Saving…' : 'Save'}
+          {/* Decorative: the button's own title says what the dot means, and an
+              aria-label here would land in the button's accessible name. */}
+          {uncommitted ? <span className={styles.dot} aria-hidden="true" /> : null}
         </Button>
         <RunButton path={path} ready={opened} onBeforeRun={save} />
         <span className={styles.divider} />
@@ -406,7 +470,22 @@ export function EditorPage(): JSX.Element {
             <AiPanel
               path={path}
               onClose={() => setAiOpen(false)}
+              onHistory={() => {
+                setAiOpen(false);
+                setHistoryOpen(true);
+              }}
               onShowCode={() => setView('code')}
+            />
+          ) : historyOpen ? (
+            <HistoryPanel
+              key={path}
+              path={path}
+              onProperties={() => setHistoryOpen(false)}
+              onAi={() => {
+                setHistoryOpen(false);
+                setAiOpen(true);
+              }}
+              onSaveWithMessage={() => setAskCommit(true)}
             />
           ) : (
             <Properties
@@ -448,6 +527,18 @@ export function EditorPage(): JSX.Element {
           onSelectProblem={select}
         />
       </section>
+
+      {askCommit ? (
+        <SaveMessageDialog
+          path={path}
+          onClose={() => setAskCommit(false)}
+          onSave={(message) => {
+            setAskCommit(false);
+            useFlowStore.getState().setPendingCommit(message);
+            void save();
+          }}
+        />
+      ) : null}
 
       <CodeDialogs />
     </div>

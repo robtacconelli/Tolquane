@@ -1,0 +1,105 @@
+/* The two input editors a run and a schedule share: build()'s parameters, and the
+ * environment its child process is given. Both are lists of small controls, so they get
+ * a tighter rhythm than a settings row and no frame of their own -- the popover, the
+ * dialog and the properties panel each provide the frame. */
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tq-space-4);
+}
+
+.sectionHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--tq-space-4);
+}
+
+.sectionTitle {
+  font-size: var(--tq-text-xs);
+  letter-spacing: var(--tq-tracking-wide);
+  text-transform: uppercase;
+  color: var(--tq-text-subtle);
+}
+
+.sectionNote {
+  font-size: var(--tq-text-xs);
+  color: var(--tq-text-subtle);
+}
+
+.none {
+  margin: 0;
+  font-size: var(--tq-text-xs);
+  color: var(--tq-text-subtle);
+  line-height: var(--tq-leading-normal);
+}
+
+/* --------------------------------------------------------------- parameters */
+
+.params {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tq-space-4);
+}
+
+.toggleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--tq-space-4);
+}
+
+.code {
+  width: 100%;
+  min-height: 54px;
+  padding: var(--tq-space-3) var(--tq-space-4);
+  border-radius: var(--tq-radius-md);
+  border: 1px solid var(--tq-border);
+  background: var(--tq-surface-sunken);
+  color: var(--tq-text);
+  font-family: var(--tq-font-mono);
+  font-size: var(--tq-text-sm);
+  line-height: var(--tq-leading-relaxed);
+  resize: vertical;
+}
+
+.code:hover:not(:disabled) {
+  border-color: var(--tq-border-strong);
+}
+
+.codeInvalid {
+  border-color: var(--tq-danger);
+}
+
+/* --------------------------------------------------------------- environment */
+
+.rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tq-space-3);
+}
+
+.row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr) auto;
+  align-items: center;
+  gap: var(--tq-space-3);
+}
+
+.rowError {
+  grid-column: 1 / -1;
+  font-size: var(--tq-text-xs);
+  color: var(--tq-danger);
+}
+
+.add {
+  align-self: flex-start;
+}
+
+/* A name a member may see but not read the value of: the workspace environment. */
+.readonlyName {
+  font-family: var(--tq-font-mono);
+  font-size: var(--tq-text-sm);
+  color: var(--tq-text-muted);
+}

@@ -73,3 +73,122 @@
 .trace:hover {
   text-decoration: underline;
 }
+
+/* ------------------------------------------------- the inputs and the outcome */
+
+.subhead {
+  margin: var(--tq-space-5) 0 var(--tq-space-3);
+  font-size: var(--tq-text-xs);
+  font-weight: var(--tq-weight-semibold);
+  letter-spacing: var(--tq-tracking-wide);
+  text-transform: uppercase;
+  color: var(--tq-text-subtle);
+}
+
+.subhead:first-child {
+  margin-top: 0;
+}
+
+/* A name and the value it was given: two columns, the value in monospace because it is
+ * the literal the flow actually saw. */
+.pairs {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tq-space-2);
+  margin: 0;
+}
+
+.pair {
+  display: grid;
+  grid-template-columns: minmax(0, 200px) minmax(0, 1fr);
+  gap: var(--tq-space-4);
+  padding: var(--tq-space-2) var(--tq-space-4);
+  border-radius: var(--tq-radius-sm);
+  border: 1px solid var(--tq-border-subtle);
+  background: var(--tq-surface);
+}
+
+.pairName {
+  font-family: var(--tq-font-mono);
+  font-size: var(--tq-text-sm);
+  color: var(--tq-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pairValue {
+  margin: 0;
+  font-family: var(--tq-font-mono);
+  font-size: var(--tq-text-sm);
+  color: var(--tq-text);
+  overflow-wrap: anywhere;
+}
+
+.chain {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tq-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.chainItem {
+  display: block;
+}
+
+.chainThis,
+.chainOther,
+.notification {
+  display: flex;
+  align-items: center;
+  gap: var(--tq-space-4);
+  width: 100%;
+  padding: var(--tq-space-3) var(--tq-space-4);
+  border-radius: var(--tq-radius-sm);
+  border: 1px solid var(--tq-border-subtle);
+  background: var(--tq-surface);
+  text-align: left;
+  font-size: var(--tq-text-sm);
+  color: var(--tq-text-muted);
+}
+
+/* The run being looked at, inside its own chain. */
+.chainThis {
+  border-color: var(--tq-accent-line);
+  background: var(--tq-accent-soft);
+  color: var(--tq-text);
+}
+
+.chainOther:hover:not(:disabled) {
+  background: var(--tq-surface-hover);
+  color: var(--tq-text);
+}
+
+.chainWhich {
+  flex: none;
+  min-width: 96px;
+  color: var(--tq-text);
+}
+
+.chainMeta {
+  color: var(--tq-text-subtle);
+  font-size: var(--tq-text-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+.chainMeta:last-child {
+  margin-left: auto;
+  text-align: right;
+}
+
+.notificationTarget {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--tq-font-mono);
+  font-size: var(--tq-text-xs);
+  color: var(--tq-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

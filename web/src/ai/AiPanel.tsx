@@ -31,12 +31,15 @@ const EMPTY = emptyThread();
 export function AiPanel({
   path,
   onClose,
+  onHistory,
   onShowCode,
 }: {
   /** The open flow's path in the workspace; `''` when none is open. */
   path: string;
   /** Go back to the properties panel. */
   onClose: () => void;
+  /** Hand the column to the flow's history (section H). */
+  onHistory?: (() => void) | undefined;
   onShowCode?: (() => void) | undefined;
 }): JSX.Element {
   const key = path;
@@ -128,10 +131,12 @@ export function AiPanel({
           options={[
             { value: 'properties', label: 'Properties' },
             { value: 'ai', label: 'AI builder' },
+            { value: 'history', label: 'History' },
           ]}
           value="ai"
           onChange={(value) => {
             if (value === 'properties') onClose();
+            else if (value === 'history') onHistory?.();
           }}
         />
         <div className={styles.headActions}>

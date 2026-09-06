@@ -38,6 +38,16 @@ const FILTERS = [
 
 const LIVE_POLL_MS = 1500;
 
+/** What a run was given, short enough for the line under its name. */
+function inputsSummary(run: Run): string {
+  const params = Object.keys(run.params).length;
+  const env = Object.keys(run.env).length;
+  const parts: string[] = [];
+  if (params > 0) parts.push(`${String(params)} param${params === 1 ? '' : 's'}`);
+  if (env > 0) parts.push(`${String(env)} env`);
+  return parts.length > 0 ? ` · ${parts.join(' · ')}` : '';
+}
+
 function matches(run: Run, filter: Filter): boolean {
   if (filter === 'all') return true;
   if (filter === 'running') return run.status === 'running';
@@ -101,7 +111,7 @@ export function RunsPage(): JSX.Element {
     [runs, filter, flow],
   );
 
-  const open = useMemo(() => rows.find((run) => run.id === openId) ?? null, [rows, openId]);
+  const open = useMemo(() => (runs ?? []).find((run) => run.id === openId) ?? null, [runs, openId]);
 
   const rerun = useCallback(
     async (run: Run): Promise<void> => {
@@ -114,6 +124,10 @@ export function RunsPage(): JSX.Element {
           sample: run.sample,
           tap: 5,
           trace: run.trace_path !== null,
+          // Running it again means running it again: the same keywords and the same
+          // environment it was given, which are stored with the run (section E).
+          params: run.params,
+          env: run.env,
         });
         setNotice(`Run ${String(started.id)} started for ${run.flow}.`);
         setOpenId(null);
@@ -303,6 +317,7 @@ export function RunsPage(): JSX.Element {
                     <span className={styles.meta}>
                       run {run.id} · {run.runtime}
                       {run.sample ? ` · sample ${run.sample}` : ''}
+                      {inputsSummary(run)}
                     </span>
                   </div>
 
@@ -387,12 +402,14 @@ export function RunsPage(): JSX.Element {
       {open ? (
         <RunDialog
           run={open}
+          runs={runs ?? []}
           busy={busyId === open.id}
           onClose={() => {
             setOpenId(null);
           }}
           onRerun={(run) => void rerun(run)}
           onCancel={(run) => void stop(run)}
+          onOpenRun={setOpenId}
         />
       ) : null}
     </Page>

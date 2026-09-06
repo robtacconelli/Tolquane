@@ -16,6 +16,7 @@ import {
   type EmitPolicy,
   type FarmOptions,
   type FlowModel,
+  type FlowParam,
   type Layout,
   type NodeDef,
   type NodeKind,
@@ -150,6 +151,16 @@ export function normalizeTree(raw: unknown): Tree {
   }
 }
 
+/** One `build()` parameter from the wire; a model written before 1.3 simply has none. */
+export function normalizeParam(raw: unknown): FlowParam {
+  const data = asRecord(raw);
+  return {
+    name: asString(data.name, 'param'),
+    default: asString(data.default, 'None'),
+    annotation: asStringOrNull(data.annotation),
+  };
+}
+
 export function normalizeModel(raw: unknown): FlowModel {
   const data = asRecord(raw);
   return {
@@ -160,6 +171,7 @@ export function normalizeModel(raw: unknown): FlowModel {
     nodes: (Array.isArray(data.nodes) ? data.nodes : []).map(normalizeNode),
     flow: normalizeTree(data.flow),
     start: asStringOrNull(data.start),
+    params: (Array.isArray(data.params) ? data.params : []).map(normalizeParam),
     main: asStringOrNull(data.main),
     epilogue: asStrings(data.epilogue),
     build_notes: asStrings(data.build_notes),

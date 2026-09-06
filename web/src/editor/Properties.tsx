@@ -1,6 +1,7 @@
-import { lazy, Suspense, type JSX, type ReactNode } from 'react';
+import { lazy, Suspense, useState, type JSX, type ReactNode } from 'react';
 import { Button } from '../components/Button';
 import { Icon } from '../components/Icon';
+import { paramFieldType, pythonLiteral, type ParamFieldType } from '../inputs/params';
 import {
   COLLECT_LABEL,
   COLLECT_POLICIES,
@@ -15,11 +16,13 @@ import {
   getAt,
   isTree,
   nodeSignature,
+  paramNameError,
   problemsAt,
   type CollectPolicy,
   type EmitPolicy,
   type FarmTree,
   type FlowModel,
+  type FlowParam,
   type Problem,
   type Runtime,
   type Tree,
@@ -129,15 +132,18 @@ export function Properties({ onEditCode }: { onEditCode?: (nodeId: string) => vo
           />
         ) : null}
         {block.type === 'start' ? (
-          <Section title="Start">
-            <SelectField
-              label="Source node"
-              value={model.start ?? ''}
-              options={[{ value: '', label: NONE }, ...nodeOptions(model)]}
-              onChange={(value) => setStart(value === '' ? null : value)}
-              hint="Used when the flow runs without a sample: start = this node."
-            />
-          </Section>
+          <>
+            <Section title="Start">
+              <SelectField
+                label="Source node"
+                value={model.start ?? ''}
+                options={[{ value: '', label: NONE }, ...nodeOptions(model)]}
+                onChange={(value) => setStart(value === '' ? null : value)}
+                hint="Used when the flow runs without a sample: start = this node."
+              />
+            </Section>
+            <ParameterFields model={model} />
+          </>
         ) : null}
         {block.type === 'inline' ? (
           <Section title="Expression">
@@ -463,5 +469,144 @@ function FarmFields({
         />
       </Section>
     </>
+  );
+}
+
+/* -------------------------------------------------------------- build()'s parameters */
+
+/** What a parameter of each kind starts out as: the literal, and the annotation. */
+const PARAM_SHAPE: Record<ParamFieldType, { default: string; annotation: string }> = {
+  number: { default: '0', annotation: 'int' },
+  boolean: { default: 'False', annotation: 'bool' },
+  text: { default: '""', annotation: 'str' },
+  code: { default: 'None', annotation: '' },
+};
+
+const PARAM_TYPES: readonly { value: ParamFieldType; label: string }[] = [
+  { value: 'number', label: 'Number' },
+  { value: 'boolean', label: 'True or False' },
+  { value: 'text', label: 'Text' },
+  { value: 'code', label: 'Anything else' },
+];
+
+/**
+ * The parameters of `build()`, which belong to the flow and not to any card, so they sit
+ * on the start card -- the one place on the canvas that stands for "what goes in".
+ *
+ * A parameter is three things a person can change: its name, the kind of value it takes
+ * and the default the file records. Retyping it rewrites the default and the annotation
+ * together, because a `str` parameter whose default is `0` is a file that no longer says
+ * what it means; the literal is then editable on its own for anyone who wants `0.5`.
+ */
+function ParameterFields({ model }: { model: FlowModel }): JSX.Element {
+  const addParam = useFlowStore((state) => state.addParam);
+  return (
+    <Section title="Parameters">
+      {model.params.length === 0 ? (
+        <p className={styles.note}>
+          None. A parameter becomes a keyword of <code>build()</code> and a field in the Run
+          popover, so a flow can be run with a different threshold without editing it.
+        </p>
+      ) : null}
+      {model.params.map((param, index) => (
+        // Keyed by position, not by name: a row that remounted on every keystroke of a
+        // rename would take the focus away with it.
+        <ParameterRow key={index} param={param} params={model.params} />
+      ))}
+      <div className={styles.paramActions}>
+        <Button size="sm" variant="secondary" onClick={() => addParam()}>
+          <Icon name="plus" size={13} />
+          Add a parameter
+        </Button>
+      </div>
+    </Section>
+  );
+}
+
+function ParameterRow({
+  param,
+  params,
+}: {
+  param: FlowParam;
+  params: readonly FlowParam[];
+}): JSX.Element {
+  const renameParam = useFlowStore((state) => state.renameParam);
+  const setParam = useFlowStore((state) => state.setParam);
+  const removeParam = useFlowStore((state) => state.removeParam);
+  /* The name is held here while it is typed and committed when the field is left: a
+   * rename on every keystroke would put `t`, `th`, `thr` into the file and into the undo
+   * stack on the way to `threshold`. When the model's name changes under it -- an undo,
+   * a row removed above this one -- the draft follows, adjusted during the render that
+   * brought the new name rather than in an effect after it. */
+  const [name, setName] = useState(param.name);
+  const [known, setKnown] = useState(param.name);
+  if (known !== param.name) {
+    setKnown(param.name);
+    setName(param.name);
+  }
+  const nameError = paramNameError(name, params, param.name);
+  const literalError = pythonLiteral(param.default).ok
+    ? undefined
+    : 'Not a literal Python can read; the flow will open in code-only mode.';
+
+  function commitName(): void {
+    if (nameError === null && name.trim() !== param.name) renameParam(param.name, name.trim());
+  }
+
+  return (
+    <div className={styles.param} role="group" aria-label={`Parameter ${param.name}`}>
+      {/* `blur` bubbles, so the wrapper is where the rename is committed; Enter does the
+          same without leaving the field. */}
+      <div
+        onBlur={commitName}
+        onKeyDown={(event) => {
+          if (event.key !== 'Enter') return;
+          event.preventDefault();
+          commitName();
+        }}
+      >
+        <TextField
+          label="Name"
+          mono
+          value={name}
+          onChange={setName}
+          {...(nameError === null ? {} : { error: nameError })}
+        />
+      </div>
+      <SelectField<ParamFieldType>
+        label="Takes"
+        value={paramFieldType(param)}
+        options={PARAM_TYPES}
+        onChange={(type) => {
+          const shape = PARAM_SHAPE[type];
+          setParam(param.name, {
+            default: shape.default,
+            annotation: shape.annotation || null,
+          });
+        }}
+        hint="Which field the Run popover shows for it."
+      />
+      <TextField
+        label="Default"
+        mono
+        value={param.default}
+        placeholder="None"
+        onChange={(value) => setParam(param.name, { default: value })}
+        {...(literalError === undefined
+          ? { hint: 'A Python literal, written as it will be in the file.' }
+          : { error: literalError })}
+      />
+      <div className={styles.paramActions}>
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={() => removeParam(param.name)}
+          aria-label={`Remove the parameter ${param.name}`}
+        >
+          <Icon name="close" size={13} />
+          Remove
+        </Button>
+      </div>
+    </div>
   );
 }

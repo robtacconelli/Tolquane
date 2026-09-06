@@ -1,5 +1,5 @@
 import type { JSX } from 'react';
-import type { ScheduleRow } from '../api/schedules';
+import { notifies, type Notify, type ScheduleRow } from '../api/schedules';
 import { Button } from './Button';
 import { Icon } from './Icon';
 import { StatusDot } from './StatusDot';
@@ -34,8 +34,11 @@ export function ScheduleList({
     <div className={styles.list} role="list">
       {rows.map((row) => {
         const next = splitWhen(row.next_run);
-        const look = runStatusLook(row.last_status);
+        // The outcome has the last word: it is written after the retry chain has ended,
+        // where `last_status` is only the last run of it.
+        const look = runStatusLook(row.last_outcome?.status ?? row.last_status);
         const busy = busyId === row.id;
+        const outcome = row.last_outcome;
         return (
           <div
             key={row.id}
@@ -46,12 +49,26 @@ export function ScheduleList({
             aria-label={`Schedule for ${row.flow}`}
           >
             <div className={styles.cell}>
-              <span className={styles.flow} title={row.flow}>
-                {row.flow}
+              <span className={styles.flowRow}>
+                <span className={styles.flow} title={row.flow}>
+                  {row.flow}
+                </span>
+                {/* Somebody hears about this one: the bell says so without a column. */}
+                {notifies(row.notify) ? (
+                  <span
+                    className={styles.bell}
+                    title={notifyTitle(row.notify)}
+                    aria-label={`Notifications on for ${row.flow}`}
+                    role="img"
+                  >
+                    <Icon name="bell" size={13} />
+                  </span>
+                ) : null}
               </span>
               <span className={`${styles.meta} ${styles.metaOne}`}>
                 {row.runtime}
                 {row.sample ? ` · sample ${row.sample}` : ''}
+                {row.retries > 0 ? ` · ${String(row.retries)} retries` : ''}
               </span>
             </div>
 
@@ -81,7 +98,11 @@ export function ScheduleList({
                 {look.label}
               </span>
               {row.last_run === null ? null : (
-                <span className={styles.meta}>run #{row.last_run}</span>
+                <span className={styles.meta}>
+                  run #{row.last_run}
+                  {outcome && outcome.attempts > 1 ? ` · ${String(outcome.attempts)} tries` : ''}
+                  {outcome?.notified ? ' · notified' : ''}
+                </span>
               )}
             </div>
 
@@ -136,6 +157,15 @@ export function ScheduleList({
       })}
     </div>
   );
+}
+
+/** What the bell says when it is hovered: where this schedule's message goes. */
+function notifyTitle(notify: Notify): string {
+  const where: string[] = [];
+  if (notify.webhook) where.push(notify.webhook);
+  else where.push('the default webhook');
+  if (notify.emails.length > 0) where.push(notify.emails.join(', '));
+  return `Notifies on ${notify.events.join(', ')} — ${where.join(' and ')}`;
 }
 
 /** The list's own shape while the first request is in flight. */

@@ -503,6 +503,28 @@
   color: var(--tq-text-subtle);
 }
 
+/* A warning is not a failure: amber, and the word rather than the source, so the eye
+ * can tell the two apart down the list without reading either. */
+.problemWarning {
+  padding: 1px var(--tq-space-3);
+  border-radius: var(--tq-radius-pill);
+  background: var(--tq-warning-soft);
+  color: var(--tq-warning);
+}
+
+/* The line that ends it, under the message and lined up with it. */
+.problemHint {
+  display: inline-block;
+  margin: var(--tq-space-2) 0 0 calc(var(--tq-space-4) + 9px);
+  padding: 1px var(--tq-space-3);
+  border-radius: var(--tq-radius-sm);
+  border: 1px solid var(--tq-border-subtle);
+  background: var(--tq-surface-sunken);
+  font-family: var(--tq-font-mono);
+  font-size: var(--tq-text-xs);
+  color: var(--tq-text);
+}
+
 .traceback {
   margin: var(--tq-space-3) 0 0 var(--tq-space-6);
   padding: var(--tq-space-3) var(--tq-space-4);

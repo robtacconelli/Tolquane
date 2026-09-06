@@ -21,7 +21,13 @@ import { apiToken } from './token';
 /** How a run ended, as S2's `done` event and S3's `Run.status` spell it. */
 export type RunPhase = 'running' | 'done' | 'failed' | 'cancelled' | 'deadlock';
 
-/** A row of the `runs` table (S3), as `GET /api/runs/{id}` answers it. */
+/**
+ * A row of the `runs` table (S3), as `GET /api/runs/{id}` answers it.
+ *
+ * `params` and `env` (section E) are what the run was started with: the keywords
+ * `build()` was called with, and the variables its child process was given. They are
+ * stored with the run, so a re-run from the history repeats exactly the same inputs.
+ */
 export type Run = Omit<Complete<Schemas['RunModel']>, 'runtime' | 'status' | 'report'> & {
   runtime: Runtime;
   status: RunPhase;
@@ -164,6 +170,19 @@ export function parseRunEvent(data: unknown): RunEvent | null {
 /** `GET /api/runs`; every row carries an empty `log`, which can be 64 KB each. */
 export type RunList = Omit<Complete<Schemas['RunList']>, 'runs'> & { runs: Run[] };
 
+/**
+ * One delivery attempt for this run (N): one row per attempt, so a webhook that failed
+ * and then succeeded leaves both, and the dialog can show the chain.
+ */
+export type RunNotification = Omit<Complete<Schemas['NotificationModel']>, 'channel' | 'status'> & {
+  channel: 'webhook' | 'email';
+  status: 'sent' | 'failed';
+};
+
+export type NotificationList = Omit<Complete<Schemas['NotificationList']>, 'notifications'> & {
+  notifications: RunNotification[];
+};
+
 export const startRun = (body: StartRunRequest) => api.post<Run>('/runs', body);
 
 export const listRuns = (options: { flow?: string; limit?: number } = {}) =>
@@ -177,6 +196,10 @@ export const cancelRun = (id: number) => api.post<Run>(`/runs/${String(id)}/canc
 
 /** `text/plain`: what the flow printed, live while it runs and from the store after. */
 export const getRunLog = (id: number) => api.get<string>(`/runs/${String(id)}/log`);
+
+/** Who was told about this run ending, and whether the message got there. */
+export const getRunNotifications = (id: number) =>
+  api.get<NotificationList>(`/runs/${String(id)}/notifications`);
 
 /*
  * A server started with `--token` wants it on every request, and neither a WebSocket nor

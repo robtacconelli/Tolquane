@@ -54,6 +54,11 @@ const SETTINGS: Settings = {
   cancel_grace: 10,
   keep_traces_days: 7,
   theme: 'dark',
+  python: '/usr/bin/python3',
+  auto_commit: false,
+  env: {},
+  env_names: [],
+  notifications: { webhook_default: null, smtp: null, has_smtp_password: false },
   ai: { provider: 'anthropic', model: null, has_anthropic_key: false, has_openai_key: false },
   server: { host: '127.0.0.1', port: 8765, token_set: false },
 };
@@ -206,6 +211,192 @@ describe('the settings page', () => {
     expect(
       await within(workspace).findByText('/tmp/elsewhere is not a directory'),
     ).toBeInTheDocument();
+  });
+
+  it('shows the interpreter and puts the server’s refusal under it', async () => {
+    const user = userEvent.setup();
+    serve({
+      'GET /api/settings': () => ({ body: SETTINGS }),
+      'PUT /api/settings': () => ({
+        status: 400,
+        body: {
+          error: {
+            type: 'BadRequest',
+            message:
+              '/nope/python3 cannot be run: No such file or directory. Point python at an ' +
+              'interpreter that exists and install it there with: /nope/python3 -m pip install tolquane',
+          },
+        },
+      }),
+    });
+    render(<SettingsPage />);
+
+    const python = await screen.findByLabelText('Python');
+    expect(python).toHaveValue('/usr/bin/python3');
+
+    const interpreter = section('Interpreter');
+    await user.clear(python);
+    await user.type(python, '/nope/python3');
+    await user.click(within(interpreter).getByRole('button', { name: 'Save' }));
+
+    expect(await within(interpreter).findByText(/cannot be run/)).toBeInTheDocument();
+    expect(lastBody('PUT /api/settings')).toEqual({ python: '/nope/python3' });
+    // The refusal belongs to the interpreter, not to the workspace beside it.
+    expect(within(section('Workspace')).queryByText(/cannot be run/)).not.toBeInTheDocument();
+  });
+
+  it('edits the workspace environment and sends it with the directory', async () => {
+    const user = userEvent.setup();
+    serve({
+      'GET /api/settings': () => ({ body: { ...SETTINGS, env: { TZ: 'UTC' }, env_names: ['TZ'] } }),
+      'PUT /api/settings': (body) => ({ body: { ...SETTINGS, ...(body as Partial<Settings>) } }),
+    });
+    render(<SettingsPage />);
+
+    expect(await screen.findByLabelText('Variable 1 name')).toHaveValue('TZ');
+    const workspace = section('Workspace');
+    await user.click(within(workspace).getByRole('button', { name: 'Add a variable' }));
+    await user.type(screen.getByLabelText('Variable 2 name'), 'GREETING');
+    await user.type(screen.getByLabelText('Value of GREETING'), 'hello');
+    expect(within(workspace).getByText('Unsaved changes')).toBeInTheDocument();
+
+    await user.click(within(workspace).getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(lastBody('PUT /api/settings')).toEqual({
+        workspace: '/home/me/flows',
+        env: { TZ: 'UTC', GREETING: 'hello' },
+      }),
+    );
+  });
+
+  it('shows a member the names of the workspace environment and no server panel', async () => {
+    serve({
+      'GET /api/settings': () => ({
+        body: {
+          ...SETTINGS,
+          env: null,
+          env_names: ['TZ', 'API_HOST'],
+          server: null,
+          ai: { ...SETTINGS.ai, has_anthropic_key: null, has_openai_key: null },
+          notifications: { ...SETTINGS.notifications, has_smtp_password: null },
+        },
+      }),
+    });
+    render(<SettingsPage />);
+
+    expect(await screen.findByText('TZ')).toBeInTheDocument();
+    expect(screen.getByText('API_HOST')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Variable 1 name')).not.toBeInTheDocument();
+    expect(screen.queryByText('Bind address')).not.toBeInTheDocument();
+    // A `null` is "not yours to see", never "set": the badges stay off.
+    expect(within(section('AI builder')).getAllByText('Not set')).toHaveLength(2);
+  });
+
+  it('commits every save when History says so', async () => {
+    const user = userEvent.setup();
+    serve({
+      'GET /api/settings': () => ({ body: SETTINGS }),
+      'PUT /api/settings': (body) => ({ body: { ...SETTINGS, ...(body as Partial<Settings>) } }),
+    });
+    render(<SettingsPage />);
+
+    await user.click(await screen.findByRole('checkbox', { name: 'Commit each save' }));
+    const history = section('History');
+    await user.click(within(history).getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(lastBody('PUT /api/settings')).toEqual({ auto_commit: true }));
+  });
+
+  it('sends the notification settings, and the SMTP password only once', async () => {
+    const user = userEvent.setup();
+    const secret = 'not-a-real-password';
+    serve({
+      'GET /api/settings': () => ({ body: SETTINGS }),
+      'PUT /api/settings': () => ({
+        body: {
+          ...SETTINGS,
+          notifications: {
+            webhook_default: 'https://hooks.example.com/tolquane',
+            smtp: {
+              host: 'smtp.example.com',
+              port: 587,
+              username: '',
+              from: '',
+              starttls: true,
+            },
+            has_smtp_password: true,
+          },
+        },
+      }),
+    });
+    render(<SettingsPage />);
+
+    await user.type(
+      await screen.findByLabelText('Default webhook'),
+      'https://hooks.example.com/tolquane',
+    );
+    const panel = section('Notifications');
+    await user.type(screen.getByLabelText('SMTP server'), 'smtp.example.com');
+    await user.type(screen.getByLabelText('SMTP password'), secret);
+    await user.click(within(panel).getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(within(panel).getByText('Saved')).toBeInTheDocument());
+    expect(lastBody('PUT /api/settings')).toEqual({
+      notifications: {
+        webhook_default: 'https://hooks.example.com/tolquane',
+        smtp: {
+          host: 'smtp.example.com',
+          port: 587,
+          username: '',
+          from: '',
+          starttls: true,
+        },
+        smtp_password: secret,
+      },
+    });
+
+    // The password is gone from the page: the badge is the only trace.
+    expect(screen.getByLabelText('SMTP password')).toHaveValue('');
+    expect(document.body.innerHTML).not.toContain(secret);
+    expect(within(panel).getByText('Set')).toBeInTheDocument();
+  });
+
+  it('forgets the SMTP server entirely when the host is emptied', async () => {
+    const user = userEvent.setup();
+    const withSmtp = {
+      ...SETTINGS,
+      notifications: {
+        webhook_default: null,
+        smtp: { host: 'smtp.example.com', port: 2525, username: 'me', from: '', starttls: false },
+        has_smtp_password: true,
+      },
+    };
+    serve({
+      'GET /api/settings': () => ({ body: withSmtp }),
+      'PUT /api/settings': () => ({ body: SETTINGS }),
+    });
+    render(<SettingsPage />);
+
+    await user.clear(await screen.findByLabelText('SMTP server'));
+    const panel = section('Notifications');
+    await user.click(within(panel).getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(lastBody('PUT /api/settings')).toEqual({
+        notifications: { webhook_default: null, smtp: null },
+      }),
+    );
+  });
+
+  it('holds the save while the SMTP port is not a port', async () => {
+    const user = userEvent.setup();
+    serve({ 'GET /api/settings': () => ({ body: SETTINGS }) });
+    render(<SettingsPage />);
+
+    await user.type(await screen.findByLabelText('SMTP server'), 'smtp.example.com');
+    const panel = section('Notifications');
+    await user.clear(screen.getByLabelText('SMTP port'));
+    await user.type(screen.getByLabelText('SMTP port'), '99999');
+    expect(within(panel).getByText('Between 1 and 65535.')).toBeInTheDocument();
+    expect(within(panel).getByRole('button', { name: 'Save' })).toBeDisabled();
   });
 
   it('keeps the theme working when the server is not there', async () => {

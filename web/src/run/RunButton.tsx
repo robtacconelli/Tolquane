@@ -1,10 +1,24 @@
-import { useCallback, useEffect, useRef, useState, type JSX } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type JSX } from 'react';
 import { ApiError } from '../api/client';
 import { cancelRun, startRun } from '../api/runs';
 import { RUNTIMES, type Runtime } from '../api/schedules';
+import { getSettings } from '../api/settings';
 import { Button } from '../components/Button';
 import { Field, Select, Toggle } from '../components/form/Controls';
 import { Icon } from '../components/Icon';
+import { EnvironmentRows } from '../inputs/EnvironmentRows';
+import { ParameterFields, ParameterSection } from '../inputs/ParameterFields';
+import {
+  envRecord,
+  envRows,
+  paramFieldType,
+  paramInitial,
+  paramText,
+  paramValue,
+  readRunInputs,
+  writeRunInputs,
+  type EnvRow,
+} from '../inputs/params';
 import { useRunEvents } from '../hooks/useRunEvents';
 import { MOD_KEY } from '../platform';
 import { useCommand } from '../store/commands';
@@ -66,7 +80,46 @@ export function RunButton({
   const [now, setNow] = useState(() => Date.now());
   const group = useRef<HTMLDivElement>(null);
 
+  /* The inputs of section E. Only what has actually been typed is state: the rest is
+   * read from the flow's own defaults and from what this browser remembers for this
+   * flow, so nothing has to be copied into state when either of those changes. */
+  const [edits, setEdits] = useState<Record<string, string>>({});
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [rows, setRows] = useState<EnvRow[]>(() => envRows(readRunInputs(path).env));
+  /** The interpreter every run uses, from Settings; `null` until it has been asked. */
+  const [python, setPython] = useState<string | null>(null);
+  /* Another flow: its fields are not this one's. Reset during the render that brought
+   * the new path, which is where React wants derived state put right. */
+  const [forPath, setForPath] = useState(path);
+  if (forPath !== path) {
+    setForPath(path);
+    setEdits({});
+    setErrors({});
+    setRows(envRows(readRunInputs(path).env));
+  }
+
+  const params = useMemo(() => model?.params ?? [], [model]);
+  const remembered = useMemo(() => readRunInputs(path).params, [path]);
+  /** What each field shows: what was typed, else what was remembered, else the default. */
+  const texts = useMemo(() => {
+    const out: Record<string, string> = {};
+    for (const param of params) {
+      out[param.name] =
+        edits[param.name] ?? paramText(paramFieldType(param), paramInitial(param, remembered));
+    }
+    return out;
+  }, [params, edits, remembered]);
+  /** The same, as the values that go into the request body as JSON. */
+  const values = useMemo(() => {
+    const out: Record<string, unknown> = {};
+    for (const param of params) {
+      out[param.name] = paramValue(paramFieldType(param), texts[param.name] ?? '');
+    }
+    return out;
+  }, [params, texts]);
+
   const running = status === 'running';
+  const badParam = Object.values(errors).find(Boolean) ?? null;
 
   // Everything the run reports is named after threads; the canvas names blocks.
   useEffect(() => {
@@ -78,6 +131,22 @@ export function RunButton({
     const current = useRunStore.getState();
     if (current.options.path !== null && current.options.path !== path) current.reset();
   }, [path]);
+
+  /* The interpreter is a setting, so it is asked for once the popover is opened rather
+   * than on every editor page load. */
+  useEffect(() => {
+    if (!open || python !== null) return;
+    let cancelled = false;
+    getSettings().then(
+      (settings) => {
+        if (!cancelled) setPython(settings.python);
+      },
+      () => undefined,
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [open, python]);
 
   useRunEvents(runId);
 
@@ -106,14 +175,19 @@ export function RunButton({
           return;
         }
       }
+      /* The inputs of section E, as the fields have them now. They go into the store
+       * with the run, so what a run was started with stays beside its id. */
+      const inputs = { params: values, env: envRecord(rows) };
       const run = await startRun({
         path,
         runtime: chosen.runtime,
         sample: chosen.sample,
         tap: chosen.tap,
         trace: chosen.trace,
+        ...inputs,
       });
-      startRunInStore(run.id, { ...chosen, path });
+      writeRunInputs(path, inputs);
+      startRunInStore(run.id, { ...chosen, ...inputs, path });
       setOpen(false);
     } catch (failure: unknown) {
       const message =
@@ -127,7 +201,7 @@ export function RunButton({
     } finally {
       setBusy(false);
     }
-  }, [busy, onBeforeRun, path, ready, startRunInStore]);
+  }, [busy, onBeforeRun, path, ready, rows, startRunInStore, values]);
 
   const stop = useCallback(async (): Promise<void> => {
     const id = useRunStore.getState().runId;
@@ -234,118 +308,157 @@ export function RunButton({
 
       {open ? (
         <div className={styles.popover} role="dialog" aria-label="Run options">
-          <span className={styles.popoverTitle}>Run {path || 'this flow'}</span>
+          <div className={styles.popoverBody}>
+            <span className={styles.popoverTitle}>Run {path || 'this flow'}</span>
 
-          {error ? <p className={styles.error}>{error}</p> : null}
+            {error ? <p className={styles.error}>{error}</p> : null}
 
-          <Field
-            label="Input"
-            htmlFor="run-sample"
-            hint={
-              options.sample === null
-                ? 'The flow’s own source node.'
-                : sampleMissing
-                  ? 'That sample is gone; the flow’s own source will be used.'
-                  : 'Handed to build(source=…) instead of the source node.'
-            }
-            aside={
-              <button
-                type="button"
-                className={styles.manage}
-                onClick={() => {
-                  setManaging(true);
-                  setOpen(false);
+            <Field
+              label="Input"
+              htmlFor="run-sample"
+              hint={
+                options.sample === null
+                  ? 'The flow’s own source node.'
+                  : sampleMissing
+                    ? 'That sample is gone; the flow’s own source will be used.'
+                    : 'Handed to build(source=…) instead of the source node.'
+              }
+              aside={
+                <button
+                  type="button"
+                  className={styles.manage}
+                  onClick={() => {
+                    setManaging(true);
+                    setOpen(false);
+                  }}
+                >
+                  Manage samples
+                </button>
+              }
+            >
+              <Select
+                id="run-sample"
+                value={options.sample ?? ''}
+                onChange={(event) => {
+                  useRunStore.setState((state) => ({
+                    options: { ...state.options, sample: event.target.value || null },
+                  }));
                 }}
               >
-                Manage samples
-              </button>
-            }
-          >
-            <Select
-              id="run-sample"
-              value={options.sample ?? ''}
-              onChange={(event) => {
-                useRunStore.setState((state) => ({
-                  options: { ...state.options, sample: event.target.value || null },
-                }));
-              }}
+                <option value="">The flow’s own source</option>
+                {samples.map((sample) => (
+                  <option key={sample.name} value={sample.name}>
+                    {sample.name} · {sample.items.length} items
+                  </option>
+                ))}
+              </Select>
+            </Field>
+
+            <Field label="Runtime" htmlFor="run-runtime" hint={RUNTIME_HINT[options.runtime]}>
+              <Select
+                id="run-runtime"
+                value={options.runtime}
+                onChange={(event) => {
+                  useRunStore.setState((state) => ({
+                    options: { ...state.options, runtime: event.target.value as Runtime },
+                  }));
+                }}
+              >
+                {RUNTIMES.map((runtime) => (
+                  <option key={runtime} value={runtime}>
+                    {runtime}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+
+            <span className={styles.divider} />
+
+            <ParameterSection
+              note={params.length > 0 ? `${String(params.length)} on build()` : undefined}
             >
-              <option value="">The flow’s own source</option>
-              {samples.map((sample) => (
-                <option key={sample.name} value={sample.name}>
-                  {sample.name} · {sample.items.length} items
-                </option>
-              ))}
-            </Select>
-          </Field>
+              <ParameterFields
+                params={params}
+                values={texts}
+                idPrefix="run-param"
+                onChange={(name, text, _value, problem) => {
+                  setEdits((current) => ({ ...current, [name]: text }));
+                  setErrors((current) => ({ ...current, [name]: problem ?? '' }));
+                }}
+              />
+            </ParameterSection>
 
-          <Field label="Runtime" htmlFor="run-runtime" hint={RUNTIME_HINT[options.runtime]}>
-            <Select
-              id="run-runtime"
-              value={options.runtime}
-              onChange={(event) => {
-                useRunStore.setState((state) => ({
-                  options: { ...state.options, runtime: event.target.value as Runtime },
-                }));
-              }}
-            >
-              {RUNTIMES.map((runtime) => (
-                <option key={runtime} value={runtime}>
-                  {runtime}
-                </option>
-              ))}
-            </Select>
-          </Field>
+            <span className={styles.divider} />
 
-          <span className={styles.divider} />
+            <ParameterSection title="Environment" note="This run only">
+              <EnvironmentRows rows={rows} idPrefix="run-env" onChange={setRows} />
+            </ParameterSection>
 
-          <div className={styles.row}>
-            <span className={styles.rowText}>
-              <span className={styles.rowLabel}>Tap items</span>
-              <span className={styles.rowHint}>
-                Keep the last {TAP_ITEMS} items of every edge, for the Taps tab.
+            <span className={styles.divider} />
+
+            <div className={styles.row}>
+              <span className={styles.rowText}>
+                <span className={styles.rowLabel}>Tap items</span>
+                <span className={styles.rowHint}>
+                  Keep the last {TAP_ITEMS} items of every edge, for the Taps tab.
+                </span>
               </span>
-            </span>
-            <Toggle
-              label="Tap items"
-              checked={options.tap > 0}
-              onChange={(on) => {
-                useRunStore.setState((state) => ({
-                  options: { ...state.options, tap: on ? TAP_ITEMS : 0 },
-                }));
-              }}
-            />
-          </div>
+              <Toggle
+                label="Tap items"
+                checked={options.tap > 0}
+                onChange={(on) => {
+                  useRunStore.setState((state) => ({
+                    options: { ...state.options, tap: on ? TAP_ITEMS : 0 },
+                  }));
+                }}
+              />
+            </div>
 
-          <div className={styles.row}>
-            <span className={styles.rowText}>
-              <span className={styles.rowLabel}>Chrome trace</span>
-              <span className={styles.rowHint}>
-                Write a trace file to open in Perfetto; downloadable from the report.
+            <div className={styles.row}>
+              <span className={styles.rowText}>
+                <span className={styles.rowLabel}>Chrome trace</span>
+                <span className={styles.rowHint}>
+                  Write a trace file to open in Perfetto; downloadable from the report.
+                </span>
               </span>
-            </span>
-            <Toggle
-              label="Chrome trace"
-              checked={options.trace}
-              onChange={(on) => {
-                useRunStore.setState((state) => ({
-                  options: { ...state.options, trace: on },
-                }));
-              }}
-            />
-          </div>
+              <Toggle
+                label="Chrome trace"
+                checked={options.trace}
+                onChange={(on) => {
+                  useRunStore.setState((state) => ({
+                    options: { ...state.options, trace: on },
+                  }));
+                }}
+              />
+            </div>
 
-          <span className={styles.divider} />
+            <span className={styles.divider} />
+
+            {/* Which Python the child process will be: a setting, and the answer to
+                "it works in my terminal". */}
+            <div className={styles.interpreter}>
+              <span className={styles.rowLabel}>Interpreter</span>
+              <code className={styles.interpreterPath} title={python ?? undefined}>
+                {python ?? 'asking the server…'}
+              </code>
+            </div>
+          </div>
 
           <div className={styles.footer}>
             <span className={styles.hint}>
-              <span className={styles.kbd}>{MOD_KEY}</span> <span className={styles.kbd}>↵</span>{' '}
-              runs
+              {badParam ? (
+                <span className={styles.badParam}>{badParam}</span>
+              ) : (
+                <>
+                  <span className={styles.kbd}>{MOD_KEY}</span>{' '}
+                  <span className={styles.kbd}>↵</span> runs
+                </>
+              )}
             </span>
             <Button
               variant="primary"
               size="sm"
-              disabled={!ready || busy}
+              disabled={!ready || busy || (!running && badParam !== null)}
               onClick={() => (running ? void stop() : void begin())}
             >
               {running ? 'Cancel' : 'Run now'}

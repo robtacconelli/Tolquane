@@ -176,6 +176,79 @@ if __name__ == "__main__":
     main()
 `;
 
+/** A flow whose `build()` takes parameters, and whose sink reads a variable. */
+const PARAMS = `"""Scale numbers by a factor and label them; both are parameters of build()."""
+
+import os
+
+import tolquane as tq
+
+
+@tq.source
+def numbers():
+    # Five numbers is enough to read the whole run in the console pane.
+    yield from range(1, 6)
+
+
+class Scale:
+    # Stateful only in its settings: build() hands it the parameters it was called with.
+    def __init__(self, factor: int, label: str) -> None:
+        self.factor = factor
+        self.label = label
+
+    def __call__(self, n: int) -> str:
+        return f"{self.label}{n * self.factor}"
+
+
+@tq.sink
+def show(line: str) -> None:
+    print(f"{line} for {os.environ.get('GREETING', 'nobody')}")
+
+
+def build(source=None, *, factor: int = 2, label: str = "x", loud: bool = False):
+    start = tq.from_iterable(source) if source is not None else numbers
+    return start >> tq.node(Scale(factor, label.upper() if loud else label)) >> show
+
+
+def main() -> None:
+    tq.run(build())
+
+
+if __name__ == "__main__":
+    main()
+`;
+
+/** A flow that imports a module nobody has: the probe has something to say about it. */
+const MISSING = `"""Read frames with OpenCV, which this interpreter does not have."""
+
+import cv2
+
+import tolquane as tq
+
+
+@tq.source
+def frames():
+    yield from range(3)
+
+
+@tq.sink
+def show(n: int) -> None:
+    print(cv2.__name__, n)
+
+
+def build(source=None):
+    start = tq.from_iterable(source) if source is not None else frames
+    return start >> show
+
+
+def main() -> None:
+    tq.run(build())
+
+
+if __name__ == "__main__":
+    main()
+`;
+
 /** `word_count.py`, reading the text file beside it rather than a string in the file. */
 const WORD_COUNT = `"""Count words in a text file: split lines in parallel, count per word on a keyed farm."""
 
@@ -248,6 +321,8 @@ const WRITTEN: Record<string, string> = {
   'slow.py': SLOW,
   'boom.py': BOOM,
   'stuck.py': STUCK,
+  'params.py': PARAMS,
+  'missing.py': MISSING,
 };
 
 /** Copied out of the repository, so the suite runs against the real examples. */
@@ -270,6 +345,9 @@ export const FLOWS = {
   average: 'moving_average.py',
   nested: 'reports/word_frequency.py',
   codeOnly: 'som.py',
+  // Section E: a flow with parameters, and one whose import the probe cannot satisfy.
+  params: 'params.py',
+  missing: 'missing.py',
 } as const;
 
 /** How many flows the list starts with; the journeys add and remove around it. */
@@ -298,6 +376,37 @@ export function seedWorkspace(): void {
     mkdirSync(dirname(target), { recursive: true });
     cpSync(join(REPO_DIR, from), target);
   }
+  seedRepository();
+}
+
+/**
+ * Make the workspace a git repository with one commit, for the history journeys.
+ *
+ * The History tab (docs/web-interfaces.md, H) is a window onto the workspace's own
+ * repository, so the suite needs one: `git init`, the `.gitignore` the server itself
+ * writes, and one commit holding every flow above. The identity is given on the command
+ * line rather than configured, so a machine with no `user.email` still commits.
+ *
+ * Called at the end of `seedWorkspace`, inside its once-per-run guard: the repository is
+ * part of the workspace, and it is thrown away with it.
+ */
+export function seedRepository(): void {
+  writeFileSync(join(WS_DIR, '.gitignore'), '# Tolquane Web\n.tolquane-web/\n__pycache__/\n');
+  const git = (...args: string[]): void => {
+    execFileSync('git', args, { cwd: WS_DIR, stdio: 'ignore' });
+  };
+  git('-c', 'init.defaultBranch=main', 'init', '-q');
+  git('add', '-A');
+  git(
+    '-c',
+    'user.name=Tolquane e2e',
+    '-c',
+    'user.email=e2e@tolquane.local',
+    'commit',
+    '-q',
+    '-m',
+    'The flows this suite starts from',
+  );
 }
 
 /** The interpreter the server runs on: the project virtualenv unless one is named. */

@@ -142,6 +142,43 @@ const PATHS = {
       <path d="M18.8 16.4l.7 2 2 .7-2 .7-.7 2-.7-2-2-.7 2-.7.7-2Z" />
     </>
   ),
+  // The people who can sign in: one figure in front, one behind. Also the nav item.
+  users: (
+    <>
+      <circle cx="9.5" cy="8.2" r="3.4" />
+      <path d="M3.6 19.2a6 6 0 0 1 11.8 0" />
+      <path d="M16.2 5.2a3.4 3.4 0 0 1 0 6.4" />
+      <path d="M17.6 14.2a6 6 0 0 1 2.8 4.6" />
+    </>
+  ),
+  key: (
+    <>
+      <circle cx="8" cy="15.6" r="3.6" />
+      <path d="m10.8 13 8-8" />
+      <path d="m15.6 8.2 2 2" />
+      <path d="m17.8 6 2 2" />
+    </>
+  ),
+  signOut: (
+    <>
+      <path d="M14.6 4.5H6.4A1.6 1.6 0 0 0 4.8 6.1v11.8a1.6 1.6 0 0 0 1.6 1.6h8.2" />
+      <path d="M11.4 12h8" />
+      <path d="m16.4 8.6 3.4 3.4-3.4 3.4" />
+    </>
+  ),
+  copy: (
+    <>
+      <rect x="9" y="9" width="10.5" height="10.5" rx="2" />
+      <path d="M15 6.2a1.7 1.7 0 0 0-1.7-1.7H6.2A1.7 1.7 0 0 0 4.5 6.2v7.1A1.7 1.7 0 0 0 6.2 15" />
+    </>
+  ),
+  // Somebody is told when this run ends: the bell on a schedule that notifies.
+  bell: (
+    <>
+      <path d="M6.5 10a5.5 5.5 0 0 1 11 0c0 3.4.9 5 1.8 5.9H4.7C5.6 15 6.5 13.4 6.5 10Z" />
+      <path d="M10.2 19a2 2 0 0 0 3.6 0" />
+    </>
+  ),
 } as const;
 
 export type IconName = keyof typeof PATHS;

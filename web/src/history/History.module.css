@@ -1,0 +1,334 @@
+/* The History tab, in the editor's right column: a fixed head with the three-way switch,
+ * then a scrolling body that is either the list of versions or one of them. It shares the
+ * panel's shape with the AI builder and the properties, so switching between the three
+ * moves nothing but the contents. */
+.panel {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--tq-surface);
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: var(--tq-space-3);
+  padding: var(--tq-space-3) var(--tq-space-4);
+  border-bottom: 1px solid var(--tq-border-subtle);
+  flex: none;
+}
+
+.head > :last-child {
+  margin-left: auto;
+}
+
+.body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: var(--tq-space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--tq-space-4);
+}
+
+/* ------------------------------------------------------------------ the list */
+.entries {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--tq-space-2);
+}
+
+.entry {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--tq-space-2);
+  padding: var(--tq-space-4);
+  border: 1px solid var(--tq-border-subtle);
+  border-radius: var(--tq-radius-lg);
+  background: var(--tq-surface-raised);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--tq-duration-fast) var(--tq-ease);
+}
+
+.entry:hover {
+  background: var(--tq-surface-hover);
+}
+
+.entry:active {
+  background: var(--tq-surface-active);
+}
+
+.entry[data-head='yes'] {
+  border-color: var(--tq-accent-line);
+}
+
+.entry[aria-busy='true'] {
+  opacity: 0.6;
+}
+
+.entryTop {
+  display: flex;
+  align-items: baseline;
+  gap: var(--tq-space-3);
+}
+
+.message {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--tq-text-base);
+  font-weight: var(--tq-weight-medium);
+  color: var(--tq-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.headMark {
+  flex: none;
+  padding: 0 var(--tq-space-2);
+  border-radius: var(--tq-radius-pill);
+  background: var(--tq-accent-soft);
+  color: var(--tq-accent);
+  font-size: var(--tq-text-xs);
+  font-weight: var(--tq-weight-medium);
+  letter-spacing: var(--tq-tracking-wide);
+  text-transform: uppercase;
+}
+
+.meta {
+  display: flex;
+  align-items: baseline;
+  gap: var(--tq-space-3);
+  font-size: var(--tq-text-sm);
+  color: var(--tq-text-subtle);
+  min-width: 0;
+}
+
+.rev {
+  font-family: var(--tq-font-mono);
+  color: var(--tq-text-muted);
+}
+
+.author {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.meta > :last-child {
+  margin-left: auto;
+  flex: none;
+}
+
+/* --------------------------------------------------------- uncommitted changes */
+.uncommitted {
+  display: flex;
+  align-items: center;
+  gap: var(--tq-space-3);
+  padding: var(--tq-space-3) var(--tq-space-4);
+  border: 1px solid var(--tq-warning);
+  border-radius: var(--tq-radius-lg);
+  background: var(--tq-warning-soft);
+}
+
+.uncommittedDot {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: var(--tq-radius-pill);
+  background: var(--tq-warning);
+}
+
+.uncommittedText {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+/* ------------------------------------------------------------------ a version */
+.version {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tq-space-4);
+  min-height: 0;
+}
+
+.back {
+  align-self: flex-start;
+  margin-left: calc(var(--tq-space-3) * -1);
+}
+
+.about {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tq-space-2);
+  padding-bottom: var(--tq-space-3);
+  border-bottom: 1px solid var(--tq-border-subtle);
+}
+
+.legend {
+  display: flex;
+  align-items: baseline;
+  gap: var(--tq-space-4);
+  font-size: var(--tq-text-xs);
+  font-weight: var(--tq-weight-medium);
+}
+
+.keyDel {
+  color: var(--tq-danger);
+  font-family: var(--tq-font-mono);
+}
+
+.keyAdd {
+  color: var(--tq-success);
+  font-family: var(--tq-font-mono);
+}
+
+.counts {
+  margin-left: auto;
+  color: var(--tq-text-subtle);
+  font-weight: var(--tq-weight-regular);
+  font-variant-numeric: tabular-nums;
+}
+
+/* The rows are the editor's own folded diff (editor/code/diff.ts) without the two line
+ * number columns: this column is 320px wide and the text is what matters. A long line
+ * wraps rather than scrolling out of sight -- the changed part of a line is usually its
+ * end, and a difference nobody can see is not one. */
+.diff {
+  max-height: min(48vh, 460px);
+  overflow: auto;
+  border: 1px solid var(--tq-border-subtle);
+  border-radius: var(--tq-radius-md);
+  background: var(--tq-surface-sunken);
+  padding: var(--tq-space-2) 0;
+  font-family: var(--tq-font-mono);
+  font-size: var(--tq-text-sm);
+  line-height: 1.6;
+}
+
+.diffRow {
+  display: grid;
+  grid-template-columns: 2ch 1fr;
+  gap: var(--tq-space-2);
+  padding: 0 var(--tq-space-3);
+  white-space: pre-wrap;
+}
+
+.diffRow[data-kind='add'] {
+  background: var(--tq-success-soft);
+}
+
+.diffRow[data-kind='del'] {
+  background: var(--tq-danger-soft);
+}
+
+.diffRow[data-kind='gap'] {
+  color: var(--tq-text-subtle);
+  font-style: italic;
+  background: var(--tq-surface-hover);
+}
+
+.diffGlyph {
+  text-align: center;
+  user-select: none;
+  color: var(--tq-text-subtle);
+}
+
+.diffRow[data-kind='add'] .diffGlyph {
+  color: var(--tq-success);
+}
+
+.diffRow[data-kind='del'] .diffGlyph {
+  color: var(--tq-danger);
+}
+
+.diffText {
+  min-width: 0;
+  color: var(--tq-text);
+  overflow-wrap: anywhere;
+}
+
+.diffRow[data-kind='gap'] .diffText {
+  color: var(--tq-text-subtle);
+}
+
+.identical {
+  margin: 0;
+  padding: var(--tq-space-5);
+  border: 1px dashed var(--tq-border);
+  border-radius: var(--tq-radius-md);
+  color: var(--tq-text-subtle);
+  font-size: var(--tq-text-sm);
+  text-align: center;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* ------------------------------------------------------------------ the empties */
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--tq-space-3);
+  padding: var(--tq-space-7) var(--tq-space-5);
+  text-align: center;
+}
+
+.emptyGlyph {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--tq-radius-lg);
+  background: var(--tq-accent-soft);
+  color: var(--tq-accent);
+}
+
+.emptyTitle {
+  font-size: var(--tq-text-md);
+  font-weight: var(--tq-weight-semibold);
+  color: var(--tq-text);
+}
+
+.emptyBody {
+  margin: 0;
+  font-size: var(--tq-text-sm);
+  line-height: var(--tq-leading-relaxed);
+  color: var(--tq-text-subtle);
+}
+
+.emptyActions {
+  margin-top: var(--tq-space-2);
+}
+
+.waiting {
+  margin: 0;
+  padding: var(--tq-space-6);
+  text-align: center;
+  font-size: var(--tq-text-sm);
+  color: var(--tq-text-subtle);
+}
+
+/* ------------------------------------------------------------------ the dialogs */
+.dialogPath {
+  font-family: var(--tq-font-mono);
+  font-size: var(--tq-text-sm);
+  color: var(--tq-text-muted);
+}

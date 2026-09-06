@@ -287,6 +287,9 @@ describe('loadRun', () => {
       log: '',
       trace_path: null,
       error: "node 'fragile.0' failed",
+      user: 'local',
+      params: { factor: 3 },
+      env: { GREETING: 'hello' },
       live: false,
     };
     useRunStore.getState().loadRun(run);
@@ -295,6 +298,9 @@ describe('loadRun', () => {
     expect(state.report?.elapsed).toBe(2);
     expect(state.problems).toHaveLength(1);
     expect(state.options).toMatchObject({ path: 'boom.py', runtime: 'threads' });
+    // The inputs come back with the run, so "run it again" repeats what it was given.
+    expect(state.options.params).toEqual({ factor: 3 });
+    expect(state.options.env).toEqual({ GREETING: 'hello' });
   });
 });
 

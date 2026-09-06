@@ -37,3 +37,10 @@
   clip-path: inset(50%);
   white-space: nowrap;
 }
+
+/* The seam between what a schedule *is* and what it is run with, and again before what
+ * happens when it ends. */
+.divider {
+  height: 1px;
+  background: var(--tq-border-subtle);
+}

@@ -4,9 +4,11 @@ import { useHealth } from '../hooks/useHealth';
 import { useCommandPaletteHotkey } from '../hooks/useHotkeys';
 import { useSystemTheme } from '../hooks/useSystemTheme';
 import { useTokenGeneration, useUnauthorized } from '../hooks/useToken';
-import { crumbsFor, NAV_ITEMS } from '../nav';
+import { crumbsFor, navItemsFor } from '../nav';
 import { MOD_KEY_K } from '../platform';
+import { useIsAdmin } from '../store/auth';
 import { useUiStore } from '../store/ui';
+import { AccountMenu } from './AccountMenu';
 import { AppShellContext } from './AppShellContext';
 import { BrandMark } from './BrandMark';
 import { Button } from './Button';
@@ -38,6 +40,9 @@ export function AppShell(): JSX.Element {
   /* A server that answers 401 is reachable; it wants a token, and the prompt says so.
    * Calling that "not reachable" would send the reader to restart a running server. */
   const locked = useUnauthorized();
+  /* A member has no Users page, so they are not offered one. */
+  const admin = useIsAdmin();
+  const items = navItemsFor(admin);
   const crumbs = crumbsFor(location.pathname);
   const last = crumbs[crumbs.length - 1];
 
@@ -53,7 +58,7 @@ export function AppShell(): JSX.Element {
 
         <nav className={styles.nav} aria-label="Sections">
           <div className={styles.navLabel}>Workspace</div>
-          {NAV_ITEMS.map((item) => (
+          {items.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
@@ -69,6 +74,7 @@ export function AppShell(): JSX.Element {
         </nav>
 
         <div className={styles.sidebarFoot}>
+          <AccountMenu collapsed={collapsed} />
           <div
             className={styles.serverRow}
             title={

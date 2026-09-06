@@ -55,6 +55,9 @@ const RUN: Run = {
   log: '',
   trace_path: null,
   error: null,
+  user: 'local',
+  params: {},
+  env: {},
   live: true,
 };
 

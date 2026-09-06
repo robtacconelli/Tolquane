@@ -1,0 +1,107 @@
+/* The one page outside the shell: no sidebar, no top bar, nothing to do but this. */
+.screen {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100%;
+  padding: var(--tq-space-8) var(--tq-space-5);
+  background: var(--tq-bg);
+}
+
+.card {
+  width: 100%;
+  max-width: 400px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--tq-space-6);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--tq-space-4);
+  color: var(--tq-accent);
+}
+
+.wordmark {
+  font-size: var(--tq-text-xl);
+  font-weight: var(--tq-weight-semibold);
+  letter-spacing: var(--tq-tracking-tight);
+  color: var(--tq-text);
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tq-space-5);
+  padding: var(--tq-space-7);
+  border: 1px solid var(--tq-border-subtle);
+  border-radius: var(--tq-radius-xl);
+  background: var(--tq-surface-raised);
+  box-shadow: var(--tq-shadow-lg);
+}
+
+.heading {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tq-space-2);
+}
+
+.title {
+  font-size: var(--tq-text-md);
+  font-weight: var(--tq-weight-semibold);
+  letter-spacing: var(--tq-tracking-tight);
+  color: var(--tq-text);
+}
+
+.subtitle {
+  font-size: var(--tq-text-sm);
+  line-height: var(--tq-leading-normal);
+  color: var(--tq-text-subtle);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tq-space-5);
+}
+
+/* The one action on the page: it takes the width, so there is nothing else to aim at. */
+.submit {
+  width: 100%;
+  justify-content: center;
+}
+
+/* One sentence under the card. It is `display: block` so the line breaks between words
+   rather than around the chip, which is a command and reads as one thing or as none. */
+.foot {
+  font-size: var(--tq-text-sm);
+  line-height: var(--tq-leading-relaxed);
+  color: var(--tq-text-subtle);
+  text-align: center;
+}
+
+.foot code,
+.subtitle code {
+  padding: 1px var(--tq-space-2);
+  border: 1px solid var(--tq-border);
+  border-radius: var(--tq-radius-xs);
+  background: var(--tq-surface);
+  color: var(--tq-text-muted);
+  font-family: var(--tq-font-mono);
+  font-size: var(--tq-text-xs);
+  white-space: nowrap;
+}
+
+.link {
+  color: var(--tq-accent);
+  font-size: var(--tq-text-sm);
+  background: none;
+  text-decoration: none;
+}
+
+.link:hover {
+  color: var(--tq-accent-hover);
+  text-decoration: underline;
+}

@@ -198,6 +198,7 @@
       ]
     },
     "start": "rows",
+    "params": [],
     "main": "def main() -> None:\n    print(tq.run(build()))",
     "epilogue": [],
     "build_notes": [],

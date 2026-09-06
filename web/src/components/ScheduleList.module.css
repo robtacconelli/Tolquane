@@ -127,3 +127,17 @@
   height: 20px;
   border-radius: var(--tq-radius-pill);
 }
+
+/* The flow name and, when a schedule tells somebody how a run went, a bell beside it. */
+.flowRow {
+  display: flex;
+  align-items: center;
+  gap: var(--tq-space-3);
+  min-width: 0;
+}
+
+.bell {
+  display: inline-flex;
+  flex: none;
+  color: var(--tq-accent);
+}

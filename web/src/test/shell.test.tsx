@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../App';
+import { useAuthStore } from '../store/auth';
 import { useUiStore } from '../store/ui';
 
 function renderAt(path: string) {
@@ -20,6 +21,23 @@ describe('the app shell', () => {
       theme: 'dark',
       sidebarCollapsed: false,
       paletteOpen: false,
+    });
+    // A loopback server with no accounts: the shell as it has always been, with the
+    // implicit administrator `local` in the footer and no sign-in anywhere.
+    useAuthStore.setState({
+      status: 'ready',
+      mode: 'local',
+      user: {
+        id: 0,
+        name: 'local',
+        role: 'admin',
+        created: '',
+        disabled: false,
+        must_change_password: false,
+        last_seen: null,
+      },
+      canSetup: false,
+      error: null,
     });
     // No server exists yet; every health poll fails, which is the state to look good in.
     vi.stubGlobal(

@@ -84,3 +84,15 @@
   font-size: var(--tq-text-sm);
   color: var(--tq-text-subtle);
 }
+
+/* A workspace variable a member may see the name of but not the value: the name alone,
+ * in the monospace the values would have used. */
+.envName {
+  padding: var(--tq-space-1) var(--tq-space-3);
+  border-radius: var(--tq-radius-sm);
+  border: 1px solid var(--tq-border-subtle);
+  background: var(--tq-surface);
+  font-family: var(--tq-font-mono);
+  font-size: var(--tq-text-xs);
+  color: var(--tq-text-muted);
+}

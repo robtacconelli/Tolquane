@@ -6,14 +6,26 @@ export interface NavItem {
   icon: IconName;
   /** Matched as a prefix so /flows/demo.py keeps "Flows" lit. */
   match: string;
+  /** Administrators only: a member has no such page, so they are not shown a door. */
+  adminOnly?: boolean;
 }
 
 export const NAV_ITEMS: readonly NavItem[] = [
   { to: '/flows', label: 'Flows', icon: 'flows', match: '/flows' },
   { to: '/runs', label: 'Runs', icon: 'runs', match: '/runs' },
   { to: '/schedules', label: 'Schedules', icon: 'schedules', match: '/schedules' },
+  { to: '/users', label: 'Users', icon: 'users', match: '/users', adminOnly: true },
   { to: '/settings', label: 'Settings', icon: 'settings', match: '/settings' },
 ];
+
+/**
+ * The sections this reader has. A member's sidebar has no Users item: the route guard
+ * would refuse them anyway, and a door that never opens is worse than no door.
+ * Breadcrumbs are made from the whole list, because a page still has a name.
+ */
+export function navItemsFor(admin: boolean): readonly NavItem[] {
+  return admin ? NAV_ITEMS : NAV_ITEMS.filter((item) => !item.adminOnly);
+}
 
 export interface Crumb {
   label: string;

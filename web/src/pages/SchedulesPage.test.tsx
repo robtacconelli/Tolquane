@@ -75,6 +75,13 @@ const ROWS: ScheduleRow[] = [
     last_run: 12,
     last_status: 'done',
     next_run: '2026-09-06T12:15:00Z',
+    user: 'local',
+    params: {},
+    env: {},
+    notify: { events: [], webhook: null, emails: [] },
+    retries: 0,
+    retry_delay: 60,
+    last_outcome: null,
     description: 'every 15 minutes',
     next_five: NEXT_FIVE,
   },
@@ -89,6 +96,13 @@ const ROWS: ScheduleRow[] = [
     last_run: 9,
     last_status: 'failed',
     next_run: null,
+    user: 'local',
+    params: { factor: 3 },
+    env: { TZ: 'UTC' },
+    notify: { events: ['failed', 'done'], webhook: null, emails: ['ops@example.com'] },
+    retries: 2,
+    retry_delay: 30,
+    last_outcome: { status: 'failed', attempts: 3, notified: true },
     description: 'at 2:00 every day',
     next_five: [],
   },
@@ -154,6 +168,28 @@ describe('the schedules page', () => {
     ).not.toBeChecked();
   });
 
+  it('rings a bell on the schedule that tells somebody, and says how it went', async () => {
+    serve({
+      'GET /api/schedules': () => ({ body: { schedules: ROWS } }),
+      'GET /api/flows': flowsRoute,
+    });
+    render(<SchedulesPage />);
+
+    await screen.findByText('nightly_etl.py');
+    // One of the two notifies; the other has no events, so it has no bell.
+    const bells = screen.getAllByRole('img', { name: /Notifications on for/ });
+    expect(bells).toHaveLength(1);
+    expect(bells[0]).toHaveAccessibleName('Notifications on for nightly_etl.py');
+    expect(bells[0]).toHaveAttribute(
+      'title',
+      'Notifies on failed, done — the default webhook and ops@example.com',
+    );
+
+    // The outcome of the last firing: how many tries it took and that somebody was told.
+    expect(screen.getByText('run #9 · 3 tries · notified')).toBeInTheDocument();
+    expect(screen.getByText(/2 retries/)).toBeInTheDocument();
+  });
+
   it('offers the empty state when nothing is scheduled', async () => {
     serve({
       'GET /api/schedules': () => ({ body: { schedules: [] } }),
@@ -206,12 +242,18 @@ describe('the schedules page', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Create schedule' }));
 
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    // A schedule now carries its inputs and its outcomes too, empty until they are set.
     expect(bodyOf('POST /api/schedules')).toEqual({
       flow: 'hello.py',
       cron: '0 * * * *',
       runtime: 'threads',
       sample: null,
       enabled: true,
+      params: {},
+      env: {},
+      notify: { events: [], webhook: null, emails: [] },
+      retries: 0,
+      retry_delay: 60,
     });
     expect(await screen.findByText(/Scheduled hello\.py/)).toBeInTheDocument();
   });

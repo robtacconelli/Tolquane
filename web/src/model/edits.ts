@@ -8,7 +8,7 @@
  */
 
 import { children, farmOptions, getAt, isTree, joinPath, ROOT, splitPath, updateAt } from './tree';
-import type { FarmOptions, FarmTree, PipelineTree, Tree } from './types';
+import type { FarmOptions, FarmTree, FlowParam, PipelineTree, Tree } from './types';
 
 /* ------------------------------------------------------------------- new blocks */
 
@@ -225,4 +225,120 @@ export function cardPaths(tree: Tree, base = ROOT): string[] {
 /** The block a farm option holds, when it holds one. */
 export function slotTree(value: Tree | false | null): Tree | null {
   return isTree(value) ? value : null;
+}
+
+/* ------------------------------------------------------- build()'s own parameters */
+
+/*
+ * The parameters of `build()` (section E) are a list, not a tree, so these are the same
+ * kind of pure function as the ones above: a list in, a new list out, and nothing
+ * validated that `paramNameError` does not say first.
+ */
+
+/** Reserved by the shape of `build(source=None, *, ...)` itself. */
+const TAKEN_NAMES = new Set(['source', 'self', 'cls']);
+
+/** Python's keywords: a parameter cannot be called one and still be written back. */
+const KEYWORDS = new Set([
+  'False',
+  'None',
+  'True',
+  'and',
+  'as',
+  'assert',
+  'async',
+  'await',
+  'break',
+  'class',
+  'continue',
+  'def',
+  'del',
+  'elif',
+  'else',
+  'except',
+  'finally',
+  'for',
+  'from',
+  'global',
+  'if',
+  'import',
+  'in',
+  'is',
+  'lambda',
+  'nonlocal',
+  'not',
+  'or',
+  'pass',
+  'raise',
+  'return',
+  'try',
+  'while',
+  'with',
+  'yield',
+]);
+
+/**
+ * Why this name cannot be a parameter, or `null` when it can. `current` is the name the
+ * parameter already has, so renaming something to itself is not a clash.
+ */
+export function paramNameError(
+  name: string,
+  params: readonly FlowParam[],
+  current?: string,
+): string | null {
+  const trimmed = name.trim();
+  if (!trimmed) return 'A parameter needs a name.';
+  if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(trimmed)) {
+    return 'Letters, digits and underscores only, not starting with a digit.';
+  }
+  if (KEYWORDS.has(trimmed)) return `${trimmed} is a Python keyword.`;
+  if (TAKEN_NAMES.has(trimmed)) return `build() already takes ${trimmed}.`;
+  if (params.some((param) => param.name === trimmed && param.name !== current)) {
+    return `${trimmed} is already a parameter.`;
+  }
+  return null;
+}
+
+/** A name nothing else has yet: `value`, then `value2`, `value3`. */
+export function newParamName(params: readonly FlowParam[], base = 'value'): string {
+  if (paramNameError(base, params) === null) return base;
+  for (let n = 2; n < 1000; n += 1) {
+    const candidate = `${base}${String(n)}`;
+    if (paramNameError(candidate, params) === null) return candidate;
+  }
+  return `${base}_`;
+}
+
+/** Add a parameter at the end; the order is the order `build()` declares them in. */
+export function addParam(params: readonly FlowParam[], param: FlowParam): FlowParam[] {
+  return [...params, param];
+}
+
+/** Change some of a parameter's fields, leaving the others alone. */
+export function setParam(
+  params: readonly FlowParam[],
+  name: string,
+  patch: Partial<FlowParam>,
+): FlowParam[] {
+  return params.map((param) => (param.name === name ? { ...param, ...patch } : param));
+}
+
+/** Rename one. The caller has already asked `paramNameError` whether it may. */
+export function renameParam(params: readonly FlowParam[], from: string, to: string): FlowParam[] {
+  return setParam(params, from, { name: to.trim() });
+}
+
+export function removeParam(params: readonly FlowParam[], name: string): FlowParam[] {
+  return params.filter((param) => param.name !== name);
+}
+
+/** Move a parameter within the list; `to` is clamped to the ends. */
+export function moveParam(params: readonly FlowParam[], name: string, to: number): FlowParam[] {
+  const from = params.findIndex((param) => param.name === name);
+  if (from < 0) return [...params];
+  const next = params.slice();
+  const [moved] = next.splice(from, 1);
+  if (!moved) return [...params];
+  next.splice(clamp(to, next.length), 0, moved);
+  return next;
 }

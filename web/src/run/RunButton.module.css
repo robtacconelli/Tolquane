@@ -42,16 +42,29 @@
   right: 0;
   z-index: var(--tq-z-overlay);
   width: 292px;
-  padding: var(--tq-space-5);
+  /* The options grew a field per parameter and a row per variable, so the popover is as
+   * tall as the flow makes it: the list scrolls and the Run button stays put. It hangs
+   * from a toolbar that is itself under the top bar, so two bar heights and the page's
+   * own padding are what it has to leave above and below itself. */
+  max-height: calc(100vh - var(--tq-topbar-height) * 2 - var(--tq-space-8));
   border-radius: var(--tq-radius-lg);
   border: 1px solid var(--tq-border);
   background: var(--tq-surface-raised);
-  box-shadow: 0 18px 44px rgb(0 0 0 / 34%);
+  box-shadow: var(--tq-shadow-lg);
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+  animation: rise var(--tq-duration-base) var(--tq-ease);
+}
+
+.popoverBody {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--tq-space-5);
   display: flex;
   flex-direction: column;
   gap: var(--tq-space-4);
-  text-align: left;
-  animation: rise var(--tq-duration-base) var(--tq-ease);
 }
 
 @keyframes rise {
@@ -117,6 +130,11 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--tq-space-4);
+  flex: none;
+  padding: var(--tq-space-4) var(--tq-space-5);
+  border-top: 1px solid var(--tq-border-subtle);
+  background: var(--tq-surface-raised);
+  border-radius: 0 0 var(--tq-radius-lg) var(--tq-radius-lg);
 }
 
 .hint {
@@ -217,5 +235,31 @@
 }
 
 .remove:hover {
+  color: var(--tq-danger);
+}
+
+/* ------------------------------------------------------- inputs (section E) */
+
+/* The interpreter the child process will be: a fact, not a control, so it reads as one
+ * line of small monospace under the options that can be changed. */
+.interpreter {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.interpreterPath {
+  font-family: var(--tq-font-mono);
+  font-size: var(--tq-text-xs);
+  color: var(--tq-text-subtle);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  direction: rtl; /* a long path is identified by its end, not its start */
+  text-align: left;
+}
+
+.badParam {
   color: var(--tq-danger);
 }

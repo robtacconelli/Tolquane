@@ -1,0 +1,224 @@
+/* The account row at the foot of the sidebar, its menu, and the two dialogs behind it. */
+.account {
+  position: relative;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--tq-space-3);
+  width: 100%;
+  height: 34px;
+  padding: 0 var(--tq-space-3);
+  border-radius: var(--tq-radius-md);
+  color: var(--tq-text-muted);
+  text-align: left;
+  white-space: nowrap;
+  transition:
+    background-color var(--tq-duration-fast) var(--tq-ease),
+    color var(--tq-duration-fast) var(--tq-ease);
+}
+
+button.row:hover,
+button.row[aria-expanded='true'] {
+  background: var(--tq-surface-hover);
+  color: var(--tq-text);
+}
+
+/* The initial, on the accent tint: a name is a better avatar than a silhouette. */
+.avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border-radius: var(--tq-radius-pill);
+  background: var(--tq-accent-soft);
+  color: var(--tq-accent);
+  font-size: var(--tq-text-xs);
+  font-weight: var(--tq-weight-semibold);
+  text-transform: uppercase;
+}
+
+.who {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+  line-height: 1.15;
+}
+
+.name {
+  font-size: var(--tq-text-sm);
+  font-weight: var(--tq-weight-medium);
+  color: var(--tq-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.role {
+  font-size: var(--tq-text-xs);
+  color: var(--tq-text-subtle);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.caret {
+  flex: none;
+  color: var(--tq-text-subtle);
+}
+
+.account[data-collapsed='true'] .who,
+.account[data-collapsed='true'] .caret {
+  display: none;
+}
+
+.account[data-collapsed='true'] .row {
+  justify-content: center;
+  padding: 0;
+}
+
+/* ------------------------------------------------------------------------ the menu */
+.menu {
+  position: absolute;
+  bottom: calc(100% + var(--tq-space-2));
+  left: 0;
+  z-index: var(--tq-z-overlay);
+  min-width: 216px;
+  padding: var(--tq-space-2);
+  border: 1px solid var(--tq-border);
+  border-radius: var(--tq-radius-lg);
+  background: var(--tq-surface-raised);
+  box-shadow: var(--tq-shadow-lg);
+}
+
+.account[data-collapsed='true'] .menu {
+  left: calc(100% + var(--tq-space-2));
+  bottom: 0;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: var(--tq-space-3);
+  width: 100%;
+  height: 30px;
+  padding: 0 var(--tq-space-3);
+  border-radius: var(--tq-radius-sm);
+  color: var(--tq-text-muted);
+  font-size: var(--tq-text-base);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.item:hover {
+  background: var(--tq-surface-hover);
+  color: var(--tq-text);
+}
+
+.item svg {
+  flex: none;
+  color: var(--tq-text-subtle);
+}
+
+.separator {
+  height: 1px;
+  margin: var(--tq-space-2) var(--tq-space-3);
+  background: var(--tq-border-subtle);
+}
+
+.menuHead {
+  padding: var(--tq-space-2) var(--tq-space-3) var(--tq-space-3);
+  border-bottom: 1px solid var(--tq-border-subtle);
+  margin-bottom: var(--tq-space-2);
+}
+
+.menuName {
+  font-size: var(--tq-text-base);
+  font-weight: var(--tq-weight-medium);
+  color: var(--tq-text);
+}
+
+.menuRole {
+  font-size: var(--tq-text-xs);
+  color: var(--tq-text-subtle);
+}
+
+/* --------------------------------------------------------------------- the dialogs */
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tq-space-5);
+}
+
+.tokenRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: var(--tq-space-4);
+  padding: var(--tq-space-3) 0;
+  border-bottom: 1px solid var(--tq-border-subtle);
+}
+
+.tokenLabel {
+  font-size: var(--tq-text-base);
+  color: var(--tq-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tokenMeta {
+  font-size: var(--tq-text-sm);
+  color: var(--tq-text-subtle);
+  font-variant-numeric: tabular-nums;
+}
+
+.empty {
+  padding: var(--tq-space-5) 0;
+  font-size: var(--tq-text-sm);
+  color: var(--tq-text-subtle);
+}
+
+.newRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: var(--tq-space-4);
+}
+
+/* ------------------------------------------------------------- a secret, shown once */
+.secret {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tq-space-3);
+  padding: var(--tq-space-5);
+  border: 1px solid var(--tq-accent-line);
+  border-radius: var(--tq-radius-lg);
+  background: var(--tq-accent-soft);
+}
+
+.secretHead {
+  font-size: var(--tq-text-sm);
+  color: var(--tq-text-muted);
+}
+
+.secretValue {
+  display: flex;
+  align-items: center;
+  gap: var(--tq-space-3);
+}
+
+.secretText {
+  flex: 1;
+  min-width: 0;
+  padding: var(--tq-space-3) var(--tq-space-4);
+  border: 1px solid var(--tq-border);
+  border-radius: var(--tq-radius-md);
+  background: var(--tq-surface);
+  color: var(--tq-text);
+  font-family: var(--tq-font-mono);
+  font-size: var(--tq-text-sm);
+  overflow-x: auto;
+  white-space: nowrap;
+}

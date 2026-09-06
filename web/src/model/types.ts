@@ -123,6 +123,22 @@ export const CONTAINER_TYPES: readonly TreeType[] = [
   'all2all',
 ];
 
+/**
+ * One keyword-only parameter of `build()`, as its author wrote it (section E).
+ *
+ * `default` and `annotation` are Python *source*, not values -- `"2"`, `'"data.csv"'`,
+ * `"float"` -- because the file is the artifact and a round trip has to give back the
+ * same bytes. The default is always a literal, so the Run popover can read it without
+ * running anything and choose the field to show.
+ */
+export interface FlowParam {
+  name: string;
+  /** The literal as written: `2`, `0.5`, `"x"`, `True`, `None`, `[1, 2]`. */
+  default: string;
+  /** The annotation as written, or `null` when there is none. */
+  annotation: string | null;
+}
+
 export interface FlowModel {
   version: number;
   name: string;
@@ -133,6 +149,8 @@ export interface FlowModel {
   flow: Tree;
   /** The node used when `source is None`; `null` when the flow has no source slot. */
   start: string | null;
+  /** `build()`'s keyword-only parameters, in order; `[]` when it has none. */
+  params: FlowParam[];
   /** `null` when `main()` is the standard call. */
   main: string | null;
   epilogue: string[];

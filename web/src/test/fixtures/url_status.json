@@ -81,6 +81,7 @@
       ]
     },
     "start": "read_urls",
+    "params": [],
     "main": "def main() -> None:\n    # Threads: eight sockets waiting at once is exactly what threads are for.\n    print(tq.run(build()))",
     "epilogue": [],
     "build_notes": [],

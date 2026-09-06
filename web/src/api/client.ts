@@ -131,6 +131,15 @@ async function readBody(response: Response): Promise<unknown> {
   }
 }
 
+/**
+ * The three routes whose 401 is an answer rather than a lost session.
+ *
+ * A wrong password at the login page, a wrong current password at the change-password
+ * screen: the reader is already where they would be sent, and forgetting their token
+ * because they mistyped one field would be absurd.
+ */
+const OWN_401 = ['/auth/login', '/auth/setup', '/auth/password'];
+
 export async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const { method = 'GET', body, rawBody, query, signal, headers, timeoutMs } = options;
   const url = buildUrl(path, query);
@@ -187,9 +196,12 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
 
   const payload = await readBody(response);
   if (!response.ok) {
-    // The server wants a token and this browser has none, or the wrong one. The shell
-    // watches for this and asks for one rather than showing four failed panels.
-    if (response.status === 401) reportUnauthorized();
+    // The server wants a token and this browser has none, has the wrong one, or its
+    // session is over. The shell watches for this and asks -- for the token, or for a
+    // sign-in, depending on the mode -- rather than showing four failed panels.
+    if (response.status === 401 && !OWN_401.some((own) => path.startsWith(own))) {
+      reportUnauthorized();
+    }
     throw new ApiError({
       message: messageFromBody(payload, response.status, response.statusText),
       status: response.status,

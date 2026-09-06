@@ -18,6 +18,8 @@ export interface Problem {
   message: string;
   severity: 'error' | 'warning';
   source: 'model' | 'server';
+  /** The one line that fixes it, when there is one: `pip install opencv-python`. */
+  hint?: string;
 }
 
 function problem(

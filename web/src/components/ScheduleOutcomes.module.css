@@ -1,0 +1,146 @@
+/* What a schedule does when a run ends: the four events, where the message goes, and how
+ * many times the run is tried again first. */
+
+.outcomes {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tq-space-5);
+}
+
+.pair {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--tq-space-5);
+}
+
+/* One chip per ending. Off is a quiet outline, on is the accent, so a glance says which
+ * of the four this schedule cares about. */
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--tq-space-3);
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--tq-space-2);
+  height: 25px;
+  padding: 0 var(--tq-space-4);
+  border-radius: var(--tq-radius-pill);
+  border: 1px solid var(--tq-border);
+  background: var(--tq-surface);
+  color: var(--tq-text-muted);
+  font-size: var(--tq-text-sm);
+  font-weight: var(--tq-weight-medium);
+  transition: background var(--tq-duration-fast) var(--tq-ease);
+}
+
+.chip:hover {
+  background: var(--tq-surface-hover);
+  color: var(--tq-text);
+}
+
+.chipOn {
+  border-color: var(--tq-accent-line);
+  background: var(--tq-accent-soft);
+  color: var(--tq-accent);
+}
+
+.chipOn:hover {
+  background: var(--tq-accent-soft-hover);
+}
+
+/* The retry count is a short list, so it is a native select in the same frame as the
+ * other controls rather than a segmented row that would wrap. */
+.select {
+  width: 100%;
+  height: 30px;
+  padding: 0 var(--tq-space-4);
+  border-radius: var(--tq-radius-md);
+  border: 1px solid var(--tq-border);
+  background: var(--tq-surface-sunken);
+  color: var(--tq-text);
+  font-size: var(--tq-text-base);
+}
+
+.select:hover {
+  border-color: var(--tq-border-strong);
+}
+
+/* ------------------------------------------------------------------- the test */
+
+.test {
+  display: flex;
+  align-items: center;
+  gap: var(--tq-space-4);
+}
+
+.testHint {
+  font-size: var(--tq-text-xs);
+  color: var(--tq-text-subtle);
+  line-height: var(--tq-leading-normal);
+}
+
+.testError {
+  margin: 0;
+  padding: var(--tq-space-3) var(--tq-space-4);
+  border-radius: var(--tq-radius-sm);
+  background: var(--tq-danger-soft);
+  color: var(--tq-danger);
+  font-size: var(--tq-text-sm);
+  line-height: var(--tq-leading-normal);
+}
+
+.results {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tq-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.result {
+  display: flex;
+  align-items: center;
+  gap: var(--tq-space-3);
+  padding: var(--tq-space-2) var(--tq-space-4);
+  border-radius: var(--tq-radius-sm);
+  border: 1px solid var(--tq-border-subtle);
+  background: var(--tq-surface);
+  font-size: var(--tq-text-sm);
+}
+
+.resultOk,
+.resultBad {
+  width: 7px;
+  height: 7px;
+  border-radius: var(--tq-radius-pill);
+  flex: none;
+}
+
+.resultOk {
+  background: var(--tq-node-done);
+}
+
+.resultBad {
+  background: var(--tq-node-failed);
+}
+
+.resultTarget {
+  font-family: var(--tq-font-mono);
+  font-size: var(--tq-text-xs);
+  color: var(--tq-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.resultText {
+  margin-left: auto;
+  color: var(--tq-text-subtle);
+  font-size: var(--tq-text-xs);
+  text-align: right;
+  overflow-wrap: anywhere;
+}
