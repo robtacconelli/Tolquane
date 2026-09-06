@@ -1,5 +1,27 @@
 # Changelog
 
+## 1.3.0, 2026-09-06
+
+Four additions to Tolquane Web, chosen after the first release.
+
+- **Users.** Accounts with roles (admin, member), sessions and personal API tokens,
+  a login page with first-admin setup and a forced password change, a users page
+  for admins, `tolquane web users add|list|disable|enable|passwd`. A local server
+  with no users keeps working with no login; the first user turns sign-in on.
+  Runs and schedules record who started them.
+- **Inputs and environments.** `build(source=None, *, name: type = default)`
+  declares parameters that the run popover, schedules and `tolquane run --param`
+  set; per-run and per-schedule environment variables and `--env`; an interpreter
+  per workspace checked by importing tolquane; a workspace environment; missing
+  imports reported on Check with their pip name.
+- **History.** When the workspace is a git repository, a history tab shows every
+  version of a flow with its diff, restores one, and commits on save with a
+  message (or automatically); the AI panel's changes commit with the request as
+  the message. `git init` from the app for a workspace without history.
+- **Schedule outcomes.** Notify by webhook or mail on chosen statuses, retries
+  with a delay as a chain of runs that notifies once at the end, a test send,
+  and the attempts listed on the run.
+
 ## 1.2.0, 2026-09-06
 
 **Tolquane Web**, the GUI: `pip install "tolquane[web]"`, then `tolquane web`. The plan

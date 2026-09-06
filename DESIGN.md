@@ -585,6 +585,11 @@ view with two-way sync, run and debug, the AI panel, schedules and settings, pac
 with the frontend inside the wheel, end-to-end journeys, the user guide and hardening.
 The library stays dependency-free; the GUI is the `web` extra.
 
+**1.3: users, inputs and environments, history, schedule outcomes (done 2026-09-06).**
+Accounts with roles and sessions; flow parameters in `build()` with `--param` and
+`--env`, an interpreter per workspace and an import probe; git history of a flow with
+commit on save and restore; notifications and retries for scheduled runs.
+
 ---
 
 ## 9. The AI builder
