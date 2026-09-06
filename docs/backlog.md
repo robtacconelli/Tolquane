@@ -29,16 +29,16 @@ when it ships; add a line here whenever a review or a phase defers something.
 ## Tolquane Web
 
 Deferred while the first release was built (`web.md`, "Later, not in the first
-release", and the I3 hardening pass).
+release", and the I3 hardening pass), and what 1.3 left for later.
 
 | Item | Where it came up | The work |
 |---|---|---|
-| Multi-user workspaces | `web.md`, one server one workspace | Accounts, a workspace per user and per-flow permissions, in place of today's one shared token. Everything the server does today runs as the user who started it, so this is a change of model, not a setting. |
-| HTTPS | I3 security review | A `--tls-cert` and `--tls-key` pair, or a documented reverse proxy. Today a token on a shared machine travels in clear, and the guide says to use an SSH tunnel instead. |
+| A workspace per user, and permissions per flow | `web.md`, one server one workspace; 1.3 U | Accounts with roles shipped in 1.3, but everybody who signs in shares the one workspace and may run anything in it, as the user who started the server. A workspace per user, or permissions per flow, is still a change of model rather than a setting. |
+| HTTPS | I3 security review; 1.3 U | A `--tls-cert` and `--tls-key` pair, or a documented reverse proxy. Today a token on a shared machine travels in clear, and since 1.3 so do passwords and session tokens; the guide says to use an SSH tunnel instead. |
 | Breakpoints that pause a node | `web.md` | Hold an item at a node until the user releases it, on the sync runtime first; needs a control channel into the run's child process, which the events stream does not have. |
 | Deploy editor | `web.md` | Assign cards to groups on the canvas, write `deploy.toml`, launch every group with `tolquane launch` and watch them all in one page. |
 | Gallery of templates | `web.md` | More than `empty` and `hello`: the examples, and the flows the AI builder wrote, offered as starting points from the New flow dialog. |
-| Sharing a flow as a link | `web.md` | A read-only page for one flow and one run, addressable and safe to send; needs the multi-user model, or a signed link that carries its own token. |
+| Sharing a flow as a link | `web.md` | A read-only page for one flow and one run, addressable and safe to send; needs a signed link that carries its own token, or a read-only role beside admin and member. |
 | Per-user rate limiting on the AI panel | I3 hardening | The chat spends the owner's key and has no limit of its own beyond the provider's; a request counter per hour would make an accident cheaper. |
 | Events on disk for a long run | I3 hardening | Events are kept in memory and bounded (`MAX_EVENTS`), so a very long run loses its middle. Writing them to a file under `.tolquane-web/` would let the drawer scroll the whole run back. |
 | Retries and notifications that survive a restart | 1.3 B3 | A pending retry is a `threading.Timer` and a delivery is a daemon thread, so a server that stops between two attempts drops the chain and a message in flight is lost. A queue in the store, drained at startup, would make both survive. |

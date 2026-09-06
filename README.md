@@ -103,8 +103,10 @@ A local page for the flows in one directory: the blocks on a canvas, the Python 
 it and editable both ways, runs with live per-node counts and tapped items, a run
 history, cron schedules and the AI builder in a side panel. Flows run in child
 processes, so a hung or crashing flow cannot take the server down, and the file stays a
-plain `flow.py` that runs with `python flow.py` anywhere Tolquane is installed. The tour,
-with screenshots, is [docs/web-user.md](docs/web-user.md).
+plain `flow.py` that runs with `python flow.py` anywhere Tolquane is installed. Since 1.3
+it also has accounts with roles, parameters and environment variables for a run or a
+schedule, a git history of every flow, and webhooks, mail and retries when a schedule
+ends. The tour, with screenshots, is [docs/web-user.md](docs/web-user.md).
 
 ## Principles
 

@@ -143,10 +143,13 @@ assert out.items == [0, 2, 4, ...]
 ```
 pip install "tolquane[web]"
 tolquane web [--host 127.0.0.1] [--port 8765] [--workspace DIR] [--token T] [--no-browser]
+tolquane web users add NAME [--admin] [--password P]   # also list, passwd, disable, enable
 ```
 
 A local page for the flows in one directory: a canvas of the blocks, the Python beside
 it, runs with live per-node counts, schedules and the AI builder. The file is still a
 plain `flow.py`; the canvas is a view of it. Flows run in child processes, so a hung or
 crashing flow cannot take the server down. `--token` is needed for any host other than
-`127.0.0.1`; `--check` starts the server, asks `/api/health` and stops, for CI.
+`127.0.0.1`; `--check` starts the server, asks `/api/health` and stops, for CI. A local
+server with no accounts needs no login; the first user turns sign-in on for everybody, and
+`tolquane web users` makes and manages them with no server running.
