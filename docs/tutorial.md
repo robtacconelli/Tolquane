@@ -84,9 +84,12 @@ tq.run(graph)                                       # threads
 tq.run(graph, runtime="processes")                  # farm workers in child processes
 tq.run(graph, runtime="sync")                       # one thread, deterministic, for tests
 tq.run(graph, deploy="deploy.toml", group="G1")     # this host's share of the graph
+tq.run(tq.optimize(graph))                          # same graph, fewer threads
 ```
 
-Same graph every time. See [Runtimes](runtimes.md) for which one to pick.
+Same graph every time. See [Runtimes](runtimes.md) for which one to pick, and
+`print(tq.run(graph))` for the busy time of every stage: the stage that is busy while
+its neighbours wait is the one to farm.
 
 ## 6. Test a flow
 

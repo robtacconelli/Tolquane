@@ -1,5 +1,25 @@
 # Changelog
 
+## 1.1.0, 2026-09-06
+
+What a review of FastFlow (see `docs/decisions/0002-fastflow-review.md`) showed was
+worth taking.
+
+- **Any block as a farm worker.** `tq.farm(a >> b, 4)` copies the pipeline four times;
+  farms, feedback loops and all-to-alls work the same, and all-to-all sets may hold them.
+  Copies are named `farm.<i>.<node>`; deploy files and `runtime="processes"` address them
+  as workers of that farm.
+- **`tq.optimize(block)`.** Fewer threads, same results: a stage before a farm becomes its
+  emitter, a farm's default collector goes when the next stage can read the workers,
+  an ordered farm's collector absorbs the next stage, a farm of farms becomes one farm,
+  and, on request, two farms in a row become an all-to-all. Also `tolquane optimize`
+  and `tolquane run --optimize`.
+- **`tolquane launch deploy.toml flow.py`.** Starts every group of a deploy file, here
+  or over `ssh`, with prefixed output; one failure stops the rest. `ssh`, `python` and
+  `workdir` per group or in `[options]`.
+- **Busy and wait time per node** in the run report, and `report.busiest()`.
+- Eleven FastFlow composition tests ported.
+
 ## 1.0.0, 2026-09-05
 
 The first release, built from the design in `DESIGN.md` on the vocabulary of the

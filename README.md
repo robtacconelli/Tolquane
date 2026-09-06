@@ -11,13 +11,15 @@ same graph runs on threads, processes or across a network. Tolquane is the succe
 [FastFlow](https://github.com/fastflow/fastflow) building blocks, rebuilt from scratch
 to be simple to use and impossible to hang.
 
-> **1.0.** Nodes, pipelines, farms with every emitter and collector policy, ordered
-> farms, node fusion, all-to-all, feedback loops that terminate by rule, batching,
-> sessions, deadlock detection; threads, processes, coroutine pools, a distributed
-> runtime over TCP and a deterministic sync runtime; an AI builder that writes, checks
-> and runs flows from a sentence. See [DESIGN.md](DESIGN.md) for the design and the
-> liveness rules, [docs/api-card.md](docs/api-card.md) for the whole API on one page,
-> [examples/](examples/) for flows in the house style, and [CHANGELOG.md](CHANGELOG.md).
+> **1.1.** Nodes, pipelines, farms with every emitter and collector policy and any block
+> as a worker, ordered farms, node fusion, all-to-all, feedback loops that terminate by
+> rule, batching, sessions, deadlock detection, an optimizer that cuts threads; threads,
+> processes, coroutine pools, a distributed runtime over TCP with a one-command launcher,
+> and a deterministic sync runtime; a run report that names the bottleneck; an AI builder
+> that writes, checks and runs flows from a sentence. See [DESIGN.md](DESIGN.md) for the
+> design and the liveness rules, [docs/api-card.md](docs/api-card.md) for the whole API
+> on one page, [examples/](examples/) for flows in the house style, and
+> [CHANGELOG.md](CHANGELOG.md).
 
 ## What it looks like
 

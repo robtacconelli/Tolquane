@@ -28,6 +28,9 @@ nav:
   - Coming from FastFlow and BBFlow: from-bbflow.md
   - House style: style.md
   - Design: design.md
+  - Decisions:
+      - Naming: decisions/0001-naming.md
+      - FastFlow review: decisions/0002-fastflow-review.md
 markdown_extensions:
   - admonition
   - tables

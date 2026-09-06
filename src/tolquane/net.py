@@ -70,6 +70,9 @@ class Group:
     host: str
     port: int
     patterns: tuple[str, ...]
+    ssh: str | None = None  # where ``tolquane launch`` starts this group; default: host
+    python: str | None = None
+    workdir: str | None = None
 
     @property
     def endpoint(self) -> str:
@@ -82,6 +85,8 @@ class Deployment:
     secret: str | None = None
     connect_timeout: float = 60.0
     reconnect_timeout: float = 30.0
+    python: str | None = None
+    workdir: str | None = None
 
     def group(self, name: str) -> Group:
         if name not in self.groups:
@@ -89,6 +94,15 @@ class Deployment:
                 f"unknown group {name!r}; the deploy file defines {sorted(self.groups)}"
             )
         return self.groups[name]
+
+
+def _optional_str(table: dict[str, Any], key: str, where: str) -> str | None:
+    value = table.get(key)
+    if value is None:
+        return None
+    if not isinstance(value, str) or not value:
+        raise GraphError(f"{where}: {key} must be a non-empty string, got {value!r}")
+    return value
 
 
 def load_deployment(source: str | Path | dict[str, Any]) -> Deployment:
@@ -101,11 +115,16 @@ def load_deployment(source: str | Path | dict[str, Any]) -> Deployment:
     [groups.G2]
     endpoint = "10.0.0.2:7000"
     nodes = ["show"]
+    ssh = "me@10.0.0.2"                    # optional; where `tolquane launch` starts it
     [options]
     secret = "change-me"                   # optional; HMAC handshake on every connection
     connect_timeout = 60                   # seconds to wait for a peer to come up
     reconnect_timeout = 30                 # seconds to tolerate a dropped connection
+    python = "python3"                     # optional; interpreter `tolquane launch` uses
+    workdir = "/srv/flow"                  # optional; directory it starts each group in
     ```
+
+    ``ssh``, ``python`` and ``workdir`` may also be given per group.
     """
     if isinstance(source, dict):
         data = source
@@ -126,13 +145,23 @@ def load_deployment(source: str | Path | dict[str, Any]) -> Deployment:
         nodes = g.get("nodes")
         if not isinstance(nodes, list) or not nodes:
             raise GraphError(f"group {name!r} needs nodes = [...] naming what it runs")
-        groups[name] = Group(name, host, int(port), tuple(str(n) for n in nodes))
+        groups[name] = Group(
+            name,
+            host,
+            int(port),
+            tuple(str(n) for n in nodes),
+            ssh=_optional_str(g, "ssh", name),
+            python=_optional_str(g, "python", name),
+            workdir=_optional_str(g, "workdir", name),
+        )
     options = data.get("options", {})
     return Deployment(
         groups,
         secret=options.get("secret"),
         connect_timeout=float(options.get("connect_timeout", 60.0)),
         reconnect_timeout=float(options.get("reconnect_timeout", 30.0)),
+        python=_optional_str(options, "python", "options"),
+        workdir=_optional_str(options, "workdir", "options"),
     )
 
 

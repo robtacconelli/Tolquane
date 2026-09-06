@@ -52,7 +52,8 @@ what to send; `ordered=True` keeps input order; async classes may have async
 ## Distributed
 
 A deploy file cuts the graph into named groups with an endpoint each. Every host runs
-the same flow with its group name. Edges between groups become TCP channels: numbered
+the same flow with its group name; `tolquane launch deploy.toml flow.py` starts them all
+from one terminal, over `ssh` where needed. Edges between groups become TCP channels: numbered
 batches, acknowledgements that return the producer's credits, resend after a dropped
 connection, an optional shared secret. A failing group tells its peers (`PeerFailed`);
 an unreachable one is `PeerLost`. Loops and an ordered farm's ends stay in one group.

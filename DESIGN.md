@@ -178,9 +178,21 @@ tq.comb(a, b)                    # fuse two nodes into one thread (BBFlow ff_com
 tq.pipeline(a, b, c)             # or a >> b >> c
 tq.all2all(left_farm, right_farm, R=None, G=None, merge=False)   # the eight FastFlow cases
 tq.feedback(farm, from_=collector, to=emitter)                    # loop edge, explicit
+tq.farm(a >> b, 4)               # any block as a worker (1.1): pipeline, farm, feedback, all2all
+tq.optimize(block)               # fewer threads (1.1): fused ends, dropped collectors, normal form
 ```
 
 Scatter/gather expect sequences; numpy arrays are split with views, no copies.
+
+A block used as a worker is copied per worker under the name `<farm>.<i>.<node>`, must
+have one input and at most one output, and its plain stages count as the farm's workers
+for the processes runtime and for deploy files. Ordered and gather farms keep plain node
+workers, since their tags travel through one worker node. `optimize()` rewrites the
+block tree, never the expanded graph, with FastFlow's `optimize_static` rules: fuse the
+stage before a farm into its emitter, drop a default collector when the next stage reads
+the workers first come, fuse the next stage into an ordered farm's collector, flatten a
+farm of farms, and, opt-in, join two farms into an all-to-all. It never touches raw
+nodes, sources, coroutine pools, or the ends a feedback loop wires back.
 
 ### 4.4 Running, results, errors
 
@@ -555,6 +567,13 @@ concurrency, and every other node keeps its thread), Chrome trace export
 (`tq.run(..., trace="trace.json")`), mkdocs site (tutorial, cookbook, "coming from
 FastFlow/BBFlow", runtime decision table), API reference from docstrings, 1.0 built as
 sdist and wheel. The subinterpreter runtime is left for a later release.
+
+**1.1: the FastFlow review (done 2026-09-06).** `docs/decisions/0002-fastflow-review.md`
+records what a reading of FastFlow's headers, tests and distributed layer showed was
+missing. Taken: any block as a farm worker, the static optimizer, `tolquane launch`
+(FastFlow's `dff_run`), busy and wait time per node in the report, eleven composition
+tests ported. Deferred: divide and conquer, parallel-for helpers, per-input end hooks, a
+byte cap on network batches, thread pinning, changing a farm's size while it runs, MPI.
 
 ---
 

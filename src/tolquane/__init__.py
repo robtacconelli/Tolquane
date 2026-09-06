@@ -48,12 +48,13 @@ from .errors import (
 )
 from .graph import AllToAll, Block, Comb, Farm, Feedback, Graph, Node, Pipeline
 from .net import PeerFailed, PeerLost, load_deployment
+from .optimize import optimize
 from .run import check, run
 from .runner import Context
 from .runtime import NodeStats, Report
 from .session import Session, SessionClosed
 
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 
 __all__ = [
     "EOS",
@@ -91,6 +92,7 @@ __all__ = [
     "from_iterable",
     "load_deployment",
     "node",
+    "optimize",
     "pipeline",
     "raw",
     "run",

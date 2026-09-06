@@ -29,6 +29,7 @@ tq.farm(work, 8, ordered=True)    # output order == input order
 tq.farm(work, 8, emitter=my_router, collector=my_merge)   # custom ends
 tq.farm(work, 8, emitter=False)   # expose the workers' inputs (1xN wiring)
 tq.farm([f, g, h])                # one worker per callable
+tq.farm(a >> b, 4)                # any block as a worker: pipeline, farm, feedback, all2all
 tq.comb(a, b)                     # fuse two nodes on one thread
 tq.all2all(left_farm, right_farm) # every left worker to every right worker
 tq.all2all(left, right, R=r, G=g, merge=False)   # r after each left worker, g before each right one
@@ -67,10 +68,12 @@ report = tq.run(graph, runtime="sync")        # deterministic, single-threaded
 tq.run(graph, runtime="processes")   # every farm worker in its own process, the rest here
 tq.farm(work, 8, runtime="processes")   # only this farm's workers in processes
 tq.run(graph, deploy="deploy.toml", group="G1")   # this host's share; other hosts run their group
+#   tolquane launch deploy.toml flow.py         # shell: start every group, here or over ssh
+tq.run(tq.optimize(graph))                    # fewer threads: stages fused into farm ends, default collectors dropped
 tq.run(graph, capacity=64)                    # bound every edge (default 1024; None = unbounded)
 tq.run(graph, batch=1)                        # hand over every item alone (default 32, flushed within 1 ms)
 tq.run(graph, trace="trace.json")             # Chrome trace of every node's runs and waits (Perfetto, chrome://tracing)
-print(report)                                 # items in/out per node, queue high-water marks
+print(report)                                 # items in/out, busy and wait time per node; report.busiest() names the bottleneck
 
 with tq.session(tq.farm(work, 4)) as s:       # keep a graph running
     s.put(item)                               # feed it

@@ -41,7 +41,8 @@ def draw(block: Any) -> str:
     for n in loose:
         lines.append("  " + _shape(n))
     for group, nodes in groups.items():
-        workers = sum(1 for n in nodes if n.role == "worker")
+        # A block worker is several nodes named <farm>.<i>.<stage>; count the copies.
+        workers = len({n.name[len(group) + 1 :].split(".")[0] for n in nodes if n.role == "worker"})
         lines.append(f'  subgraph {_nid(group)}["farm {group} ({workers} workers)"]')
         lines.extend("    " + _shape(n) for n in nodes)
         lines.append("  end")

@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import inspect
 from collections.abc import Callable, Iterable
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any, Literal
 
 from .errors import GraphError
@@ -131,19 +131,27 @@ class Graph:
 
 
 class _Names:
-    """Allocates unique node names inside one graph."""
+    """Allocates unique node names inside one graph.
 
-    def __init__(self) -> None:
-        self._used: set[str] = set()
+    A scoped allocator prefixes every name with its owner (``farm.2.``) and shares the
+    set of used names with the root, so names stay unique across nested blocks.
+    """
+
+    def __init__(self, prefix: str = "", used: set[str] | None = None) -> None:
+        self._prefix = prefix
+        self._used: set[str] = set() if used is None else used
 
     def unique(self, base: str) -> str:
-        name = base
+        name = f"{self._prefix}{base}"
         n = 1
         while name in self._used:
             n += 1
-            name = f"{base}#{n}"
+            name = f"{self._prefix}{base}#{n}"
         self._used.add(name)
         return name
+
+    def scoped(self, prefix: str) -> _Names:
+        return _Names(prefix + ".", self._used)
 
 
 # --------------------------------------------------------------------------- inference
@@ -424,7 +432,7 @@ def connect(
 
 @dataclass(frozen=True)
 class _Parts:
-    kind: NodeKind
+    kind: NodeKind | Literal["block"]
     factory: bool
     generator: bool
     target: Any
@@ -432,8 +440,10 @@ class _Parts:
     comb: Comb | None = None
     is_sink: bool = False
     is_async: bool = False
+    block: Block | None = None  # a pipeline, farm, feedback or all2all used as one worker
 
     def spec(self, name: str, **overrides: Any) -> NodeSpec:
+        assert self.block is None  # block workers are expanded, never turned into a spec
         target = self.target
         is_sink = self.is_sink
         if self.comb is not None:
@@ -467,9 +477,7 @@ def _parts(obj: Any) -> _Parts:
     if isinstance(obj, Comb):
         return _Parts("comb", False, False, obj, obj.name, comb=obj)
     if isinstance(obj, Block):
-        raise GraphError(
-            f"{obj!r} cannot be used as a single node; use a function, class or comb()"
-        )
+        return _Parts("block", False, False, obj, _block_name(obj), block=obj)
     desc = describe(obj)
     return _Parts(
         _kind_for(desc, declared=None),
@@ -481,13 +489,32 @@ def _parts(obj: Any) -> _Parts:
     )
 
 
+def _block_name(block: Block) -> str:
+    name = getattr(block, "name", None)
+    if isinstance(name, str) and name:
+        return name
+    if isinstance(block, Pipeline):
+        return "pipe"
+    return "block"
+
+
+def _node_like(obj: Any) -> bool:
+    """True for what ``comb()`` accepts: a Node, a Comb or a bare callable."""
+    return not isinstance(obj, Block) or isinstance(obj, Node | Comb)
+
+
 def forward(item: Any, ctx: Any) -> None:
     """Default emitter and collector body: pass the item on. Policies live on the ports."""
     ctx.send(item)
 
 
 class Farm(Block):
-    """Emitter, N workers and a collector."""
+    """Emitter, N workers and a collector.
+
+    A worker is a function, a class, a ``comb()`` or any block: a pipeline, a farm, a
+    feedback loop or an all-to-all. A block worker is copied ``workers`` times, each copy
+    named ``<farm>.<i>.<node>``, and must have one input and at most one output.
+    """
 
     def __init__(
         self,
@@ -525,6 +552,12 @@ class Farm(Block):
                     f"farm worker {part.name!r} must take an item: def {part.name}(item) or "
                     f"def {part.name}(item, ctx)"
                 )
+        blocks = any(part.block is not None for part in parts)
+        if blocks and runtime == "processes":
+            raise GraphError(
+                "runtime='processes' on a farm of blocks is ambiguous; put it on the inner "
+                "farm, or run the whole graph with runtime='processes'"
+            )
         if key is not None:
             if emit not in ("round_robin", "key"):
                 raise GraphError(
@@ -545,6 +578,11 @@ class Farm(Block):
         if collect == "gather" and emit != "scatter":
             raise GraphError("collect='gather' pairs with emit='scatter'")
         tagged = collect in ("ordered", "gather")
+        if tagged and blocks:
+            raise GraphError(
+                f"collect={collect!r} tags every item through one worker node, so the "
+                "workers must be plain nodes; make the inner block the ordered farm instead"
+            )
         if tagged and (emitter is False or collector is False):
             raise GraphError(f"collect={collect!r} needs both an emitter and a collector")
         if tagged and any(part.kind == "raw" for part in parts):
@@ -602,12 +640,21 @@ class Farm(Block):
         if self.tagged:
             window_id = f"{base}.window"
             g.windows[window_id] = self.window or self.workers * 64
-        worker_names: list[str] = []
+        worker_ins: list[str] = []  # where the emitter sends: the worker, or its first node
+        worker_outs: list[str] = []  # where the collector reads from
         for i in range(self.workers):
             wname = f"{base}.{i}"
-            worker_names.append(wname)
+            part = self.parts[i]
+            if part.block is not None:
+                w_in, w_out = self._expand_worker_block(g, names, part.block, wname, base)
+                worker_ins.append(w_in)
+                if w_out is not None:
+                    worker_outs.append(w_out)
+                continue
+            worker_ins.append(wname)
+            worker_outs.append(wname)
             g.nodes.append(
-                self.parts[i].spec(
+                part.spec(
                     wname,
                     index=i,
                     group=base,
@@ -619,20 +666,49 @@ class Farm(Block):
         in_cap = self.prefetch if self.emit == "on_demand" else self.capacity
         in_batch = 1 if self.emit == "on_demand" else DEFAULT_BATCH
         if self.emitter is False:
-            g.inlets = list(worker_names)
+            g.inlets = list(worker_ins)
         else:
             ename = f"{base}.emitter"
             g.nodes.insert(0, self._end_spec(self.emitter, ename, "emitter", base, window_id))
             g.inlets = [ename]
-            g.edges.extend(EdgeSpec(ename, w, "farm", in_cap, in_batch) for w in worker_names)
+            g.edges.extend(EdgeSpec(ename, w, "farm", in_cap, in_batch) for w in worker_ins)
         if self.collector is False:
-            g.outlets = list(worker_names)
+            g.outlets = list(worker_outs)
         else:
+            if len(worker_outs) < self.workers:
+                raise GraphError(
+                    f"farm {base!r}: its workers end in a sink, so there is nothing to "
+                    "collect; use collector=False"
+                )
             cname = f"{base}.collector"
             g.nodes.append(self._end_spec(self.collector, cname, "collector", base, window_id))
             g.outlets = [cname]
-            g.edges.extend(EdgeSpec(w, cname, "farm", self.capacity) for w in worker_names)
+            g.edges.extend(EdgeSpec(w, cname, "farm", self.capacity) for w in worker_outs)
         return g
+
+    def _expand_worker_block(
+        self, g: Graph, names: _Names, block: Block, wname: str, base: str
+    ) -> tuple[str, str | None]:
+        """Expand one block worker under its own name prefix; return its inlet and outlet."""
+        sub = block.expand(names.scoped(wname))
+        if len(sub.inlets) != 1:
+            raise GraphError(
+                f"farm {base!r}: worker {describe_block(block)} has {len(sub.inlets)} inputs; "
+                "a farm feeds each worker through one input (an inner farm needs its emitter)"
+            )
+        if len(sub.outlets) > 1:
+            raise GraphError(
+                f"farm {base!r}: worker {describe_block(block)} has {len(sub.outlets)} "
+                "outputs; a farm collects each worker through one output (an inner farm "
+                "needs its collector)"
+            )
+        # Plain stages inside the copy count as this farm's workers: the processes runtime
+        # and deploy files address them as such, and draw() groups them under the farm.
+        sub.nodes = [
+            replace(n, group=base, role="worker") if n.role is None else n for n in sub.nodes
+        ]
+        g.merge(sub)
+        return sub.inlets[0], sub.outlets[0] if sub.outlets else None
 
     def _expand_async(self, base: str) -> Graph:
         """A farm of coroutines is one pool node running ``workers`` of them at a time."""
@@ -759,9 +835,13 @@ class AllToAll(Block):
                 middle = as_block(G)
             blocks: list[Block] = [left, right] if middle is None else [left, middle, right]
             return Pipeline(blocks).expand(names)
-        lw = [Comb(w, R) for w in self.left.raw_workers] if R is not None else self.left.raw_workers
+        lw = (
+            [_after(w, R) for w in self.left.raw_workers]
+            if R is not None
+            else self.left.raw_workers
+        )
         rw = (
-            [Comb(G, w) for w in self.right.raw_workers]
+            [_before(G, w) for w in self.right.raw_workers]
             if G is not None
             else self.right.raw_workers
         )
@@ -776,6 +856,15 @@ class AllToAll(Block):
         g.inlets = gl.inlets
         g.outlets = gr.outlets
         return g
+
+
+def _after(worker: Any, R: Any) -> Block:
+    """``R`` fused after a node worker, or added as a stage after a block worker."""
+    return Comb(worker, R) if _node_like(worker) else Pipeline([worker, R])
+
+
+def _before(G: Any, worker: Any) -> Block:
+    return Comb(G, worker) if _node_like(worker) else Pipeline([G, worker])
 
 
 class Feedback(Block):

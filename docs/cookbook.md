@@ -13,6 +13,27 @@ def route(x, ctx):
 tq.farm(work, 2, emitter=route)                     # your emitter replaces the default
 ```
 
+## A farm of pipelines
+
+```python
+tq.farm(parse >> enrich, 8)                         # eight copies of the two-stage pipeline
+tq.farm(tq.farm(work, 2), 4)                        # a farm of farms
+tq.farm(tq.feedback(refine >> route), 4)            # a loop per worker
+```
+
+Any block is a worker. Each copy is named after the farm and its number: `parse.3.enrich`.
+
+## Fewer threads, same results
+
+```python
+tq.run(tq.optimize(graph))                          # or: tolquane optimize flow.py
+```
+
+A stage right before a farm becomes its emitter, a farm's default collector goes when
+the next stage can read the workers directly, an ordered farm's collector absorbs the
+stage after it, and a farm of farms becomes one farm. `tolquane optimize` prints what
+changed and the node count before and after.
+
 ## Keep results in input order
 
 ```python
@@ -96,14 +117,18 @@ endpoint = "10.0.0.2:7000"
 nodes = ["work.[0-9]*"]
 ```
 
-`tolquane run flow.py --deploy deploy.toml --group A` on one host, `--group B` on the
-other. The edges that cross become TCP channels with backpressure and resend.
+`tolquane launch deploy.toml flow.py` starts every group: here when the endpoint is this
+machine, over `ssh` otherwise (add `ssh = "me@host"`, `python` or `workdir` to a group or
+to `[options]`). One group failing stops the others; Ctrl-C stops them all. The edges that
+cross become TCP channels with backpressure and resend.
 
 ## Where does the time go
 
 ```python
+report = tq.run(graph)
+print(report)                    # busy seconds and wait time per node, queue depths
+print(report.busiest(1))         # the stage to farm next
 tq.run(graph, trace="trace.json")                   # open in Perfetto or chrome://tracing
-print(tq.run(graph))                                # items in and out per node, queue depths
 ```
 
 ## A topology the blocks cannot say

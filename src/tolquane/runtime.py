@@ -31,9 +31,35 @@ class State(enum.Enum):
 
 @dataclass
 class NodeStats:
+    """Counts and times for one node. Times are seconds over the node's whole life.
+
+    ``busy`` is time not spent blocked on a channel: running user code, or, for a
+    coroutine pool, waiting for its coroutines. ``wait_in`` is time blocked for input,
+    ``wait_out`` time blocked on a full output or an ordering window. A stage that is
+    busy nearly all the time while its neighbours wait on it is the bottleneck: farm it.
+    """
+
     items_in: int = 0
     items_out: int = 0
     dropped: int = 0
+    elapsed: float = 0.0
+    busy: float = 0.0
+    wait_in: float = 0.0
+    wait_out: float = 0.0
+
+    @property
+    def busy_share(self) -> float:
+        """Fraction of the node's own life spent busy, 0 to 1. Compare ``busy`` seconds
+        across nodes to find the bottleneck: a node's life ends when its inputs do."""
+        return self.busy / self.elapsed if self.elapsed > 0 else 0.0
+
+    def _record_wait(self, reason: str, seconds: float, outside: bool) -> None:
+        if outside:
+            return  # coroutines or a remote worker were running for this node: that is work
+        if reason in ("input", "loop"):
+            self.wait_in += seconds
+        else:
+            self.wait_out += seconds
 
 
 class NodeInstance:
@@ -186,8 +212,12 @@ class RunContext:
     def node_done(self, inst: NodeInstance) -> None:
         if inst.state is not State.FAILED:
             inst.state = State.DONE
+        now = time.perf_counter()
+        stats = inst.stats
+        stats.elapsed = now - inst.started_at
+        stats.busy = max(0.0, stats.elapsed - stats.wait_in - stats.wait_out)
         if self.tracer is not None:
-            self.tracer.record(inst.name, "node", inst.started_at, time.perf_counter())
+            self.tracer.record(inst.name, "node", inst.started_at, now)
         self.scheduler.node_done(inst)
         self.done_event.set()
 
@@ -200,6 +230,7 @@ class Scheduler:
 
     def node_started(self, inst: NodeInstance) -> None:
         inst.state = State.RUNNING
+        inst.started_at = time.perf_counter()
 
     def wait(
         self,
@@ -238,7 +269,8 @@ class ThreadScheduler(Scheduler):
         inst.detail = detail
         inst.parked_on = cond
         tracer = self.rc.tracer
-        started = time.perf_counter() if tracer is not None else 0.0
+        started = time.perf_counter()
+        outside = inst.busy_outside
         try:
             while not predicate():
                 if self.rc.cancelled:
@@ -247,8 +279,10 @@ class ThreadScheduler(Scheduler):
         finally:
             inst.state = State.RUNNING
             inst.parked_on = None
+            now = time.perf_counter()
+            inst.stats._record_wait(reason, now - started, outside)
             if tracer is not None:
-                tracer.record(inst.name, f"wait {reason}", started, time.perf_counter())
+                tracer.record(inst.name, f"wait {reason}", started, now)
 
 
 class BatonScheduler(Scheduler):
@@ -263,6 +297,7 @@ class BatonScheduler(Scheduler):
     def node_started(self, inst: NodeInstance) -> None:
         self._park(inst, None)
         inst.state = State.RUNNING
+        inst.started_at = time.perf_counter()
 
     def _park(self, inst: NodeInstance, held: threading.Condition | None) -> None:
         """Block until ``inst`` holds the baton. ``held`` is the channel condition whose
@@ -297,6 +332,8 @@ class BatonScheduler(Scheduler):
         inst.detail = detail
         inst.parked_on = cond
         inst.predicate = predicate
+        started = time.perf_counter()
+        outside = inst.busy_outside
         self._handoff(inst)
         try:
             self._park(inst, cond)
@@ -304,6 +341,7 @@ class BatonScheduler(Scheduler):
             inst.state = State.RUNNING
             inst.parked_on = None
             inst.predicate = None
+            inst.stats._record_wait(reason, time.perf_counter() - started, outside)
 
     def node_done(self, inst: NodeInstance) -> None:
         self._handoff(inst)
@@ -399,12 +437,29 @@ class Report:
     nodes: dict[str, NodeStats] = field(default_factory=dict)
     edges: dict[tuple[str, str], int] = field(default_factory=dict)
 
+    def busiest(self, n: int = 3) -> list[str]:
+        """Node names with the most busy seconds, most busy first: the bottleneck first."""
+        ranked = sorted(self.nodes.items(), key=lambda kv: kv[1].busy, reverse=True)
+        return [name for name, _ in ranked[:n]]
+
     def __str__(self) -> str:
         w = max([len(n) for n in self.nodes] + [4])
         lines = [f"run on {self.runtime}: {self.elapsed:.3f}s"]
-        lines.append(f"  {'node'.ljust(w)}  {'in':>8}  {'out':>8}  {'dropped':>8}")
+        lines.append(
+            f"  {'node'.ljust(w)}  {'in':>8}  {'out':>8}  {'dropped':>8}"
+            f"  {'busy':>8}  {'busy%':>6}  {'wait-in':>7}  {'wait-out':>8}"
+        )
         for name, s in self.nodes.items():
-            lines.append(f"  {name.ljust(w)}  {s.items_in:>8}  {s.items_out:>8}  {s.dropped:>8}")
+            pct = (
+                f"{100 * s.busy_share:5.1f}%"
+                f"  {100 * s.wait_in / s.elapsed:6.1f}%  {100 * s.wait_out / s.elapsed:7.1f}%"
+                if s.elapsed > 0
+                else f"{'':>6}  {'':>7}  {'':>8}"
+            )
+            lines.append(
+                f"  {name.ljust(w)}  {s.items_in:>8}  {s.items_out:>8}  {s.dropped:>8}"
+                f"  {s.busy:7.3f}s  {pct}"
+            )
         if self.edges:
             lines.append("  edge high-water marks:")
             for (src, dst), hw in self.edges.items():

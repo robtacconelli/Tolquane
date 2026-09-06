@@ -9,7 +9,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from . import check, draw, explain, run
+from . import check, draw, explain, optimize, run
 from .errors import TolquaneError
 
 
@@ -32,8 +32,12 @@ def _graph(args: argparse.Namespace) -> Any:
     module = _load_flow(args.flow)
     if getattr(args, "sample", None):
         items = _read_sample(Path(args.sample))
-        return module.build(source=items)
-    return module.build()
+        graph = module.build(source=items)
+    else:
+        graph = module.build()
+    if getattr(args, "optimize", False):
+        graph = optimize(graph, verbose=True)
+    return graph
 
 
 def _read_sample(path: Path) -> list[Any]:
@@ -71,6 +75,30 @@ def cmd_run(args: argparse.Namespace) -> int:
     if args.stats:
         print(report, file=sys.stderr)
     return 0
+
+
+def cmd_optimize(args: argparse.Namespace) -> int:
+    notes: list[str] = []
+    block = optimize(_graph(args), notes=notes, all2all=args.all2all)
+    for line in notes:
+        print(line)
+    print(explain(block))
+    return 0
+
+
+def cmd_launch(args: argparse.Namespace) -> int:
+    from .launch import launch
+
+    return launch(
+        args.deploy,
+        args.flow,
+        runtime=args.runtime,
+        batch=args.batch,
+        stats=args.stats,
+        show=args.show.split(",") if args.show else None,
+        dry_run=args.dry_run,
+        optimize=args.optimize,
+    )
 
 
 def cmd_build(args: argparse.Namespace) -> int:
@@ -156,6 +184,7 @@ def main(argv: list[str] | None = None) -> int:
         ("explain", cmd_explain, "list nodes, policies and wiring rules"),
         ("draw", cmd_draw, "print a Mermaid diagram"),
         ("run", cmd_run, "run a flow"),
+        ("optimize", cmd_optimize, "show the flow with fewer threads: fused ends, no collectors"),
     ):
         p = sub.add_parser(name, help=help_text)
         p.add_argument("flow", help="path to a flow.py that defines build(source=None)")
@@ -164,11 +193,27 @@ def main(argv: list[str] | None = None) -> int:
             p.add_argument("--runtime", default="threads", choices=["threads", "processes", "sync"])
             p.add_argument("--batch", type=int, default=32)
             p.add_argument("--stats", action="store_true", help="print the run report")
+            p.add_argument("--optimize", action="store_true", help="cut threads before running")
             p.add_argument(
                 "--deploy", default=None, help="deploy file (TOML) cutting the graph into groups"
             )
             p.add_argument("--group", default=None, help="which group this host runs")
+        if name == "optimize":
+            p.add_argument("--all2all", action="store_true", help="also join farm pairs")
         p.set_defaults(func=func)
+
+    launch_p = sub.add_parser("launch", help="start every group of a deploy file, here or over ssh")
+    launch_p.add_argument("deploy", help="deploy file (TOML)")
+    launch_p.add_argument("flow", help="flow.py, at the same path on every host")
+    launch_p.add_argument("--runtime", default="threads", choices=["threads", "processes"])
+    launch_p.add_argument("--batch", type=int, default=32)
+    launch_p.add_argument("--stats", action="store_true", help="print each group's run report")
+    launch_p.add_argument("--optimize", action="store_true", help="cut threads before running")
+    launch_p.add_argument(
+        "--show", default=None, help="comma-separated groups whose output to show (default: all)"
+    )
+    launch_p.add_argument("--dry-run", action="store_true", help="print the commands and stop")
+    launch_p.set_defaults(func=cmd_launch)
 
     args = parser.parse_args(argv)
     try:
