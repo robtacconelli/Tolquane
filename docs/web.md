@@ -1,6 +1,7 @@
 # Tolquane Web: the web GUI, broken down
 
-**Status:** approved 2026-09-06, wave 0 in progress. This page is the contract the
+**Status:** built, shipped in 1.2 (2026-09-06). The user guide is `docs/web-user.md`;
+this page stays as the record of the plan and the sub-problems. This page is the contract the
 sub-problems are built against; each one is small enough for one agent to finish and test
 on its own.
 

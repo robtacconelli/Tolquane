@@ -577,6 +577,14 @@ byte cap on network batches, thread pinning, changing a farm's size while it run
 Everything deferred, from this review and from earlier phases, is listed in
 `docs/backlog.md`; that file is where future work waits.
 
+**1.2: Tolquane Web (done 2026-09-06).** The GUI, planned in `docs/web.md` and built
+against the contracts in `docs/web-interfaces.md` by parallel agents in three waves:
+the flow model and code generator, live run events in the library, storage and a cron
+scheduler, the FastAPI server and run supervisor, the React canvas editor, the code
+view with two-way sync, run and debug, the AI panel, schedules and settings, packaging
+with the frontend inside the wheel, end-to-end journeys, the user guide and hardening.
+The library stays dependency-free; the GUI is the `web` extra.
+
 ---
 
 ## 9. The AI builder

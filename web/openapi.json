@@ -3,7 +3,7 @@
   "info": {
     "title": "Tolquane Web",
     "summary": "Create, run, watch and schedule Tolquane flows in a workspace.",
-    "version": "1.1.0"
+    "version": "1.2.0"
   },
   "paths": {
     "/api/flows": {

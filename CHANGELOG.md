@@ -1,5 +1,40 @@
 # Changelog
 
+## 1.2.0, 2026-09-06
+
+**Tolquane Web**, the GUI: `pip install "tolquane[web]"`, then `tolquane web`. The plan
+is `docs/web.md`, the contracts `docs/web-interfaces.md`, the guide `docs/web-user.md`.
+
+- A flow is still a plain `flow.py`. The editor reads it into a model, shows it as
+  block cards on a canvas (farms and loops as containers, all-to-all as two farms with
+  the cross edges), writes it back in the house style, and keeps positions in a
+  `flow.layout.json` sidecar. What the model cannot say opens in a code-only mode.
+- Canvas and code edit each other: typing re-parses after a pause, canvas edits
+  regenerate the file, node bodies are edited in the properties panel, a save that
+  would overwrite a change on disk shows a diff.
+- Runs happen in a child process that streams events: cards colour by state, counters
+  and busy time move, taps show items on an edge, the drawer has the console, the
+  report and the problems pointing at their card; errors and deadlocks land on the
+  card that caused them. A runs page keeps the history with re-run and cancel.
+- The AI builder in a side panel: streamed answers, tool steps, a flow card with a
+  diff and apply-to-editor that respects undo, threads kept per flow.
+- Schedules with cron presets and a live preview of the next times; settings for the
+  workspace, runs, AI keys (a mode-600 file or the environment, never echoed), server
+  and appearance.
+- One local FastAPI server with SQLite for runs, schedules and settings; a token wall
+  for shared machines; a workspace fence; children never see API keys; a bounded
+  event buffer; a content security policy.
+
+**Library**
+
+- `tq.run(..., on_progress=, progress_interval=, tap=, stop=)`: live snapshots of every
+  node and edge, the last items per edge, a stop event that raises `RunCancelled`;
+  `Report.to_dict()`; `tolquane run --events` prints one JSON object per line and
+  `--trace FILE` writes a Chrome trace.
+- `tolquane run` accepts a flow whose `main()` calls `tq.run` once.
+- A source whose sends are all dropped after cancellation now stops instead of
+  spinning until the join timeout.
+
 ## 1.1.0, 2026-09-06
 
 What a review of FastFlow (see `docs/decisions/0002-fastflow-review.md`) showed was
