@@ -64,6 +64,16 @@ python -m tolquane.web.model graph flow.py        # prints graph_view as JSON
 - `main`: `null` when `main()` is the standard three lines (`tq.run(build())`, or with
   `print(report)`); otherwise its source verbatim.
 - `epilogue`: statements after `main` other than the guard, verbatim.
+- `build_notes`: comments found inside `build()`, kept at the top of its body.
+- `guard`: the statement inside `if __name__ == "__main__":` when it is not `main()`
+  (`sys.exit(main())` for instance), else `null`.
+
+As built, the parser also accepts two shapes the style allows: a file with no `build()`
+whose `main()` is one `tq.run(<graph>)` call (the graph is lifted into `build()`), and
+the start line written the other way round (`tq.from_iterable(source) if source is not
+None else rows`). Generation always writes the forms above, so the first round trip
+normalizes those, plus `workers=N` to positional and sub-block assignments in `build`
+inlined into the return; from the second trip on the output is byte-stable.
 
 ### The tree
 
