@@ -1,0 +1,170 @@
+/* The property panel's controls: 30px high, one column, the message under the control it
+ * is about. Nothing here knows what a farm is; it is the shape every option shares. */
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tq-space-4);
+  padding: var(--tq-space-5) var(--tq-space-5) var(--tq-space-6);
+  border-bottom: 1px solid var(--tq-border-subtle);
+}
+
+.sectionTitle {
+  font-size: var(--tq-text-xs);
+  font-weight: var(--tq-weight-semibold);
+  letter-spacing: var(--tq-tracking-wide);
+  text-transform: uppercase;
+  color: var(--tq-text-subtle);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tq-space-2);
+}
+
+.label {
+  font-size: var(--tq-text-sm);
+  font-weight: var(--tq-weight-medium);
+  color: var(--tq-text-muted);
+}
+
+.input {
+  width: 100%;
+  height: 30px;
+  padding: 0 var(--tq-space-3);
+  border: 1px solid var(--tq-border);
+  border-radius: var(--tq-radius-md);
+  background: var(--tq-surface-sunken);
+  color: var(--tq-text);
+  font-size: var(--tq-text-base);
+  font-variant-numeric: tabular-nums;
+  outline: none;
+  transition: border-color var(--tq-duration-fast) var(--tq-ease);
+}
+
+.input:hover:not(:disabled) {
+  border-color: var(--tq-border-strong);
+}
+
+.input:focus {
+  border-color: var(--tq-accent);
+}
+
+.input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.input::placeholder {
+  color: var(--tq-text-subtle);
+}
+
+.mono {
+  font-family: var(--tq-font-mono);
+  font-size: var(--tq-text-sm);
+}
+
+.hint {
+  font-size: var(--tq-text-xs);
+  color: var(--tq-text-subtle);
+  line-height: var(--tq-leading-normal);
+}
+
+.error {
+  font-size: var(--tq-text-xs);
+  color: var(--tq-danger);
+  line-height: var(--tq-leading-normal);
+}
+
+/* -------------------------------------------------------------------- toggle */
+.toggleRow {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--tq-space-4);
+}
+
+.toggleText {
+  flex: 1;
+  min-width: 0;
+}
+
+.toggleLabel {
+  font-size: var(--tq-text-sm);
+  font-weight: var(--tq-weight-medium);
+  color: var(--tq-text-muted);
+  cursor: pointer;
+}
+
+.switch {
+  flex: none;
+  position: relative;
+  width: 34px;
+  height: 20px;
+  margin-top: 1px;
+  border-radius: var(--tq-radius-pill);
+  background: var(--tq-surface-active);
+  border: 1px solid var(--tq-border);
+  transition: background-color var(--tq-duration-fast) var(--tq-ease);
+}
+
+.switchOn {
+  background: var(--tq-accent);
+  border-color: var(--tq-accent);
+}
+
+.knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: var(--tq-radius-pill);
+  background: var(--tq-surface-raised);
+  box-shadow: var(--tq-shadow-sm);
+  transition: transform var(--tq-duration-fast) var(--tq-ease);
+}
+
+.switchOn .knob {
+  transform: translateX(14px);
+  background: var(--tq-accent-contrast);
+}
+
+/* ---------------------------------------------------------------- code block */
+.code {
+  border: 1px solid var(--tq-border-subtle);
+  border-radius: var(--tq-radius-md);
+  overflow: hidden;
+  background: var(--tq-surface-sunken);
+}
+
+.codeHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--tq-space-3);
+  height: 30px;
+  padding: 0 var(--tq-space-2) 0 var(--tq-space-4);
+  border-bottom: 1px solid var(--tq-border-subtle);
+  background: var(--tq-surface);
+}
+
+.codeTitle {
+  font-size: var(--tq-text-xs);
+  font-weight: var(--tq-weight-semibold);
+  letter-spacing: var(--tq-tracking-wide);
+  text-transform: uppercase;
+  color: var(--tq-text-subtle);
+}
+
+.codeBody {
+  margin: 0;
+  padding: var(--tq-space-4);
+  max-height: 260px;
+  overflow: auto;
+  font-family: var(--tq-font-mono);
+  font-size: var(--tq-text-sm);
+  line-height: var(--tq-leading-relaxed);
+  color: var(--tq-text-muted);
+  white-space: pre;
+  tab-size: 4;
+}

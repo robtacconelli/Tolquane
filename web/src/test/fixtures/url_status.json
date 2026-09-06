@@ -1,0 +1,351 @@
+{
+  "path": "url_status_report/flow.py",
+  "source": "\"\"\"Fetch every URL in urls.txt on 8 workers and write url, status (or error) and size to status.csv.\"\"\"\n\nimport csv\nimport urllib.error\nimport urllib.request\n\nimport tolquane as tq\n\nURLS = \"urls.txt\"\nOUT = \"status.csv\"\nTIMEOUT = 10.0\n\n\n@tq.source\ndef read_urls():\n    # One URL per line; blank lines and # comments are dropped here.\n    with open(URLS, encoding=\"utf-8\") as f:\n        for line in f:\n            url = line.strip()\n            if url and not url.startswith(\"#\"):\n                yield url\n\n\n@tq.node\ndef fetch(url: str):\n    # The slow, I/O bound stage, so this is what the farm multiplies.\n    # A failed request is a result to record, not a crash, hence the except.\n    try:\n        with urllib.request.urlopen(url, timeout=TIMEOUT) as response:\n            body = response.read()\n            return (url, response.status, len(body))\n    except urllib.error.HTTPError as exc:\n        return (url, exc.code, len(exc.read()))\n    except Exception as exc:  # timeout, DNS failure, bad URL\n        return (url, f\"{type(exc).__name__}: {exc}\", 0)\n\n\n@tq.sink\nclass WriteCsv:\n    # Stateful and single: it owns the CSV file and the success counter.\n    def on_start(self, ctx: tq.Context) -> None:\n        self.file = open(OUT, \"w\", newline=\"\", encoding=\"utf-8\")\n        self.writer = csv.writer(self.file)\n        self.writer.writerow([\"url\", \"status\", \"size\"])\n        self.ok = 0\n\n    def __call__(self, row: tuple) -> None:\n        url, status, size = row\n        if isinstance(status, int) and 200 <= status < 400:\n            self.ok += 1\n        self.writer.writerow([url, status, size])\n\n    def on_end(self, ctx: tq.Context) -> None:\n        self.file.close()\n        print(f\"{self.ok} succeeded, results in {OUT}\")\n\n\ndef build(source=None):\n    start = tq.from_iterable(source) if source is not None else read_urls\n    return start >> tq.farm(fetch, workers=8) >> WriteCsv\n\n\ndef main() -> None:\n    # Threads: eight sockets waiting at once is exactly what threads are for.\n    print(tq.run(build()))\n\n\nif __name__ == \"__main__\":\n    main()\n",
+  "modified": "2026-09-06T10:00:00Z",
+  "model": {
+    "version": 1,
+    "name": "flow",
+    "doc": "Fetch every URL in urls.txt on 8 workers and write url, status (or error) and size to status.csv.",
+    "prelude": [
+      "import csv",
+      "import urllib.error",
+      "import urllib.request",
+      "URLS = \"urls.txt\"",
+      "OUT = \"status.csv\"",
+      "TIMEOUT = 10.0"
+    ],
+    "nodes": [
+      {
+        "id": "read_urls",
+        "kind": "source",
+        "is_class": false,
+        "is_async": false,
+        "params": [],
+        "doc": null,
+        "source": "@tq.source\ndef read_urls():\n    # One URL per line; blank lines and # comments are dropped here.\n    with open(URLS, encoding=\"utf-8\") as f:\n        for line in f:\n            url = line.strip()\n            if url and not url.startswith(\"#\"):\n                yield url"
+      },
+      {
+        "id": "fetch",
+        "kind": "node",
+        "is_class": false,
+        "is_async": false,
+        "params": [
+          "url"
+        ],
+        "doc": null,
+        "source": "@tq.node\ndef fetch(url: str):\n    # The slow, I/O bound stage, so this is what the farm multiplies.\n    # A failed request is a result to record, not a crash, hence the except.\n    try:\n        with urllib.request.urlopen(url, timeout=TIMEOUT) as response:\n            body = response.read()\n            return (url, response.status, len(body))\n    except urllib.error.HTTPError as exc:\n        return (url, exc.code, len(exc.read()))\n    except Exception as exc:  # timeout, DNS failure, bad URL\n        return (url, f\"{type(exc).__name__}: {exc}\", 0)"
+      },
+      {
+        "id": "WriteCsv",
+        "kind": "sink",
+        "is_class": true,
+        "is_async": false,
+        "params": [
+          "row"
+        ],
+        "doc": null,
+        "source": "@tq.sink\nclass WriteCsv:\n    # Stateful and single: it owns the CSV file and the success counter.\n    def on_start(self, ctx: tq.Context) -> None:\n        self.file = open(OUT, \"w\", newline=\"\", encoding=\"utf-8\")\n        self.writer = csv.writer(self.file)\n        self.writer.writerow([\"url\", \"status\", \"size\"])\n        self.ok = 0\n\n    def __call__(self, row: tuple) -> None:\n        url, status, size = row\n        if isinstance(status, int) and 200 <= status < 400:\n            self.ok += 1\n        self.writer.writerow([url, status, size])\n\n    def on_end(self, ctx: tq.Context) -> None:\n        self.file.close()\n        print(f\"{self.ok} succeeded, results in {OUT}\")"
+      }
+    ],
+    "flow": {
+      "type": "pipeline",
+      "stages": [
+        {
+          "type": "start"
+        },
+        {
+          "type": "farm",
+          "worker": {
+            "type": "ref",
+            "id": "fetch"
+          },
+          "workers": 8,
+          "options": {
+            "emit": "round_robin",
+            "collect": null,
+            "ordered": false,
+            "emitter": null,
+            "collector": null,
+            "key": null,
+            "prefetch": 1,
+            "window": null,
+            "name": null,
+            "capacity": null,
+            "runtime": null
+          }
+        },
+        {
+          "type": "ref",
+          "id": "WriteCsv"
+        }
+      ]
+    },
+    "start": "read_urls",
+    "main": "def main() -> None:\n    # Threads: eight sockets waiting at once is exactly what threads are for.\n    print(tq.run(build()))",
+    "epilogue": [],
+    "build_notes": [],
+    "guard": null
+  },
+  "code_only": null,
+  "graph": {
+    "nodes": [
+      {
+        "name": "read_urls",
+        "kind": "source",
+        "role": null,
+        "group": null,
+        "is_sink": false,
+        "is_async": false,
+        "tagged": false
+      },
+      {
+        "name": "fetch.emitter",
+        "kind": "ctx",
+        "role": "emitter",
+        "group": "fetch",
+        "is_sink": false,
+        "is_async": false,
+        "tagged": false
+      },
+      {
+        "name": "fetch.0",
+        "kind": "map",
+        "role": "worker",
+        "group": "fetch",
+        "is_sink": false,
+        "is_async": false,
+        "tagged": false
+      },
+      {
+        "name": "fetch.1",
+        "kind": "map",
+        "role": "worker",
+        "group": "fetch",
+        "is_sink": false,
+        "is_async": false,
+        "tagged": false
+      },
+      {
+        "name": "fetch.2",
+        "kind": "map",
+        "role": "worker",
+        "group": "fetch",
+        "is_sink": false,
+        "is_async": false,
+        "tagged": false
+      },
+      {
+        "name": "fetch.3",
+        "kind": "map",
+        "role": "worker",
+        "group": "fetch",
+        "is_sink": false,
+        "is_async": false,
+        "tagged": false
+      },
+      {
+        "name": "fetch.4",
+        "kind": "map",
+        "role": "worker",
+        "group": "fetch",
+        "is_sink": false,
+        "is_async": false,
+        "tagged": false
+      },
+      {
+        "name": "fetch.5",
+        "kind": "map",
+        "role": "worker",
+        "group": "fetch",
+        "is_sink": false,
+        "is_async": false,
+        "tagged": false
+      },
+      {
+        "name": "fetch.6",
+        "kind": "map",
+        "role": "worker",
+        "group": "fetch",
+        "is_sink": false,
+        "is_async": false,
+        "tagged": false
+      },
+      {
+        "name": "fetch.7",
+        "kind": "map",
+        "role": "worker",
+        "group": "fetch",
+        "is_sink": false,
+        "is_async": false,
+        "tagged": false
+      },
+      {
+        "name": "fetch.collector",
+        "kind": "ctx",
+        "role": "collector",
+        "group": "fetch",
+        "is_sink": false,
+        "is_async": false,
+        "tagged": false
+      },
+      {
+        "name": "WriteCsv",
+        "kind": "map",
+        "role": null,
+        "group": null,
+        "is_sink": true,
+        "is_async": false,
+        "tagged": false
+      }
+    ],
+    "edges": [
+      {
+        "src": "fetch.emitter",
+        "dst": "fetch.0",
+        "rule": "farm",
+        "feedback": false,
+        "capacity": null,
+        "batch": null
+      },
+      {
+        "src": "fetch.emitter",
+        "dst": "fetch.1",
+        "rule": "farm",
+        "feedback": false,
+        "capacity": null,
+        "batch": null
+      },
+      {
+        "src": "fetch.emitter",
+        "dst": "fetch.2",
+        "rule": "farm",
+        "feedback": false,
+        "capacity": null,
+        "batch": null
+      },
+      {
+        "src": "fetch.emitter",
+        "dst": "fetch.3",
+        "rule": "farm",
+        "feedback": false,
+        "capacity": null,
+        "batch": null
+      },
+      {
+        "src": "fetch.emitter",
+        "dst": "fetch.4",
+        "rule": "farm",
+        "feedback": false,
+        "capacity": null,
+        "batch": null
+      },
+      {
+        "src": "fetch.emitter",
+        "dst": "fetch.5",
+        "rule": "farm",
+        "feedback": false,
+        "capacity": null,
+        "batch": null
+      },
+      {
+        "src": "fetch.emitter",
+        "dst": "fetch.6",
+        "rule": "farm",
+        "feedback": false,
+        "capacity": null,
+        "batch": null
+      },
+      {
+        "src": "fetch.emitter",
+        "dst": "fetch.7",
+        "rule": "farm",
+        "feedback": false,
+        "capacity": null,
+        "batch": null
+      },
+      {
+        "src": "fetch.0",
+        "dst": "fetch.collector",
+        "rule": "farm",
+        "feedback": false,
+        "capacity": null,
+        "batch": null
+      },
+      {
+        "src": "fetch.1",
+        "dst": "fetch.collector",
+        "rule": "farm",
+        "feedback": false,
+        "capacity": null,
+        "batch": null
+      },
+      {
+        "src": "fetch.2",
+        "dst": "fetch.collector",
+        "rule": "farm",
+        "feedback": false,
+        "capacity": null,
+        "batch": null
+      },
+      {
+        "src": "fetch.3",
+        "dst": "fetch.collector",
+        "rule": "farm",
+        "feedback": false,
+        "capacity": null,
+        "batch": null
+      },
+      {
+        "src": "fetch.4",
+        "dst": "fetch.collector",
+        "rule": "farm",
+        "feedback": false,
+        "capacity": null,
+        "batch": null
+      },
+      {
+        "src": "fetch.5",
+        "dst": "fetch.collector",
+        "rule": "farm",
+        "feedback": false,
+        "capacity": null,
+        "batch": null
+      },
+      {
+        "src": "fetch.6",
+        "dst": "fetch.collector",
+        "rule": "farm",
+        "feedback": false,
+        "capacity": null,
+        "batch": null
+      },
+      {
+        "src": "fetch.7",
+        "dst": "fetch.collector",
+        "rule": "farm",
+        "feedback": false,
+        "capacity": null,
+        "batch": null
+      },
+      {
+        "src": "read_urls",
+        "dst": "fetch.emitter",
+        "rule": "1-1",
+        "feedback": false,
+        "capacity": null,
+        "batch": null
+      },
+      {
+        "src": "fetch.collector",
+        "dst": "WriteCsv",
+        "rule": "1-1",
+        "feedback": false,
+        "capacity": null,
+        "batch": null
+      }
+    ],
+    "loops": [],
+    "windows": {}
+  },
+  "layout": null
+}

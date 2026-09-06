@@ -1,0 +1,193 @@
+{
+  "path": "som.py",
+  "source": "\"\"\"Train a self-organizing map on a farm whose slices talk back to the emitter.\n\nThis is the use case of the BBFlow thesis (chapter 6), simplified: the map is split in\nhorizontal slices, one per worker; a search is broadcast to every slice; the collector\npicks the winner and feeds it back; the emitter then broadcasts the learn step and waits\nfor every slice to acknowledge before taking the next input vector. Neighbourhoods\nacross slice borders are ignored here.\n\"\"\"\n\nimport math\nimport random\nfrom collections import deque\n\nimport tolquane as tq\n\nSIDE = 16  # map is SIDE x SIDE cells\nDEPTH = 3  # each cell holds a vector of this length\nSLICES = 4\n\n\nclass Slice:\n    \"\"\"One horizontal band of the map. Answers search and learn commands.\"\"\"\n\n    def __init__(self) -> None:\n        self.rows = SIDE // SLICES\n        self.cells: list[list[list[float]]] = []\n\n    def on_start(self, ctx: tq.Context) -> None:\n        rng = random.Random(ctx.index)\n        self.top = ctx.index * self.rows\n        self.cells = [\n            [[rng.random() for _ in range(DEPTH)] for _ in range(SIDE)] for _ in range(self.rows)\n        ]\n\n    def __call__(self, command: tuple, ctx: tq.Context) -> None:\n        kind = command[0]\n        if kind == \"search\":\n            _, vec = command\n            best = min(\n                (\n                    (_dist(self.cells[r][c], vec), (self.top + r, c))\n                    for r in range(self.rows)\n                    for c in range(SIDE)\n                ),\n            )\n            ctx.send((\"best\", best[1], best[0]))\n        elif kind == \"learn\":\n            _, vec, (wr, wc), rate = command\n            for r in range(self.rows):\n                for c in range(SIDE):\n                    d = math.hypot(self.top + r - wr, c - wc)\n                    if d <= 2:\n                        cell = self.cells[r][c]\n                        for k in range(DEPTH):\n                            cell[k] += rate * (vec[k] - cell[k])\n            ctx.send((\"learned\",))\n\n\nclass Emitter:\n    \"\"\"Sequences the protocol: one input vector at a time, search then learn.\"\"\"\n\n    def __init__(self) -> None:\n        self.pending: deque = deque()\n        self.busy = False\n        self.current = None\n\n    def __call__(self, item: tuple, ctx: tq.Context) -> None:\n        if not ctx.is_feedback:\n            # A new input vector; queue it if a cycle is in progress.\n            self.pending.append(item)\n            if not self.busy:\n                self._start(ctx)\n            return\n        kind = item[0]\n        if kind == \"best\":\n            _, pos, _ = item\n            ctx.broadcast((\"learn\", self.current, pos, 0.3))\n        elif kind == \"learned\":\n            self.busy = False\n            if self.pending:\n                self._start(ctx)\n\n    def _start(self, ctx: tq.Context) -> None:\n        self.busy = True\n        self.current = self.pending.popleft()\n        ctx.broadcast((\"search\", self.current))\n\n\nclass Collector:\n    \"\"\"Merges the slices' answers: best of the bests, and one ack once all have learned.\"\"\"\n\n    def __init__(self) -> None:\n        self.bests: list = []\n        self.acks = 0\n\n    def __call__(self, reply: tuple, ctx: tq.Context) -> None:\n        if reply[0] == \"best\":\n            self.bests.append(reply)\n            if len(self.bests) == SLICES:\n                winner = min(self.bests, key=lambda b: b[2])\n                self.bests = []\n                ctx.feedback(winner)\n                ctx.send((\"winner\", winner[1], round(winner[2], 3)))\n        else:\n            self.acks += 1\n            if self.acks == SLICES:\n                self.acks = 0\n                ctx.feedback((\"learned\",))\n\n\ndef _dist(a: list[float], b: list[float]) -> float:\n    return math.sqrt(sum((x - y) ** 2 for x, y in zip(a, b, strict=True)))\n\n\ndef train(vectors: list[list[float]]) -> list[tuple]:\n    out = tq.to_list()\n    som = tq.farm(Slice, SLICES, emit=\"broadcast\", emitter=Emitter, collector=Collector, name=\"som\")\n    tq.run(tq.from_iterable(vectors) >> tq.feedback(som) >> out)\n    return out.items\n\n\ndef main() -> None:\n    rng = random.Random(0)\n    vectors = [[rng.random() for _ in range(DEPTH)] for _ in range(50)]\n    for i, (_, pos, dist) in enumerate(train(vectors)):\n        print(f\"vector {i:2d}: winner {pos} at distance {dist}\")\n\n\nif __name__ == \"__main__\":\n    main()\n",
+  "modified": "2026-09-06T10:00:00Z",
+  "model": null,
+  "code_only": {
+    "reason": "the file has no build(); to find the graph, main() would have to be one tq.run(<graph>) call"
+  },
+  "graph": {
+    "nodes": [
+      {
+        "name": "from_iterable",
+        "kind": "source",
+        "role": null,
+        "group": null,
+        "is_sink": false,
+        "is_async": false,
+        "tagged": false
+      },
+      {
+        "name": "som.emitter",
+        "kind": "ctx",
+        "role": "emitter",
+        "group": "som",
+        "is_sink": false,
+        "is_async": false,
+        "tagged": false
+      },
+      {
+        "name": "som.0",
+        "kind": "ctx",
+        "role": "worker",
+        "group": "som",
+        "is_sink": false,
+        "is_async": false,
+        "tagged": false
+      },
+      {
+        "name": "som.1",
+        "kind": "ctx",
+        "role": "worker",
+        "group": "som",
+        "is_sink": false,
+        "is_async": false,
+        "tagged": false
+      },
+      {
+        "name": "som.2",
+        "kind": "ctx",
+        "role": "worker",
+        "group": "som",
+        "is_sink": false,
+        "is_async": false,
+        "tagged": false
+      },
+      {
+        "name": "som.3",
+        "kind": "ctx",
+        "role": "worker",
+        "group": "som",
+        "is_sink": false,
+        "is_async": false,
+        "tagged": false
+      },
+      {
+        "name": "som.collector",
+        "kind": "ctx",
+        "role": "collector",
+        "group": "som",
+        "is_sink": false,
+        "is_async": false,
+        "tagged": false
+      },
+      {
+        "name": "to_list",
+        "kind": "map",
+        "role": null,
+        "group": null,
+        "is_sink": true,
+        "is_async": false,
+        "tagged": false
+      }
+    ],
+    "edges": [
+      {
+        "src": "som.emitter",
+        "dst": "som.0",
+        "rule": "farm",
+        "feedback": false,
+        "capacity": null,
+        "batch": null
+      },
+      {
+        "src": "som.emitter",
+        "dst": "som.1",
+        "rule": "farm",
+        "feedback": false,
+        "capacity": null,
+        "batch": null
+      },
+      {
+        "src": "som.emitter",
+        "dst": "som.2",
+        "rule": "farm",
+        "feedback": false,
+        "capacity": null,
+        "batch": null
+      },
+      {
+        "src": "som.emitter",
+        "dst": "som.3",
+        "rule": "farm",
+        "feedback": false,
+        "capacity": null,
+        "batch": null
+      },
+      {
+        "src": "som.0",
+        "dst": "som.collector",
+        "rule": "farm",
+        "feedback": false,
+        "capacity": null,
+        "batch": null
+      },
+      {
+        "src": "som.1",
+        "dst": "som.collector",
+        "rule": "farm",
+        "feedback": false,
+        "capacity": null,
+        "batch": null
+      },
+      {
+        "src": "som.2",
+        "dst": "som.collector",
+        "rule": "farm",
+        "feedback": false,
+        "capacity": null,
+        "batch": null
+      },
+      {
+        "src": "som.3",
+        "dst": "som.collector",
+        "rule": "farm",
+        "feedback": false,
+        "capacity": null,
+        "batch": null
+      },
+      {
+        "src": "som.collector",
+        "dst": "som.emitter",
+        "rule": "feedback 1-1",
+        "feedback": true,
+        "capacity": null,
+        "batch": null
+      },
+      {
+        "src": "from_iterable",
+        "dst": "som.emitter",
+        "rule": "1-1",
+        "feedback": false,
+        "capacity": null,
+        "batch": null
+      },
+      {
+        "src": "som.collector",
+        "dst": "to_list",
+        "rule": "1-1",
+        "feedback": false,
+        "capacity": null,
+        "batch": null
+      }
+    ],
+    "loops": [
+      {
+        "name": "loop",
+        "nodes": [
+          "som.emitter",
+          "som.0",
+          "som.1",
+          "som.2",
+          "som.3",
+          "som.collector"
+        ],
+        "heads": [
+          "som.emitter"
+        ]
+      }
+    ],
+    "windows": {}
+  },
+  "layout": null
+}

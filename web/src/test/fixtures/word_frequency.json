@@ -1,0 +1,449 @@
+{
+  "path": "word_frequency/flow.py",
+  "source": "\"\"\"Count the words of a built-in text and print the ten most common with their counts.\"\"\"\n\nimport re\n\nimport tolquane as tq\n\nTEXT = \"\"\"It was the best of times, it was the worst of times,\nit was the age of wisdom, it was the age of foolishness,\nit was the epoch of belief, it was the epoch of incredulity,\nit was the season of Light, it was the season of Darkness,\nit was the spring of hope, it was the winter of despair,\nwe had everything before us, we had nothing before us,\nwe were all going direct to Heaven, we were all going direct\nthe other way -- in short, the period was so far like the present\nperiod, that some of its noisiest authorities insisted on its\nbeing received, for good or for evil, in the superlative degree\"\"\"\n\nWORD = re.compile(r\"[a-z']+\")\n\n\n@tq.source\ndef lines():\n    # One line per item; a real text would be `yield from open(path)`.\n    yield from TEXT.splitlines()\n\n\n@tq.node\ndef words(line: str):\n    # Zero or many outputs per line: lowercase and drop punctuation.\n    for word in WORD.findall(line.lower()):\n        yield word.strip(\"'\")\n\n\n@tq.node\ndef keep_words(word: str) -> object:\n    # Filter out the empty strings left by stripping quotes.\n    return word if word else tq.SKIP\n\n\nclass Count:\n    # Stateful, so a class: key= sends every occurrence of a word to the same\n    # worker, so each partial count is already complete.\n    def __init__(self) -> None:\n        self.counts: dict[str, int] = {}\n\n    def __call__(self, word: str) -> object:\n        self.counts[word] = self.counts.get(word, 0) + 1\n        return tq.SKIP  # nothing per word; totals go out at the end\n\n    def on_end(self, ctx: tq.Context) -> None:\n        for pair in self.counts.items():\n            ctx.send(pair)\n\n\nclass TopTen:\n    # Ranking needs to see every total, so it is one stateful node at the end.\n    def __init__(self) -> None:\n        self.totals: dict[str, int] = {}\n\n    def __call__(self, pair: tuple[str, int]) -> object:\n        word, n = pair\n        self.totals[word] = self.totals.get(word, 0) + n\n        return tq.SKIP\n\n    def on_end(self, ctx: tq.Context) -> None:\n        ranked = sorted(self.totals.items(), key=lambda kv: (-kv[1], kv[0]))\n        for pair in ranked[:10]:\n            ctx.send(pair)\n\n\n@tq.sink\ndef show(pair: tuple[str, int]) -> None:\n    word, n = pair\n    print(f\"{word:>12} {n}\")\n\n\ndef build(source=None):\n    start = tq.from_iterable(source) if source is not None else lines\n    return (\n        start\n        >> tq.farm(words, 2)\n        >> keep_words\n        >> tq.farm(Count, 3, key=lambda w: w)\n        >> tq.farm(TopTen, 1)\n        >> show\n    )\n\n\ndef main() -> None:\n    tq.run(build())\n\n\nif __name__ == \"__main__\":\n    main()\n",
+  "modified": "2026-09-06T10:00:00Z",
+  "model": {
+    "version": 1,
+    "name": "flow",
+    "doc": "Count the words of a built-in text and print the ten most common with their counts.",
+    "prelude": [
+      "import re",
+      "TEXT = \"\"\"It was the best of times, it was the worst of times,\nit was the age of wisdom, it was the age of foolishness,\nit was the epoch of belief, it was the epoch of incredulity,\nit was the season of Light, it was the season of Darkness,\nit was the spring of hope, it was the winter of despair,\nwe had everything before us, we had nothing before us,\nwe were all going direct to Heaven, we were all going direct\nthe other way -- in short, the period was so far like the present\nperiod, that some of its noisiest authorities insisted on its\nbeing received, for good or for evil, in the superlative degree\"\"\"",
+      "WORD = re.compile(r\"[a-z']+\")"
+    ],
+    "nodes": [
+      {
+        "id": "lines",
+        "kind": "source",
+        "is_class": false,
+        "is_async": false,
+        "params": [],
+        "doc": null,
+        "source": "@tq.source\ndef lines():\n    # One line per item; a real text would be `yield from open(path)`.\n    yield from TEXT.splitlines()"
+      },
+      {
+        "id": "words",
+        "kind": "node",
+        "is_class": false,
+        "is_async": false,
+        "params": [
+          "line"
+        ],
+        "doc": null,
+        "source": "@tq.node\ndef words(line: str):\n    # Zero or many outputs per line: lowercase and drop punctuation.\n    for word in WORD.findall(line.lower()):\n        yield word.strip(\"'\")"
+      },
+      {
+        "id": "keep_words",
+        "kind": "node",
+        "is_class": false,
+        "is_async": false,
+        "params": [
+          "word"
+        ],
+        "doc": null,
+        "source": "@tq.node\ndef keep_words(word: str) -> object:\n    # Filter out the empty strings left by stripping quotes.\n    return word if word else tq.SKIP"
+      },
+      {
+        "id": "Count",
+        "kind": "node",
+        "is_class": true,
+        "is_async": false,
+        "params": [
+          "word"
+        ],
+        "doc": null,
+        "source": "class Count:\n    # Stateful, so a class: key= sends every occurrence of a word to the same\n    # worker, so each partial count is already complete.\n    def __init__(self) -> None:\n        self.counts: dict[str, int] = {}\n\n    def __call__(self, word: str) -> object:\n        self.counts[word] = self.counts.get(word, 0) + 1\n        return tq.SKIP  # nothing per word; totals go out at the end\n\n    def on_end(self, ctx: tq.Context) -> None:\n        for pair in self.counts.items():\n            ctx.send(pair)"
+      },
+      {
+        "id": "TopTen",
+        "kind": "node",
+        "is_class": true,
+        "is_async": false,
+        "params": [
+          "pair"
+        ],
+        "doc": null,
+        "source": "class TopTen:\n    # Ranking needs to see every total, so it is one stateful node at the end.\n    def __init__(self) -> None:\n        self.totals: dict[str, int] = {}\n\n    def __call__(self, pair: tuple[str, int]) -> object:\n        word, n = pair\n        self.totals[word] = self.totals.get(word, 0) + n\n        return tq.SKIP\n\n    def on_end(self, ctx: tq.Context) -> None:\n        ranked = sorted(self.totals.items(), key=lambda kv: (-kv[1], kv[0]))\n        for pair in ranked[:10]:\n            ctx.send(pair)"
+      },
+      {
+        "id": "show",
+        "kind": "sink",
+        "is_class": false,
+        "is_async": false,
+        "params": [
+          "pair"
+        ],
+        "doc": null,
+        "source": "@tq.sink\ndef show(pair: tuple[str, int]) -> None:\n    word, n = pair\n    print(f\"{word:>12} {n}\")"
+      }
+    ],
+    "flow": {
+      "type": "pipeline",
+      "stages": [
+        {
+          "type": "start"
+        },
+        {
+          "type": "farm",
+          "worker": {
+            "type": "ref",
+            "id": "words"
+          },
+          "workers": 2,
+          "options": {
+            "emit": "round_robin",
+            "collect": null,
+            "ordered": false,
+            "emitter": null,
+            "collector": null,
+            "key": null,
+            "prefetch": 1,
+            "window": null,
+            "name": null,
+            "capacity": null,
+            "runtime": null
+          }
+        },
+        {
+          "type": "ref",
+          "id": "keep_words"
+        },
+        {
+          "type": "farm",
+          "worker": {
+            "type": "ref",
+            "id": "Count"
+          },
+          "workers": 3,
+          "options": {
+            "emit": "round_robin",
+            "collect": null,
+            "ordered": false,
+            "emitter": null,
+            "collector": null,
+            "key": {
+              "type": "inline",
+              "source": "lambda w: w"
+            },
+            "prefetch": 1,
+            "window": null,
+            "name": null,
+            "capacity": null,
+            "runtime": null
+          }
+        },
+        {
+          "type": "farm",
+          "worker": {
+            "type": "ref",
+            "id": "TopTen"
+          },
+          "workers": 1,
+          "options": {
+            "emit": "round_robin",
+            "collect": null,
+            "ordered": false,
+            "emitter": null,
+            "collector": null,
+            "key": null,
+            "prefetch": 1,
+            "window": null,
+            "name": null,
+            "capacity": null,
+            "runtime": null
+          }
+        },
+        {
+          "type": "ref",
+          "id": "show"
+        }
+      ]
+    },
+    "start": "lines",
+    "main": null,
+    "epilogue": [],
+    "build_notes": [],
+    "guard": null
+  },
+  "code_only": null,
+  "graph": {
+    "nodes": [
+      {
+        "name": "lines",
+        "kind": "source",
+        "role": null,
+        "group": null,
+        "is_sink": false,
+        "is_async": false,
+        "tagged": false
+      },
+      {
+        "name": "words.emitter",
+        "kind": "ctx",
+        "role": "emitter",
+        "group": "words",
+        "is_sink": false,
+        "is_async": false,
+        "tagged": false
+      },
+      {
+        "name": "words.0",
+        "kind": "flat",
+        "role": "worker",
+        "group": "words",
+        "is_sink": false,
+        "is_async": false,
+        "tagged": false
+      },
+      {
+        "name": "words.1",
+        "kind": "flat",
+        "role": "worker",
+        "group": "words",
+        "is_sink": false,
+        "is_async": false,
+        "tagged": false
+      },
+      {
+        "name": "words.collector",
+        "kind": "ctx",
+        "role": "collector",
+        "group": "words",
+        "is_sink": false,
+        "is_async": false,
+        "tagged": false
+      },
+      {
+        "name": "keep_words",
+        "kind": "map",
+        "role": null,
+        "group": null,
+        "is_sink": false,
+        "is_async": false,
+        "tagged": false
+      },
+      {
+        "name": "Count.emitter",
+        "kind": "ctx",
+        "role": "emitter",
+        "group": "Count",
+        "is_sink": false,
+        "is_async": false,
+        "tagged": false
+      },
+      {
+        "name": "Count.0",
+        "kind": "map",
+        "role": "worker",
+        "group": "Count",
+        "is_sink": false,
+        "is_async": false,
+        "tagged": false
+      },
+      {
+        "name": "Count.1",
+        "kind": "map",
+        "role": "worker",
+        "group": "Count",
+        "is_sink": false,
+        "is_async": false,
+        "tagged": false
+      },
+      {
+        "name": "Count.2",
+        "kind": "map",
+        "role": "worker",
+        "group": "Count",
+        "is_sink": false,
+        "is_async": false,
+        "tagged": false
+      },
+      {
+        "name": "Count.collector",
+        "kind": "ctx",
+        "role": "collector",
+        "group": "Count",
+        "is_sink": false,
+        "is_async": false,
+        "tagged": false
+      },
+      {
+        "name": "TopTen.emitter",
+        "kind": "ctx",
+        "role": "emitter",
+        "group": "TopTen",
+        "is_sink": false,
+        "is_async": false,
+        "tagged": false
+      },
+      {
+        "name": "TopTen.0",
+        "kind": "map",
+        "role": "worker",
+        "group": "TopTen",
+        "is_sink": false,
+        "is_async": false,
+        "tagged": false
+      },
+      {
+        "name": "TopTen.collector",
+        "kind": "ctx",
+        "role": "collector",
+        "group": "TopTen",
+        "is_sink": false,
+        "is_async": false,
+        "tagged": false
+      },
+      {
+        "name": "show",
+        "kind": "map",
+        "role": null,
+        "group": null,
+        "is_sink": true,
+        "is_async": false,
+        "tagged": false
+      }
+    ],
+    "edges": [
+      {
+        "src": "words.emitter",
+        "dst": "words.0",
+        "rule": "farm",
+        "feedback": false,
+        "capacity": null,
+        "batch": null
+      },
+      {
+        "src": "words.emitter",
+        "dst": "words.1",
+        "rule": "farm",
+        "feedback": false,
+        "capacity": null,
+        "batch": null
+      },
+      {
+        "src": "words.0",
+        "dst": "words.collector",
+        "rule": "farm",
+        "feedback": false,
+        "capacity": null,
+        "batch": null
+      },
+      {
+        "src": "words.1",
+        "dst": "words.collector",
+        "rule": "farm",
+        "feedback": false,
+        "capacity": null,
+        "batch": null
+      },
+      {
+        "src": "lines",
+        "dst": "words.emitter",
+        "rule": "1-1",
+        "feedback": false,
+        "capacity": null,
+        "batch": null
+      },
+      {
+        "src": "words.collector",
+        "dst": "keep_words",
+        "rule": "1-1",
+        "feedback": false,
+        "capacity": null,
+        "batch": null
+      },
+      {
+        "src": "Count.emitter",
+        "dst": "Count.0",
+        "rule": "farm",
+        "feedback": false,
+        "capacity": null,
+        "batch": null
+      },
+      {
+        "src": "Count.emitter",
+        "dst": "Count.1",
+        "rule": "farm",
+        "feedback": false,
+        "capacity": null,
+        "batch": null
+      },
+      {
+        "src": "Count.emitter",
+        "dst": "Count.2",
+        "rule": "farm",
+        "feedback": false,
+        "capacity": null,
+        "batch": null
+      },
+      {
+        "src": "Count.0",
+        "dst": "Count.collector",
+        "rule": "farm",
+        "feedback": false,
+        "capacity": null,
+        "batch": null
+      },
+      {
+        "src": "Count.1",
+        "dst": "Count.collector",
+        "rule": "farm",
+        "feedback": false,
+        "capacity": null,
+        "batch": null
+      },
+      {
+        "src": "Count.2",
+        "dst": "Count.collector",
+        "rule": "farm",
+        "feedback": false,
+        "capacity": null,
+        "batch": null
+      },
+      {
+        "src": "keep_words",
+        "dst": "Count.emitter",
+        "rule": "1-1",
+        "feedback": false,
+        "capacity": null,
+        "batch": null
+      },
+      {
+        "src": "TopTen.emitter",
+        "dst": "TopTen.0",
+        "rule": "farm",
+        "feedback": false,
+        "capacity": null,
+        "batch": null
+      },
+      {
+        "src": "TopTen.0",
+        "dst": "TopTen.collector",
+        "rule": "farm",
+        "feedback": false,
+        "capacity": null,
+        "batch": null
+      },
+      {
+        "src": "Count.collector",
+        "dst": "TopTen.emitter",
+        "rule": "1-1",
+        "feedback": false,
+        "capacity": null,
+        "batch": null
+      },
+      {
+        "src": "TopTen.collector",
+        "dst": "show",
+        "rule": "1-1",
+        "feedback": false,
+        "capacity": null,
+        "batch": null
+      }
+    ],
+    "loops": [],
+    "windows": {}
+  },
+  "layout": null
+}

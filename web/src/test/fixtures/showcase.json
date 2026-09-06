@@ -1,0 +1,567 @@
+{
+  "path": "showcase.py",
+  "source": "\"\"\"Every block kind on one canvas: a comb, an all-to-all between two farms and a\nfeedback loop, so the editor has something with structure to draw.\"\"\"\n\nimport tolquane as tq\n\nSCALE = 3\n\n\n@tq.source\ndef rows():\n    # Ten rows of work.\n    yield from range(10)\n\n\n@tq.node\ndef parse(row: int) -> int:\n    # Cheap, so it is fused with the next stage by tq.comb.\n    return row + 1\n\n\n@tq.node\ndef scale(row: int) -> int:\n    return row * SCALE\n\n\n@tq.node\ndef shard(row: int) -> int:\n    # The left side of the all-to-all: it partitions.\n    return row\n\n\n@tq.node\ndef reduce_side(row: int) -> int:\n    # The right side of the all-to-all: it reduces.\n    return row\n\n\n@tq.node\ndef refine(row: int) -> int:\n    return row - 1\n\n\n@tq.node\ndef route(row: int, ctx: tq.Context) -> None:\n    # The loop's last stage: send on, or send round again.\n    if row <= 0:\n        ctx.send(row)\n    else:\n        ctx.feedback(row)\n\n\n@tq.sink\ndef show(row: int) -> None:\n    print(row)\n\n\ndef build(source=None):\n    start = tq.from_iterable(source) if source is not None else rows\n    cross = tq.all2all(\n        tq.farm(shard, workers=3),\n        tq.farm(reduce_side, workers=2, collect=\"round_robin\"),\n        merge=True,\n    )\n    loop = tq.feedback(tq.farm(refine, workers=4, collector=route), name=\"newton\")\n    return start >> tq.comb(parse, scale) >> cross >> loop >> show\n\n\ndef main() -> None:\n    print(tq.run(build()))\n\n\nif __name__ == \"__main__\":\n    main()\n",
+  "modified": "2026-09-06T10:00:00Z",
+  "model": {
+    "version": 1,
+    "name": "showcase",
+    "doc": "Every block kind on one canvas: a comb, an all-to-all between two farms and a\nfeedback loop, so the editor has something with structure to draw.",
+    "prelude": [
+      "SCALE = 3"
+    ],
+    "nodes": [
+      {
+        "id": "rows",
+        "kind": "source",
+        "is_class": false,
+        "is_async": false,
+        "params": [],
+        "doc": null,
+        "source": "@tq.source\ndef rows():\n    # Ten rows of work.\n    yield from range(10)"
+      },
+      {
+        "id": "parse",
+        "kind": "node",
+        "is_class": false,
+        "is_async": false,
+        "params": [
+          "row"
+        ],
+        "doc": null,
+        "source": "@tq.node\ndef parse(row: int) -> int:\n    # Cheap, so it is fused with the next stage by tq.comb.\n    return row + 1"
+      },
+      {
+        "id": "scale",
+        "kind": "node",
+        "is_class": false,
+        "is_async": false,
+        "params": [
+          "row"
+        ],
+        "doc": null,
+        "source": "@tq.node\ndef scale(row: int) -> int:\n    return row * SCALE"
+      },
+      {
+        "id": "shard",
+        "kind": "node",
+        "is_class": false,
+        "is_async": false,
+        "params": [
+          "row"
+        ],
+        "doc": null,
+        "source": "@tq.node\ndef shard(row: int) -> int:\n    # The left side of the all-to-all: it partitions.\n    return row"
+      },
+      {
+        "id": "reduce_side",
+        "kind": "node",
+        "is_class": false,
+        "is_async": false,
+        "params": [
+          "row"
+        ],
+        "doc": null,
+        "source": "@tq.node\ndef reduce_side(row: int) -> int:\n    # The right side of the all-to-all: it reduces.\n    return row"
+      },
+      {
+        "id": "refine",
+        "kind": "node",
+        "is_class": false,
+        "is_async": false,
+        "params": [
+          "row"
+        ],
+        "doc": null,
+        "source": "@tq.node\ndef refine(row: int) -> int:\n    return row - 1"
+      },
+      {
+        "id": "route",
+        "kind": "node",
+        "is_class": false,
+        "is_async": false,
+        "params": [
+          "row",
+          "ctx"
+        ],
+        "doc": null,
+        "source": "@tq.node\ndef route(row: int, ctx: tq.Context) -> None:\n    # The loop's last stage: send on, or send round again.\n    if row <= 0:\n        ctx.send(row)\n    else:\n        ctx.feedback(row)"
+      },
+      {
+        "id": "show",
+        "kind": "sink",
+        "is_class": false,
+        "is_async": false,
+        "params": [
+          "row"
+        ],
+        "doc": null,
+        "source": "@tq.sink\ndef show(row: int) -> None:\n    print(row)"
+      }
+    ],
+    "flow": {
+      "type": "pipeline",
+      "stages": [
+        {
+          "type": "start"
+        },
+        {
+          "type": "comb",
+          "first": {
+            "type": "ref",
+            "id": "parse"
+          },
+          "second": {
+            "type": "ref",
+            "id": "scale"
+          }
+        },
+        {
+          "type": "all2all",
+          "left": {
+            "type": "farm",
+            "worker": {
+              "type": "ref",
+              "id": "shard"
+            },
+            "workers": 3,
+            "options": {
+              "emit": "round_robin",
+              "collect": null,
+              "ordered": false,
+              "emitter": null,
+              "collector": null,
+              "key": null,
+              "prefetch": 1,
+              "window": null,
+              "name": null,
+              "capacity": null,
+              "runtime": null
+            }
+          },
+          "right": {
+            "type": "farm",
+            "worker": {
+              "type": "ref",
+              "id": "reduce_side"
+            },
+            "workers": 2,
+            "options": {
+              "emit": "round_robin",
+              "collect": "round_robin",
+              "ordered": false,
+              "emitter": null,
+              "collector": null,
+              "key": null,
+              "prefetch": 1,
+              "window": null,
+              "name": null,
+              "capacity": null,
+              "runtime": null
+            }
+          },
+          "R": null,
+          "G": null,
+          "merge": true
+        },
+        {
+          "type": "feedback",
+          "inner": {
+            "type": "farm",
+            "worker": {
+              "type": "ref",
+              "id": "refine"
+            },
+            "workers": 4,
+            "options": {
+              "emit": "round_robin",
+              "collect": null,
+              "ordered": false,
+              "emitter": null,
+              "collector": {
+                "type": "ref",
+                "id": "route"
+              },
+              "key": null,
+              "prefetch": 1,
+              "window": null,
+              "name": null,
+              "capacity": null,
+              "runtime": null
+            }
+          },
+          "name": "newton"
+        },
+        {
+          "type": "ref",
+          "id": "show"
+        }
+      ]
+    },
+    "start": "rows",
+    "main": "def main() -> None:\n    print(tq.run(build()))",
+    "epilogue": [],
+    "build_notes": [],
+    "guard": null
+  },
+  "code_only": null,
+  "graph": {
+    "nodes": [
+      {
+        "name": "rows",
+        "kind": "source",
+        "role": null,
+        "group": null,
+        "is_sink": false,
+        "is_async": false,
+        "tagged": false
+      },
+      {
+        "name": "parse+scale",
+        "kind": "comb",
+        "role": null,
+        "group": null,
+        "is_sink": false,
+        "is_async": false,
+        "tagged": false
+      },
+      {
+        "name": "shard.emitter",
+        "kind": "ctx",
+        "role": "emitter",
+        "group": "shard",
+        "is_sink": false,
+        "is_async": false,
+        "tagged": false
+      },
+      {
+        "name": "shard.0",
+        "kind": "map",
+        "role": "worker",
+        "group": "shard",
+        "is_sink": false,
+        "is_async": false,
+        "tagged": false
+      },
+      {
+        "name": "shard.1",
+        "kind": "map",
+        "role": "worker",
+        "group": "shard",
+        "is_sink": false,
+        "is_async": false,
+        "tagged": false
+      },
+      {
+        "name": "shard.2",
+        "kind": "map",
+        "role": "worker",
+        "group": "shard",
+        "is_sink": false,
+        "is_async": false,
+        "tagged": false
+      },
+      {
+        "name": "reduce_side.0",
+        "kind": "map",
+        "role": "worker",
+        "group": "reduce_side",
+        "is_sink": false,
+        "is_async": false,
+        "tagged": false
+      },
+      {
+        "name": "reduce_side.1",
+        "kind": "map",
+        "role": "worker",
+        "group": "reduce_side",
+        "is_sink": false,
+        "is_async": false,
+        "tagged": false
+      },
+      {
+        "name": "reduce_side.collector",
+        "kind": "ctx",
+        "role": "collector",
+        "group": "reduce_side",
+        "is_sink": false,
+        "is_async": false,
+        "tagged": false
+      },
+      {
+        "name": "refine.emitter",
+        "kind": "ctx",
+        "role": "emitter",
+        "group": "refine",
+        "is_sink": false,
+        "is_async": false,
+        "tagged": false
+      },
+      {
+        "name": "refine.0",
+        "kind": "map",
+        "role": "worker",
+        "group": "refine",
+        "is_sink": false,
+        "is_async": false,
+        "tagged": false
+      },
+      {
+        "name": "refine.1",
+        "kind": "map",
+        "role": "worker",
+        "group": "refine",
+        "is_sink": false,
+        "is_async": false,
+        "tagged": false
+      },
+      {
+        "name": "refine.2",
+        "kind": "map",
+        "role": "worker",
+        "group": "refine",
+        "is_sink": false,
+        "is_async": false,
+        "tagged": false
+      },
+      {
+        "name": "refine.3",
+        "kind": "map",
+        "role": "worker",
+        "group": "refine",
+        "is_sink": false,
+        "is_async": false,
+        "tagged": false
+      },
+      {
+        "name": "refine.collector",
+        "kind": "ctx",
+        "role": "collector",
+        "group": "refine",
+        "is_sink": false,
+        "is_async": false,
+        "tagged": false
+      },
+      {
+        "name": "show",
+        "kind": "map",
+        "role": null,
+        "group": null,
+        "is_sink": true,
+        "is_async": false,
+        "tagged": false
+      }
+    ],
+    "edges": [
+      {
+        "src": "rows",
+        "dst": "parse+scale",
+        "rule": "1-1",
+        "feedback": false,
+        "capacity": null,
+        "batch": null
+      },
+      {
+        "src": "shard.emitter",
+        "dst": "shard.0",
+        "rule": "farm",
+        "feedback": false,
+        "capacity": null,
+        "batch": null
+      },
+      {
+        "src": "shard.emitter",
+        "dst": "shard.1",
+        "rule": "farm",
+        "feedback": false,
+        "capacity": null,
+        "batch": null
+      },
+      {
+        "src": "shard.emitter",
+        "dst": "shard.2",
+        "rule": "farm",
+        "feedback": false,
+        "capacity": null,
+        "batch": null
+      },
+      {
+        "src": "reduce_side.0",
+        "dst": "reduce_side.collector",
+        "rule": "farm",
+        "feedback": false,
+        "capacity": null,
+        "batch": null
+      },
+      {
+        "src": "reduce_side.1",
+        "dst": "reduce_side.collector",
+        "rule": "farm",
+        "feedback": false,
+        "capacity": null,
+        "batch": null
+      },
+      {
+        "src": "shard.0",
+        "dst": "reduce_side.0",
+        "rule": "NxM",
+        "feedback": false,
+        "capacity": null,
+        "batch": null
+      },
+      {
+        "src": "shard.0",
+        "dst": "reduce_side.1",
+        "rule": "NxM",
+        "feedback": false,
+        "capacity": null,
+        "batch": null
+      },
+      {
+        "src": "shard.1",
+        "dst": "reduce_side.0",
+        "rule": "NxM",
+        "feedback": false,
+        "capacity": null,
+        "batch": null
+      },
+      {
+        "src": "shard.1",
+        "dst": "reduce_side.1",
+        "rule": "NxM",
+        "feedback": false,
+        "capacity": null,
+        "batch": null
+      },
+      {
+        "src": "shard.2",
+        "dst": "reduce_side.0",
+        "rule": "NxM",
+        "feedback": false,
+        "capacity": null,
+        "batch": null
+      },
+      {
+        "src": "shard.2",
+        "dst": "reduce_side.1",
+        "rule": "NxM",
+        "feedback": false,
+        "capacity": null,
+        "batch": null
+      },
+      {
+        "src": "parse+scale",
+        "dst": "shard.emitter",
+        "rule": "1-1",
+        "feedback": false,
+        "capacity": null,
+        "batch": null
+      },
+      {
+        "src": "refine.emitter",
+        "dst": "refine.0",
+        "rule": "farm",
+        "feedback": false,
+        "capacity": null,
+        "batch": null
+      },
+      {
+        "src": "refine.emitter",
+        "dst": "refine.1",
+        "rule": "farm",
+        "feedback": false,
+        "capacity": null,
+        "batch": null
+      },
+      {
+        "src": "refine.emitter",
+        "dst": "refine.2",
+        "rule": "farm",
+        "feedback": false,
+        "capacity": null,
+        "batch": null
+      },
+      {
+        "src": "refine.emitter",
+        "dst": "refine.3",
+        "rule": "farm",
+        "feedback": false,
+        "capacity": null,
+        "batch": null
+      },
+      {
+        "src": "refine.0",
+        "dst": "refine.collector",
+        "rule": "farm",
+        "feedback": false,
+        "capacity": null,
+        "batch": null
+      },
+      {
+        "src": "refine.1",
+        "dst": "refine.collector",
+        "rule": "farm",
+        "feedback": false,
+        "capacity": null,
+        "batch": null
+      },
+      {
+        "src": "refine.2",
+        "dst": "refine.collector",
+        "rule": "farm",
+        "feedback": false,
+        "capacity": null,
+        "batch": null
+      },
+      {
+        "src": "refine.3",
+        "dst": "refine.collector",
+        "rule": "farm",
+        "feedback": false,
+        "capacity": null,
+        "batch": null
+      },
+      {
+        "src": "refine.collector",
+        "dst": "refine.emitter",
+        "rule": "feedback 1-1",
+        "feedback": true,
+        "capacity": null,
+        "batch": null
+      },
+      {
+        "src": "reduce_side.collector",
+        "dst": "refine.emitter",
+        "rule": "1-1",
+        "feedback": false,
+        "capacity": null,
+        "batch": null
+      },
+      {
+        "src": "refine.collector",
+        "dst": "show",
+        "rule": "1-1",
+        "feedback": false,
+        "capacity": null,
+        "batch": null
+      }
+    ],
+    "loops": [
+      {
+        "name": "newton",
+        "nodes": [
+          "refine.emitter",
+          "refine.0",
+          "refine.1",
+          "refine.2",
+          "refine.3",
+          "refine.collector"
+        ],
+        "heads": [
+          "refine.emitter"
+        ]
+      }
+    ],
+    "windows": {}
+  },
+  "layout": null
+}

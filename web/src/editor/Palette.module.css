@@ -1,0 +1,36 @@
+/* The palette is the editor's left column: always there, never over a card. */
+.palette {
+  position: relative;
+  z-index: var(--tq-z-sticky);
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  width: 100%;
+  height: 100%;
+  padding: var(--tq-space-3);
+  overflow: auto;
+  background: var(--tq-surface);
+  border-right: 1px solid var(--tq-border-subtle);
+}
+
+.title {
+  padding: var(--tq-space-2) var(--tq-space-3) var(--tq-space-3);
+  font-size: var(--tq-text-xs);
+  font-weight: var(--tq-weight-semibold);
+  letter-spacing: var(--tq-tracking-wide);
+  text-transform: uppercase;
+  color: var(--tq-text-subtle);
+}
+
+.row {
+  border-radius: var(--tq-radius-md);
+}
+
+.row:focus-visible {
+  outline-offset: -2px;
+}
+
+.row[aria-disabled='true'] {
+  opacity: 0.45;
+  pointer-events: none;
+}

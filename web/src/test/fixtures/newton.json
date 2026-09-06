@@ -1,0 +1,350 @@
+{
+  "path": "newton_sqrt_feedback/flow.py",
+  "source": "\"\"\"Compute square roots of 2, 3, 5, 7 and 11 by Newton's method, one iteration per pass\nthrough a feedback loop, printing each root and its iteration count.\"\"\"\n\nimport math\n\nimport tolquane as tq\n\nTOLERANCE = 1e-9\n\n# State travelling through the loop: (n, estimate, last change, iterations).\n\n\n@tq.source\ndef numbers():\n    # The numbers to take the square root of.\n    yield from (2, 3, 5, 7, 11)\n\n\n@tq.node\ndef seed(n: int) -> tuple:\n    # Turns a bare number into the loop's state, starting the estimate at n itself.\n    return (n, float(n), math.inf, 0)\n\n\n@tq.node\ndef refine(state: tuple) -> tuple:\n    # One Newton iteration; pure and stateless, so several workers can run it at once.\n    n, x, _, i = state\n    nxt = 0.5 * (x + n / x)\n    return (n, nxt, abs(nxt - x), i + 1)\n\n\n@tq.node\ndef route(state: tuple, ctx: tq.Context) -> None:\n    # The loop's last stage: converged results go out, the rest go round again.\n    if state[2] < TOLERANCE:\n        ctx.send(state)\n    else:\n        ctx.feedback(state)\n\n\n@tq.sink\ndef show(state: tuple) -> None:\n    n, x, _, i = state\n    print(f\"sqrt({n}) = {x:.12f} after {i} iterations\")\n\n\ndef build(source=None):\n    src = tq.from_iterable(source) if source is not None else numbers\n    # The farm refines five estimates in parallel; its collector decides who loops.\n    loop = tq.feedback(tq.farm(refine, workers=5, collector=route))\n    return src >> seed >> loop >> show\n\n\ndef main() -> None:\n    print(tq.run(build()))\n\n\nif __name__ == \"__main__\":\n    main()\n",
+  "modified": "2026-09-06T10:00:00Z",
+  "model": {
+    "version": 1,
+    "name": "flow",
+    "doc": "Compute square roots of 2, 3, 5, 7 and 11 by Newton's method, one iteration per pass\nthrough a feedback loop, printing each root and its iteration count.",
+    "prelude": [
+      "import math",
+      "TOLERANCE = 1e-9",
+      "# State travelling through the loop: (n, estimate, last change, iterations)."
+    ],
+    "nodes": [
+      {
+        "id": "numbers",
+        "kind": "source",
+        "is_class": false,
+        "is_async": false,
+        "params": [],
+        "doc": null,
+        "source": "@tq.source\ndef numbers():\n    # The numbers to take the square root of.\n    yield from (2, 3, 5, 7, 11)"
+      },
+      {
+        "id": "seed",
+        "kind": "node",
+        "is_class": false,
+        "is_async": false,
+        "params": [
+          "n"
+        ],
+        "doc": null,
+        "source": "@tq.node\ndef seed(n: int) -> tuple:\n    # Turns a bare number into the loop's state, starting the estimate at n itself.\n    return (n, float(n), math.inf, 0)"
+      },
+      {
+        "id": "refine",
+        "kind": "node",
+        "is_class": false,
+        "is_async": false,
+        "params": [
+          "state"
+        ],
+        "doc": null,
+        "source": "@tq.node\ndef refine(state: tuple) -> tuple:\n    # One Newton iteration; pure and stateless, so several workers can run it at once.\n    n, x, _, i = state\n    nxt = 0.5 * (x + n / x)\n    return (n, nxt, abs(nxt - x), i + 1)"
+      },
+      {
+        "id": "route",
+        "kind": "node",
+        "is_class": false,
+        "is_async": false,
+        "params": [
+          "state",
+          "ctx"
+        ],
+        "doc": null,
+        "source": "@tq.node\ndef route(state: tuple, ctx: tq.Context) -> None:\n    # The loop's last stage: converged results go out, the rest go round again.\n    if state[2] < TOLERANCE:\n        ctx.send(state)\n    else:\n        ctx.feedback(state)"
+      },
+      {
+        "id": "show",
+        "kind": "sink",
+        "is_class": false,
+        "is_async": false,
+        "params": [
+          "state"
+        ],
+        "doc": null,
+        "source": "@tq.sink\ndef show(state: tuple) -> None:\n    n, x, _, i = state\n    print(f\"sqrt({n}) = {x:.12f} after {i} iterations\")"
+      }
+    ],
+    "flow": {
+      "type": "pipeline",
+      "stages": [
+        {
+          "type": "start"
+        },
+        {
+          "type": "ref",
+          "id": "seed"
+        },
+        {
+          "type": "feedback",
+          "inner": {
+            "type": "farm",
+            "worker": {
+              "type": "ref",
+              "id": "refine"
+            },
+            "workers": 5,
+            "options": {
+              "emit": "round_robin",
+              "collect": null,
+              "ordered": false,
+              "emitter": null,
+              "collector": {
+                "type": "ref",
+                "id": "route"
+              },
+              "key": null,
+              "prefetch": 1,
+              "window": null,
+              "name": null,
+              "capacity": null,
+              "runtime": null
+            }
+          },
+          "name": null
+        },
+        {
+          "type": "ref",
+          "id": "show"
+        }
+      ]
+    },
+    "start": "numbers",
+    "main": "def main() -> None:\n    print(tq.run(build()))",
+    "epilogue": [],
+    "build_notes": [
+      "# The farm refines five estimates in parallel; its collector decides who loops."
+    ],
+    "guard": null
+  },
+  "code_only": null,
+  "graph": {
+    "nodes": [
+      {
+        "name": "numbers",
+        "kind": "source",
+        "role": null,
+        "group": null,
+        "is_sink": false,
+        "is_async": false,
+        "tagged": false
+      },
+      {
+        "name": "seed",
+        "kind": "map",
+        "role": null,
+        "group": null,
+        "is_sink": false,
+        "is_async": false,
+        "tagged": false
+      },
+      {
+        "name": "refine.emitter",
+        "kind": "ctx",
+        "role": "emitter",
+        "group": "refine",
+        "is_sink": false,
+        "is_async": false,
+        "tagged": false
+      },
+      {
+        "name": "refine.0",
+        "kind": "map",
+        "role": "worker",
+        "group": "refine",
+        "is_sink": false,
+        "is_async": false,
+        "tagged": false
+      },
+      {
+        "name": "refine.1",
+        "kind": "map",
+        "role": "worker",
+        "group": "refine",
+        "is_sink": false,
+        "is_async": false,
+        "tagged": false
+      },
+      {
+        "name": "refine.2",
+        "kind": "map",
+        "role": "worker",
+        "group": "refine",
+        "is_sink": false,
+        "is_async": false,
+        "tagged": false
+      },
+      {
+        "name": "refine.3",
+        "kind": "map",
+        "role": "worker",
+        "group": "refine",
+        "is_sink": false,
+        "is_async": false,
+        "tagged": false
+      },
+      {
+        "name": "refine.4",
+        "kind": "map",
+        "role": "worker",
+        "group": "refine",
+        "is_sink": false,
+        "is_async": false,
+        "tagged": false
+      },
+      {
+        "name": "refine.collector",
+        "kind": "ctx",
+        "role": "collector",
+        "group": "refine",
+        "is_sink": false,
+        "is_async": false,
+        "tagged": false
+      },
+      {
+        "name": "show",
+        "kind": "map",
+        "role": null,
+        "group": null,
+        "is_sink": true,
+        "is_async": false,
+        "tagged": false
+      }
+    ],
+    "edges": [
+      {
+        "src": "numbers",
+        "dst": "seed",
+        "rule": "1-1",
+        "feedback": false,
+        "capacity": null,
+        "batch": null
+      },
+      {
+        "src": "refine.emitter",
+        "dst": "refine.0",
+        "rule": "farm",
+        "feedback": false,
+        "capacity": null,
+        "batch": null
+      },
+      {
+        "src": "refine.emitter",
+        "dst": "refine.1",
+        "rule": "farm",
+        "feedback": false,
+        "capacity": null,
+        "batch": null
+      },
+      {
+        "src": "refine.emitter",
+        "dst": "refine.2",
+        "rule": "farm",
+        "feedback": false,
+        "capacity": null,
+        "batch": null
+      },
+      {
+        "src": "refine.emitter",
+        "dst": "refine.3",
+        "rule": "farm",
+        "feedback": false,
+        "capacity": null,
+        "batch": null
+      },
+      {
+        "src": "refine.emitter",
+        "dst": "refine.4",
+        "rule": "farm",
+        "feedback": false,
+        "capacity": null,
+        "batch": null
+      },
+      {
+        "src": "refine.0",
+        "dst": "refine.collector",
+        "rule": "farm",
+        "feedback": false,
+        "capacity": null,
+        "batch": null
+      },
+      {
+        "src": "refine.1",
+        "dst": "refine.collector",
+        "rule": "farm",
+        "feedback": false,
+        "capacity": null,
+        "batch": null
+      },
+      {
+        "src": "refine.2",
+        "dst": "refine.collector",
+        "rule": "farm",
+        "feedback": false,
+        "capacity": null,
+        "batch": null
+      },
+      {
+        "src": "refine.3",
+        "dst": "refine.collector",
+        "rule": "farm",
+        "feedback": false,
+        "capacity": null,
+        "batch": null
+      },
+      {
+        "src": "refine.4",
+        "dst": "refine.collector",
+        "rule": "farm",
+        "feedback": false,
+        "capacity": null,
+        "batch": null
+      },
+      {
+        "src": "refine.collector",
+        "dst": "refine.emitter",
+        "rule": "feedback 1-1",
+        "feedback": true,
+        "capacity": null,
+        "batch": null
+      },
+      {
+        "src": "seed",
+        "dst": "refine.emitter",
+        "rule": "1-1",
+        "feedback": false,
+        "capacity": null,
+        "batch": null
+      },
+      {
+        "src": "refine.collector",
+        "dst": "show",
+        "rule": "1-1",
+        "feedback": false,
+        "capacity": null,
+        "batch": null
+      }
+    ],
+    "loops": [
+      {
+        "name": "loop",
+        "nodes": [
+          "refine.emitter",
+          "refine.0",
+          "refine.1",
+          "refine.2",
+          "refine.3",
+          "refine.4",
+          "refine.collector"
+        ],
+        "heads": [
+          "refine.emitter"
+        ]
+      }
+    ],
+    "windows": {}
+  },
+  "layout": null
+}

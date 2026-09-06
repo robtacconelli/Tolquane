@@ -1,0 +1,35 @@
+/* Edges. `>>` is the plain one; a farm's fan-out is quieter, an all-to-all's cross is
+ * drawn in the accent because that crossing is the whole point of the block. */
+.flow {
+  stroke: var(--tq-border-strong);
+  stroke-width: 1.6;
+}
+
+.farm {
+  stroke: var(--tq-border);
+  stroke-width: 1.4;
+  stroke-dasharray: 4 4;
+}
+
+.cross {
+  stroke: var(--tq-accent-line);
+  stroke-width: 1.4;
+}
+
+.loop {
+  stroke: var(--tq-accent);
+  stroke-width: 1.6;
+  stroke-dasharray: 5 4;
+}
+
+.queue {
+  position: absolute;
+  padding: 0 var(--tq-space-2);
+  border-radius: var(--tq-radius-pill);
+  background: var(--tq-surface-raised);
+  border: 1px solid var(--tq-border);
+  color: var(--tq-text-muted);
+  font-size: var(--tq-text-xs);
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}

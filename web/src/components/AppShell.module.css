@@ -305,6 +305,10 @@
 }
 
 .content {
+  /* The last row, whether or not the offline banner is there to fill the second one:
+   * auto-placed, the content lands in an `auto` row when the banner is absent, and a
+   * page that asks for the full height (the editor) gets only as much as it asks for. */
+  grid-row: 3;
   min-width: 0;
   min-height: 0;
   overflow: auto;

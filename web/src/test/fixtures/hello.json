@@ -1,0 +1,249 @@
+{
+  "path": "hello.py",
+  "source": "\"\"\"Double the numbers 1 to 100 on four workers and print them in order.\"\"\"\n\nimport tolquane as tq\n\n\n@tq.source\ndef numbers():\n    # The stream to process: any generator works.\n    yield from range(1, 101)\n\n\n@tq.node\ndef double(x: int) -> int:\n    # Pure function, so it can run on several workers at once.\n    return x * 2\n\n\n@tq.sink\ndef show(x: int) -> None:\n    print(x)\n\n\ndef main() -> None:\n    # ordered=True makes the farm deliver results in input order.\n    tq.run(numbers >> tq.farm(double, workers=4, ordered=True) >> show)\n\n\nif __name__ == \"__main__\":\n    main()\n",
+  "modified": "2026-09-06T10:00:00Z",
+  "model": {
+    "version": 1,
+    "name": "hello",
+    "doc": "Double the numbers 1 to 100 on four workers and print them in order.",
+    "prelude": [],
+    "nodes": [
+      {
+        "id": "numbers",
+        "kind": "source",
+        "is_class": false,
+        "is_async": false,
+        "params": [],
+        "doc": null,
+        "source": "@tq.source\ndef numbers():\n    # The stream to process: any generator works.\n    yield from range(1, 101)"
+      },
+      {
+        "id": "double",
+        "kind": "node",
+        "is_class": false,
+        "is_async": false,
+        "params": [
+          "x"
+        ],
+        "doc": null,
+        "source": "@tq.node\ndef double(x: int) -> int:\n    # Pure function, so it can run on several workers at once.\n    return x * 2"
+      },
+      {
+        "id": "show",
+        "kind": "sink",
+        "is_class": false,
+        "is_async": false,
+        "params": [
+          "x"
+        ],
+        "doc": null,
+        "source": "@tq.sink\ndef show(x: int) -> None:\n    print(x)"
+      }
+    ],
+    "flow": {
+      "type": "pipeline",
+      "stages": [
+        {
+          "type": "ref",
+          "id": "numbers"
+        },
+        {
+          "type": "farm",
+          "worker": {
+            "type": "ref",
+            "id": "double"
+          },
+          "workers": 4,
+          "options": {
+            "emit": "round_robin",
+            "collect": null,
+            "ordered": true,
+            "emitter": null,
+            "collector": null,
+            "key": null,
+            "prefetch": 1,
+            "window": null,
+            "name": null,
+            "capacity": null,
+            "runtime": null
+          }
+        },
+        {
+          "type": "ref",
+          "id": "show"
+        }
+      ]
+    },
+    "start": null,
+    "main": null,
+    "epilogue": [],
+    "build_notes": [
+      "# ordered=True makes the farm deliver results in input order."
+    ],
+    "guard": null
+  },
+  "code_only": null,
+  "graph": {
+    "nodes": [
+      {
+        "name": "numbers",
+        "kind": "source",
+        "role": null,
+        "group": null,
+        "is_sink": false,
+        "is_async": false,
+        "tagged": false
+      },
+      {
+        "name": "double.emitter",
+        "kind": "ctx",
+        "role": "emitter",
+        "group": "double",
+        "is_sink": false,
+        "is_async": false,
+        "tagged": true
+      },
+      {
+        "name": "double.0",
+        "kind": "map",
+        "role": "worker",
+        "group": "double",
+        "is_sink": false,
+        "is_async": false,
+        "tagged": true
+      },
+      {
+        "name": "double.1",
+        "kind": "map",
+        "role": "worker",
+        "group": "double",
+        "is_sink": false,
+        "is_async": false,
+        "tagged": true
+      },
+      {
+        "name": "double.2",
+        "kind": "map",
+        "role": "worker",
+        "group": "double",
+        "is_sink": false,
+        "is_async": false,
+        "tagged": true
+      },
+      {
+        "name": "double.3",
+        "kind": "map",
+        "role": "worker",
+        "group": "double",
+        "is_sink": false,
+        "is_async": false,
+        "tagged": true
+      },
+      {
+        "name": "double.collector",
+        "kind": "ctx",
+        "role": "collector",
+        "group": "double",
+        "is_sink": false,
+        "is_async": false,
+        "tagged": true
+      },
+      {
+        "name": "show",
+        "kind": "map",
+        "role": null,
+        "group": null,
+        "is_sink": true,
+        "is_async": false,
+        "tagged": false
+      }
+    ],
+    "edges": [
+      {
+        "src": "double.emitter",
+        "dst": "double.0",
+        "rule": "farm",
+        "feedback": false,
+        "capacity": null,
+        "batch": null
+      },
+      {
+        "src": "double.emitter",
+        "dst": "double.1",
+        "rule": "farm",
+        "feedback": false,
+        "capacity": null,
+        "batch": null
+      },
+      {
+        "src": "double.emitter",
+        "dst": "double.2",
+        "rule": "farm",
+        "feedback": false,
+        "capacity": null,
+        "batch": null
+      },
+      {
+        "src": "double.emitter",
+        "dst": "double.3",
+        "rule": "farm",
+        "feedback": false,
+        "capacity": null,
+        "batch": null
+      },
+      {
+        "src": "double.0",
+        "dst": "double.collector",
+        "rule": "farm",
+        "feedback": false,
+        "capacity": null,
+        "batch": null
+      },
+      {
+        "src": "double.1",
+        "dst": "double.collector",
+        "rule": "farm",
+        "feedback": false,
+        "capacity": null,
+        "batch": null
+      },
+      {
+        "src": "double.2",
+        "dst": "double.collector",
+        "rule": "farm",
+        "feedback": false,
+        "capacity": null,
+        "batch": null
+      },
+      {
+        "src": "double.3",
+        "dst": "double.collector",
+        "rule": "farm",
+        "feedback": false,
+        "capacity": null,
+        "batch": null
+      },
+      {
+        "src": "numbers",
+        "dst": "double.emitter",
+        "rule": "1-1",
+        "feedback": false,
+        "capacity": null,
+        "batch": null
+      },
+      {
+        "src": "double.collector",
+        "dst": "show",
+        "rule": "1-1",
+        "feedback": false,
+        "capacity": null,
+        "batch": null
+      }
+    ],
+    "loops": [],
+    "windows": {
+      "double.window": 256
+    }
+  },
+  "layout": null
+}

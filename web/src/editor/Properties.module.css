@@ -1,0 +1,160 @@
+/* The editor's right-hand panel. It is a column of sections, each one a group of options
+ * that belong together, so a farm's fifteen options do not read as a wall. */
+.panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+  background: var(--tq-surface);
+}
+
+.sectionHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--tq-space-3);
+  height: 36px;
+  padding: 0 var(--tq-space-5);
+  border-bottom: 1px solid var(--tq-border-subtle);
+  font-size: var(--tq-text-xs);
+  font-weight: var(--tq-weight-semibold);
+  letter-spacing: var(--tq-tracking-wide);
+  text-transform: uppercase;
+  color: var(--tq-text-subtle);
+  flex: none;
+}
+
+.body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.head {
+  --card-accent: var(--tq-border-strong);
+
+  position: relative;
+  padding: var(--tq-space-5) var(--tq-space-5) var(--tq-space-4);
+  border-bottom: 1px solid var(--tq-border-subtle);
+}
+
+.head::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: var(--tq-space-5);
+  bottom: var(--tq-space-4);
+  width: 2px;
+  border-radius: var(--tq-radius-pill);
+  background: var(--card-accent);
+}
+
+.head[data-kind='source'] {
+  --card-accent: var(--tq-node-done);
+}
+
+.head[data-kind='sink'] {
+  --card-accent: var(--tq-node-failed);
+}
+
+.head[data-kind='farm'],
+.head[data-kind='comb'],
+.head[data-kind='feedback'],
+.head[data-kind='all2all'] {
+  --card-accent: var(--tq-accent);
+}
+
+.headTitle {
+  display: block;
+  font-size: var(--tq-text-md);
+  font-weight: var(--tq-weight-semibold);
+  color: var(--tq-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.headKind {
+  display: block;
+  margin-top: 1px;
+  font-size: var(--tq-text-sm);
+  color: var(--tq-text-subtle);
+}
+
+.problems {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tq-space-3);
+  padding: var(--tq-space-4) var(--tq-space-5);
+  border-bottom: 1px solid var(--tq-border-subtle);
+  background: var(--tq-danger-soft);
+}
+
+.problemError,
+.problemWarning {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--tq-space-3);
+  font-size: var(--tq-text-sm);
+  line-height: var(--tq-leading-normal);
+  color: var(--tq-danger);
+}
+
+.problemError svg,
+.problemWarning svg {
+  flex: none;
+  margin-top: 2px;
+}
+
+.problemWarning {
+  color: var(--tq-warning);
+}
+
+.note {
+  font-size: var(--tq-text-sm);
+  color: var(--tq-text-subtle);
+  line-height: var(--tq-leading-relaxed);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--tq-space-3);
+}
+
+/* ---------------------------------------------------------------- empty state */
+.empty {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--tq-space-3);
+  padding: var(--tq-space-6);
+}
+
+.emptyGlyph {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: var(--tq-radius-lg);
+  border: 1px solid var(--tq-border-subtle);
+  background: var(--tq-surface-sunken);
+  color: var(--tq-text-subtle);
+}
+
+.emptyTitle {
+  font-size: var(--tq-text-base);
+  font-weight: var(--tq-weight-medium);
+  color: var(--tq-text-muted);
+}
+
+.emptyBody {
+  color: var(--tq-text-subtle);
+  font-size: var(--tq-text-sm);
+  text-align: center;
+  max-width: 30ch;
+  line-height: var(--tq-leading-relaxed);
+}
