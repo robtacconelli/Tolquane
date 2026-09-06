@@ -82,7 +82,7 @@ import tolquane as tq
 
 
 @tq.source
-def start():
+def items():
     """Yield the items to work on."""
     yield from range(10)
 
@@ -94,8 +94,8 @@ def show(item):
 
 
 def build(source=None):
-    begin = start if source is None else tq.from_iterable(source)
-    return begin >> show
+    start = items if source is None else tq.from_iterable(source)
+    return start >> show
 
 
 def main():

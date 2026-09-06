@@ -588,3 +588,18 @@ def test_the_settings_page_sees_the_new_limits(client: TestClient) -> None:
     assert settings["keep_traces_days"] == 7
     assert client.put("/api/settings", json={"keep_traces_days": 0}).json()["keep_traces_days"] == 0
     assert client.put("/api/settings", json={"keep_traces_days": -1}).status_code == 400
+
+
+def test_every_template_opens_on_the_canvas(client: TestClient) -> None:
+    """A new flow must be editable at once: each template parses to a model, not code-only."""
+    from tolquane.web.model import CodeOnly, parse_source
+    from tolquane.web.server import TEMPLATES
+
+    for name, text in TEMPLATES.items():
+        parsed = parse_source(text.format(name="fresh"), "fresh")
+        assert not isinstance(parsed, CodeOnly), (name, getattr(parsed, "reason", None))
+    for name in TEMPLATES:
+        made = client.post("/api/flows", json={"path": f"{name}_flow.py", "template": name})
+        assert made.status_code in (200, 201), made.text
+        assert made.json()["model"] is not None
+        assert made.json()["code_only"] is None
