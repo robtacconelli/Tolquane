@@ -15,6 +15,11 @@ Three rules shape the code:
 * **The OpenAPI document is the contract.** The frontend's client is generated from
   ``/api/openapi.json``, so every route carries an ``operation_id`` that reads like a
   method name and a response model that says what comes back.
+
+Who is calling is worked out once, in :class:`Auth`, and what they may do is one table,
+:data:`ROUTE_ROLES`. Both are read twice: by :class:`TokenWall`, one layer outside the
+routes, where the paths FastAPI adds for itself and the paths that match nothing are
+also covered, and by the dependency every route carries. Neither is the only one.
 """
 
 from __future__ import annotations
@@ -32,12 +37,13 @@ import threading
 import uuid
 from collections.abc import AsyncIterator, Callable, Iterator
 from contextlib import asynccontextmanager
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated, Any
 from urllib.parse import parse_qs
 
-from fastapi import Body, Depends, FastAPI, Header, Query, Request, WebSocket
+from fastapi import Body, Depends, FastAPI, Request, WebSocket
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import (
     FileResponse,
@@ -58,7 +64,7 @@ from . import model as flow_model
 from .cron import Cron
 from .scheduler import Scheduler, local_now
 from .settings import AppSettings, WebSettings
-from .store import Run, Schedule, Store
+from .store import LOCAL_USER, Run, Schedule, Store, User, verify_password
 from .supervisor import (
     WORK_DIR,
     ChildFailed,
@@ -264,6 +270,7 @@ class RunModel(BaseModel):
     runtime: str
     sample: str | None = None
     trigger: str
+    user: str = LOCAL_USER
     started: str
     ended: str | None = None
     status: str
@@ -296,6 +303,7 @@ class ScheduleModel(BaseModel):
     runtime: str
     enabled: bool
     created: str
+    user: str = LOCAL_USER
     last_run: int | None = None
     last_status: str | None = None
     next_run: str | None = None
@@ -335,8 +343,8 @@ class CronPreview(BaseModel):
 class AiSettings(BaseModel):
     provider: str
     model: str | None = None
-    has_anthropic_key: bool
-    has_openai_key: bool
+    has_anthropic_key: bool | None = Field(default=None, description="null: not an admin")
+    has_openai_key: bool | None = Field(default=None, description="null: not an admin")
 
 
 class ServerSettings(BaseModel):
@@ -356,7 +364,9 @@ class SettingsModel(BaseModel):
     keep_traces_days: int
     theme: str
     ai: AiSettings
-    server: ServerSettings
+    server: ServerSettings | None = Field(
+        default=None, description="the address and whether a token is set; admins only"
+    )
 
 
 class ChatMessage(BaseModel):
@@ -375,9 +385,82 @@ class ChatRequest(BaseModel):
 class Health(BaseModel):
     ok: bool
     version: str
-    workspace: str
+    workspace: str | None = Field(
+        default=None, description="left out when the caller is not signed in"
+    )
     runs_live: int
     scheduler: bool
+
+
+# ------------------------------------------------------------- users and sessions
+
+
+class LoginRequest(BaseModel):
+    name: str
+    password: str
+
+
+class UserModel(BaseModel):
+    id: int = Field(description="0 for the implicit local admin and for the server token")
+    name: str
+    role: str
+    created: str = ""
+    disabled: bool = False
+    must_change_password: bool = False
+    last_seen: str | None = None
+
+
+class LoginResult(BaseModel):
+    token: str = Field(description="the session token; it is not shown again")
+    user: UserModel
+
+
+class MeResult(BaseModel):
+    user: UserModel | None = None
+    mode: str = Field(description="local | users | token")
+    can_setup: bool = False
+
+
+class PasswordChange(BaseModel):
+    current: str = ""
+    new: str
+
+
+class TokenModel(BaseModel):
+    id: int
+    label: str = ""
+    created: str
+    last_seen: str | None = None
+
+
+class TokenList(BaseModel):
+    tokens: list[TokenModel]
+
+
+class NewToken(BaseModel):
+    label: str = ""
+
+
+class IssuedToken(BaseModel):
+    id: int
+    token: str = Field(description="shown once; only its sha256 is kept")
+    label: str = ""
+
+
+class UserList(BaseModel):
+    users: list[UserModel]
+
+
+class NewUser(BaseModel):
+    name: str
+    password: str
+    role: str = "member"
+
+
+class UserChange(BaseModel):
+    role: str | None = None
+    disabled: bool | None = None
+    password: str | None = None
 
 
 # --------------------------------------------------------------------------- the app
@@ -390,8 +473,9 @@ def create_app(settings: AppSettings) -> FastAPI:
             f"the workspace {settings.workspace} is not a directory; "
             "make it, or start with --workspace DIR"
         )
-    store = Store(settings.db_path)
+    store = Store(settings.db_path, clock=settings.clock)
     web = WebSettings(store, settings)
+    auth = Auth(settings, store)
 
     def finished(run: Run) -> None:
         """A run that a schedule started leaves its status on the schedule."""
@@ -410,6 +494,9 @@ def create_app(settings: AppSettings) -> FastAPI:
             sample_items=_sample_items(settings.workspace, schedule.flow, schedule.sample),
             trigger=f"schedule:{schedule.id}",
         )
+        # A scheduled run belongs to whoever made the schedule, not to whoever was
+        # signed in when the minute came round.
+        store.set_run_user(run.id, schedule.user)
         store.update_schedule(schedule.id, last_run=run.id, last_status="running")
 
     scheduler = Scheduler(
@@ -446,18 +533,19 @@ def create_app(settings: AppSettings) -> FastAPI:
         lifespan=lifespan,
     )
     app.state.settings = settings
+    app.state.auth = auth
     app.state.store = store
     app.state.web_settings = web
     app.state.supervisor = supervisor
     app.state.scheduler = scheduler
 
     _errors(app)
-    _routes(app, settings, store, web, supervisor, scheduler)
+    _routes(app, settings, store, web, supervisor, scheduler, auth)
     _frontend(app, settings)
     # No CORS middleware, on purpose: the page and the API are the same origin, so a
     # site in another tab gets no answer it could read. Added last, so they run first.
     app.add_middleware(BodyLimit, web=web)
-    app.add_middleware(TokenWall, token=settings.token)
+    app.add_middleware(TokenWall, token=settings.token, auth=auth)
     hide_tokens_in_logs()
     return app
 
@@ -515,54 +603,263 @@ def token_ok(expected: str | None, authorization: str | None, query_token: str |
     return hmac.compare_digest(sent.encode("utf-8"), expected.encode("utf-8"))
 
 
-def _token_guard(settings: AppSettings) -> Callable[..., None]:
-    """The dependency every ``/api`` route carries when the server was given a token.
+def _guard(auth: Auth) -> Callable[..., None]:
+    """The dependency every ``/api`` route carries: the token, then the role table.
 
-    :class:`TokenWall` checks the same thing one layer out, for the routes FastAPI adds
-    itself (``/api/openapi.json``, ``/api/docs``) and for anything added here later
-    without this dependency. Two checks, one answer; neither is the only one.
+    :class:`TokenWall` asks :meth:`Auth.gate` the same question one layer out, for the
+    routes FastAPI adds itself (``/api/openapi.json``, ``/api/docs``) and for anything
+    added here later without this dependency. Two checks, one answer; neither is the
+    only one. It takes nothing but the request, so it adds no parameter to the OpenAPI
+    document: the token is a header, or the ``?token=`` a socket has to use instead.
     """
 
-    def check(
-        authorization: str | None = Header(default=None),
-        token: str | None = Query(default=None, include_in_schema=False),
-    ) -> None:
-        if not token_ok(settings.token, authorization, token):
-            raise ApiError(401, "Unauthorized", UNAUTHORIZED)
+    def check(request: Request) -> None:
+        principal, refusal = auth.gate(
+            request.method,
+            request.url.path,
+            request.headers.get("authorization"),
+            request.query_params.get("token"),
+        )
+        request.scope.setdefault("state", {})["principal"] = principal
+        if refusal is not None:
+            raise refusal
 
     return check
 
 
+# ----------------------------------------------------------------------- who is calling
+
+SIGN_IN = (
+    "this server has users: sign in for a session token, or send a personal API token as "
+    "'Authorization: Bearer <token>' (?token= on a WebSocket, an event stream or a "
+    "download link)"
+)
+
+PUBLIC = "public"
+MEMBER = "member"
+ADMIN = "admin"
+
+ROUTE_ROLES: tuple[tuple[str, str, str], ...] = (
+    # (method or "*", path or path prefix, the least role that may call it)
+    ("GET", "/api/health", PUBLIC),
+    ("GET", "/api/auth/me", PUBLIC),
+    ("POST", "/api/auth/login", PUBLIC),
+    ("POST", "/api/auth/setup", PUBLIC),
+    ("*", "/api/users", ADMIN),
+)
+"""What each route needs, in one place rather than in thirty decorators.
+
+Everything not named here needs :data:`MEMBER`: a signed-in user of either role. The
+paths are matched as themselves or as a prefix, so ``/api/users/{id}`` is covered by
+``/api/users`` and this table answers for a URL as well as for a route template. The
+contract's other half -- a member may read the settings but write only ``theme`` -- is
+about fields rather than routes, and lives in the settings routes themselves.
+"""
+
+
+def role_for(method: str, path: str) -> str:
+    """The role :data:`ROUTE_ROLES` asks of this request."""
+    verb = method.upper()
+    for wanted, prefix, role in ROUTE_ROLES:
+        matches = path == prefix or path.startswith(prefix + "/")
+        if matches and wanted in ("*", verb):
+            return role
+    return MEMBER
+
+
+LOCAL_ADMIN = User(
+    id=0, name=LOCAL_USER, role=ADMIN, created="", disabled=False, must_change_password=False
+)
+"""Local mode: no users, loopback only, so whoever is at the keyboard owns the machine."""
+
+TOKEN_ADMIN = User(
+    id=0, name="token", role=ADMIN, created="", disabled=False, must_change_password=False
+)
+"""The ``--token`` value, which is an admin API token in every mode: setup and scripts."""
+
+
+@dataclass(frozen=True)
+class Principal:
+    """Who is calling: a user row, the implicit local admin, or the server's own token."""
+
+    user: User
+    kind: str
+    """``local``, ``token``, ``session`` or ``api``: how they proved it."""
+    session_id: int | None = None
+
+    @property
+    def name(self) -> str:
+        """The name a run or a schedule they start is recorded under."""
+        return self.user.name
+
+    @property
+    def role(self) -> str:
+        return self.user.role
+
+    @property
+    def is_admin(self) -> bool:
+        return self.user.role == ADMIN
+
+    @property
+    def account(self) -> bool:
+        """Is this a real user, rather than local mode or the server token?"""
+        return self.user.id != 0
+
+
+class Auth:
+    """The one place that answers "who is this?" and "may they?".
+
+    The mode is read from the store on every question, because it changes the moment the
+    first user is created: a server that started in local mode is in users mode from
+    then on, without a restart.
+    """
+
+    def __init__(self, settings: AppSettings, store: Store) -> None:
+        self.settings = settings
+        self.store = store
+
+    def mode(self) -> str:
+        """``users`` once anybody exists, ``token`` with ``--token`` and nobody, else ``local``."""
+        if self.store.count_users():
+            return "users"
+        return "token" if self.settings.token else "local"
+
+    def principal(self, authorization: str | None, query_token: str | None) -> Principal | None:
+        """Resolve the bearer token, or ``None`` when there is no way in.
+
+        A session token, an API token and the ``--token`` value are all bearer tokens
+        here. In local mode there is nobody to be, so everyone is the local admin, and a
+        token left over in a browser from another day does not lock the user out.
+        """
+        sent = bearer(authorization, query_token)
+        if self.settings.token and sent and token_ok(self.settings.token, None, sent):
+            return Principal(user=TOKEN_ADMIN, kind="token")
+        if sent:
+            identity = self.store.resolve_token(sent)
+            if identity is not None:
+                return Principal(
+                    user=identity.user, kind=identity.session.kind, session_id=identity.session.id
+                )
+        if self.mode() == "local":
+            return Principal(user=LOCAL_ADMIN, kind="local")
+        return None
+
+    def gate(
+        self, method: str, path: str, authorization: str | None, query_token: str | None
+    ) -> tuple[Principal | None, ApiError | None]:
+        """Who is calling and what, if anything, refuses them. The whole decision, once.
+
+        With ``--token``, nothing under ``/api`` passes without that token or a session,
+        which is what the server did before there were users. The exception is the public
+        routes once there are users to sign in as: a login page that needed the token to
+        offer a login box would be a lock with two keys.
+        """
+        principal = self.principal(authorization, query_token)
+        role = role_for(method, path)
+        open_door = role == PUBLIC and self.mode() == "users"
+        if (
+            self.settings.token
+            and principal is None
+            and not open_door
+            and not token_ok(self.settings.token, authorization, query_token)
+        ):
+            return None, ApiError(401, "Unauthorized", UNAUTHORIZED)
+        if role == PUBLIC:
+            return principal, None
+        if principal is None:
+            error = UNAUTHORIZED if self.settings.token else SIGN_IN
+            return None, ApiError(401, "Unauthorized", error)
+        if role == ADMIN and not principal.is_admin:
+            return principal, ApiError(
+                403,
+                "Forbidden",
+                f"{method.upper()} {path} is for administrators, and {principal.name} is a "
+                f"{principal.role}; ask an administrator to do it or to change your role",
+            )
+        return principal, None
+
+
+def bearer(authorization: str | None, query_token: str | None) -> str:
+    """The token this request carries: the header, else ``?token=``, else nothing."""
+    if authorization and authorization.lower().startswith("bearer "):
+        return authorization.split(" ", 1)[1].strip()
+    return query_token or ""
+
+
+def _principal(auth: Auth, request: Request) -> Principal | None:
+    """Who is calling, resolved once per request: :class:`TokenWall` leaves it here."""
+    state = request.scope.setdefault("state", {})
+    if "principal" not in state:
+        state["principal"] = auth.principal(
+            request.headers.get("authorization"), request.query_params.get("token")
+        )
+    found = state["principal"]
+    return found if isinstance(found, Principal) else None
+
+
+def _caller(auth: Auth) -> Callable[..., Principal]:
+    """A dependency for the routes that need to know who is asking."""
+
+    def caller(request: Request) -> Principal:
+        principal = _principal(auth, request)
+        if principal is None:  # pragma: no cover - the gate on the route answered first
+            raise ApiError(401, "Unauthorized", UNAUTHORIZED if auth.settings.token else SIGN_IN)
+        return principal
+
+    return caller
+
+
+def _maybe_caller(auth: Auth) -> Callable[..., Principal | None]:
+    """The same, for the public routes: signed in, or not, and both are answers."""
+
+    def caller(request: Request) -> Principal | None:
+        return _principal(auth, request)
+
+    return caller
+
+
 class TokenWall:
-    """Every request under ``/api``, HTTP and WebSocket alike, holds the token or stops.
+    """Every request under ``/api``, HTTP and WebSocket alike, is placed or stopped.
 
     A guard on each route can be forgotten, and the routes FastAPI adds for its own
     schema and documentation never had one. This is the layer that does not care which
     route the path belongs to. The static files are served without a token: they are the
     page that asks the user for it.
+
+    It does two things. With ``--token``, nothing under ``/api`` passes without either
+    that token or a session of a user, exactly as before there were users. Then, when
+    there is an :class:`Auth`, it works out who is calling, leaves them in the request's
+    state for the routes to read, and applies the role table to the path.
     """
 
-    def __init__(self, app: ASGIApp, token: str | None = None) -> None:
+    def __init__(self, app: ASGIApp, token: str | None = None, auth: Auth | None = None) -> None:
         self.app = app
         self.token = token
+        self.auth = auth
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
-        if (
-            self.token
-            and scope["type"] in ("http", "websocket")
-            and _is_api(scope)
-            and not token_ok(self.token, _header(scope, b"authorization"), _query_token(scope))
-        ):
-            await self._refuse(scope, receive, send)
-            return
+        if scope["type"] in ("http", "websocket") and _is_api(scope):
+            authorization, query = _header(scope, b"authorization"), _query_token(scope)
+            if self.auth is None:
+                if self.token and not token_ok(self.token, authorization, query):
+                    error = ApiError(401, "Unauthorized", UNAUTHORIZED)
+                    await self._refuse(scope, receive, send, error)
+                    return
+            else:
+                principal, refusal = self.auth.gate(
+                    str(scope.get("method") or "GET"), str(scope["path"]), authorization, query
+                )
+                scope.setdefault("state", {})["principal"] = principal
+                if refusal is not None:
+                    await self._refuse(scope, receive, send, refusal)
+                    return
         await self.app(scope, receive, send)
 
-    async def _refuse(self, scope: Scope, receive: Receive, send: Send) -> None:
+    async def _refuse(self, scope: Scope, receive: Receive, send: Send, error: ApiError) -> None:
         if scope["type"] == "websocket":
             await send({"type": "websocket.close", "code": 1008})
             return
-        body = ApiError(401, "Unauthorized", UNAUTHORIZED).body()
-        await JSONResponse(body, status_code=401)(scope, receive, send)
+        await JSONResponse(error.body(), status_code=error.status)(scope, receive, send)
 
 
 class BodyLimit:
@@ -743,9 +1040,48 @@ def _routes(
     web: WebSettings,
     supervisor: Supervisor,
     scheduler: Scheduler,
+    auth: Auth,
 ) -> None:
-    guard = [Depends(_token_guard(settings))]
+    guard = [Depends(_guard(auth))]
     workspace = settings.workspace
+    # ``Principal = caller`` rather than an Annotated alias: this module postpones its
+    # annotations, and FastAPI resolves them against the module, where a local alias is
+    # not to be found.
+    caller = Depends(_caller(auth))
+    visitor = Depends(_maybe_caller(auth))
+
+    def account(me: Principal) -> User:
+        """The user row behind a principal, or 400: local mode and the server token have
+        no password to change and no tokens of their own."""
+        user = store.get_user(me.user.id) if me.account else None
+        if user is None:
+            raise bad_request(
+                "there is no user account behind this request: local mode and the --token "
+                "value are not people. Make a user with 'tolquane web users add NAME'."
+            )
+        return user
+
+    def made(call: Callable[[], Any]) -> Any:
+        """Run a store call whose ``ValueError`` is the user's mistake, not ours."""
+        try:
+            return call()
+        except ValueError as exc:
+            raise bad_request(str(exc)) from exc
+
+    def user_or_404(user_id: int) -> User:
+        user = store.get_user(user_id)
+        if user is None:
+            raise not_found(f"no user {user_id}")
+        return user
+
+    def keep_an_admin(user: User, role: str, disabled: bool) -> None:
+        """Refuse a change that would leave nobody who can sign in and put it back."""
+        others = [admin for admin in store.enabled_admins() if admin.id != user.id]
+        if not others and not (role == ADMIN and not disabled):
+            raise bad_request(
+                f"{user.name} is the last administrator who can sign in; make somebody "
+                "else an administrator first"
+            )
 
     def scratch() -> Path:
         directory = workspace / WORK_DIR / "tmp"
@@ -1032,7 +1368,7 @@ def _routes(
     # Runs ----------------------------------------------------------------
 
     @app.post("/api/runs", operation_id="startRun", response_model=RunModel, dependencies=guard)
-    async def start_run(body: StartRun) -> dict[str, Any]:
+    async def start_run(body: StartRun, me: Principal = caller) -> dict[str, Any]:
         """Start a flow in a child process and return the run that was recorded."""
         file = _existing(workspace, body.path)
         path = relative(workspace, file)
@@ -1051,7 +1387,7 @@ def _routes(
             )
         except TooManyRuns as exc:
             raise ApiError(429, "TooManyRuns", str(exc)) from exc
-        return run_dict(run)
+        return run_dict(store.set_run_user(run.id, me.name))
 
     @app.get("/api/runs", operation_id="listRuns", response_model=RunList, dependencies=guard)
     async def list_runs(flow: str | None = None, limit: int = 50) -> dict[str, Any]:
@@ -1103,12 +1439,13 @@ def _routes(
     @app.websocket("/api/runs/{run_id}/events")
     async def run_events(websocket: WebSocket, run_id: int) -> None:
         """Every event of a run, in order: what happened so far, then what happens next."""
-        if not token_ok(
-            settings.token,
-            websocket.headers.get("authorization"),
-            websocket.query_params.get("token"),
-        ):  # pragma: no cover - TokenWall refuses the socket one layer out
-            await websocket.close(code=1008, reason="this server needs its token")
+        principal = auth.principal(
+            websocket.headers.get("authorization"), websocket.query_params.get("token")
+        )
+        if principal is None:  # pragma: no cover - TokenWall refuses the socket one layer out
+            # A socket cannot set a header, so ?token= carries the session token as well
+            # as the server's own.
+            await websocket.close(code=1008, reason="this server needs a token or a session")
             return
         await websocket.accept()
         live = supervisor.get(run_id)
@@ -1156,7 +1493,7 @@ def _routes(
         status_code=201,
         dependencies=guard,
     )
-    async def create_schedule(body: NewSchedule) -> dict[str, Any]:
+    async def create_schedule(body: NewSchedule, me: Principal = caller) -> dict[str, Any]:
         """Add a schedule. The cron expression is checked before anything is stored."""
         _existing(workspace, body.flow)
         _cron(body.cron)
@@ -1166,6 +1503,7 @@ def _routes(
             body.sample,
             body.runtime or web.default_runtime,
             body.enabled,
+            user=me.name,
         )
         scheduler.reload()
         return schedule_dict(schedule)
@@ -1235,6 +1573,173 @@ def _routes(
             raise ApiError(500, "RunError", "the run was started but not recorded")
         return run_dict(run)
 
+    # Users and sessions --------------------------------------------------
+
+    @app.post(
+        "/api/auth/login", operation_id="login", response_model=LoginResult, dependencies=guard
+    )
+    async def login(body: LoginRequest) -> dict[str, Any]:
+        """Sign in. The session token comes back once; it is stored only as a sha256."""
+        user = store.get_user_by_name(body.name)
+        # The hash is computed whether or not the name exists, so a name that does not
+        # is not the fast answer that tells an attacker which names do.
+        matched = verify_password(user.password_hash if user is not None else None, body.password)
+        if user is None or not matched:
+            raise ApiError(401, "Unauthorized", "that name and password do not go together")
+        if user.disabled:
+            raise ApiError(
+                403,
+                "Forbidden",
+                f"the account {user.name} is disabled; an administrator can enable it again",
+            )
+        issued = store.create_session(user.id, "session")
+        return {"token": issued.token, "user": user.to_dict()}
+
+    @app.post("/api/auth/logout", operation_id="logout", response_model=Ok, dependencies=guard)
+    async def logout(me: Principal = caller) -> dict[str, Any]:
+        """Forget this session. A token that is not a session has nothing to forget."""
+        if me.session_id is not None:
+            store.delete_session(me.session_id)
+        return {"ok": True}
+
+    @app.get("/api/auth/me", operation_id="whoami", response_model=MeResult, dependencies=guard)
+    async def whoami(me: Principal | None = visitor) -> dict[str, Any]:
+        """Who the caller is and what kind of server this is: the page's first question."""
+        mode = auth.mode()
+        return {
+            "user": me.user.to_dict() if me is not None else None,
+            "mode": mode,
+            "can_setup": mode == "token",
+        }
+
+    @app.post(
+        "/api/auth/setup",
+        operation_id="setupFirstAdmin",
+        response_model=LoginResult,
+        status_code=201,
+        dependencies=guard,
+    )
+    async def setup_first_admin(body: LoginRequest) -> dict[str, Any]:
+        """Make the first administrator, from the login page of a ``--token`` server."""
+        if store.count_users():
+            raise ApiError(
+                409,
+                "Conflict",
+                "this server already has users; sign in, or ask an administrator for an account",
+            )
+        if not settings.token:
+            raise ApiError(
+                403,
+                "Forbidden",
+                "the first user is made with 'tolquane web users add NAME --admin', or "
+                "from the login page of a server started with --token",
+            )
+        user = made(lambda: store.add_user(body.name, body.password, ADMIN, False))
+        issued = store.create_session(user.id, "session")
+        return {"token": issued.token, "user": user.to_dict()}
+
+    @app.post(
+        "/api/auth/password", operation_id="changePassword", response_model=Ok, dependencies=guard
+    )
+    async def change_password(body: PasswordChange, me: Principal = caller) -> dict[str, Any]:
+        """Change your own password. Sessions live on: this is the browser that asked."""
+        user = account(me)
+        if not verify_password(user.password_hash, body.current):
+            raise ApiError(401, "Unauthorized", "that is not your current password")
+        made(lambda: store.update_user(user.id, password=body.new, must_change_password=False))
+        return {"ok": True}
+
+    @app.get(
+        "/api/auth/tokens",
+        operation_id="listApiTokens",
+        response_model=TokenList,
+        dependencies=guard,
+    )
+    async def list_tokens(me: Principal = caller) -> dict[str, Any]:
+        """Your API tokens. The tokens themselves are not kept, so they are not here."""
+        return {"tokens": [token.to_dict() for token in store.list_api_tokens(account(me).id)]}
+
+    @app.post(
+        "/api/auth/tokens",
+        operation_id="createApiToken",
+        response_model=IssuedToken,
+        status_code=201,
+        dependencies=guard,
+    )
+    async def create_token(body: NewToken, me: Principal = caller) -> dict[str, Any]:
+        """Make an API token for scripts. It never expires and is shown this once."""
+        user = account(me)
+        label = body.label.strip()[:100] or "api token"
+        issued = store.create_session(user.id, "api", label)
+        return {"id": issued.session.id, "token": issued.token, "label": label}
+
+    @app.delete(
+        "/api/auth/tokens/{token_id}",
+        operation_id="deleteApiToken",
+        response_model=Ok,
+        dependencies=guard,
+    )
+    async def delete_token(token_id: int, me: Principal = caller) -> dict[str, Any]:
+        """Take one of your API tokens back. Anything using it stops working at once."""
+        user = account(me)
+        session = store.get_session(token_id)
+        if session is None or session.user_id != user.id or session.kind != "api":
+            raise not_found(f"no API token {token_id}")
+        store.delete_session(token_id)
+        return {"ok": True}
+
+    @app.get("/api/users", operation_id="listUsers", response_model=UserList, dependencies=guard)
+    async def list_users() -> dict[str, Any]:
+        """Everybody who can sign in, with when each was last seen."""
+        return {"users": [user.to_dict() for user in store.list_users()]}
+
+    @app.post(
+        "/api/users",
+        operation_id="createUser",
+        response_model=UserModel,
+        status_code=201,
+        dependencies=guard,
+    )
+    async def create_user(body: NewUser) -> dict[str, Any]:
+        """Add a user with a password they are asked to change at their first sign-in."""
+        user = made(lambda: store.add_user(body.name, body.password, body.role, True))
+        return dict(user.to_dict())
+
+    @app.put(
+        "/api/users/{user_id}",
+        operation_id="updateUser",
+        response_model=UserModel,
+        dependencies=guard,
+    )
+    async def update_user(user_id: int, body: UserChange, me: Principal = caller) -> dict[str, Any]:
+        """Change a role, disable an account, or set a password the user must change."""
+        user = user_or_404(user_id)
+        fields = {k: v for k, v in body.model_dump(exclude_unset=True).items() if v is not None}
+        if not fields:
+            raise bad_request("nothing to change; send a role, disabled or a password")
+        keep_an_admin(
+            user,
+            str(fields.get("role", user.role)),
+            bool(fields.get("disabled", user.disabled)),
+        )
+        if "password" in fields:
+            fields["must_change_password"] = True
+        return dict(made(lambda: store.update_user(user_id, **fields)).to_dict())
+
+    @app.delete(
+        "/api/users/{user_id}", operation_id="deleteUser", response_model=Ok, dependencies=guard
+    )
+    async def delete_user(user_id: int, me: Principal = caller) -> dict[str, Any]:
+        """Remove a user, and with them every session and token they had."""
+        user = user_or_404(user_id)
+        if me.account and me.user.id == user.id:
+            raise bad_request(
+                "you cannot delete yourself; another administrator can, or disable the account"
+            )
+        keep_an_admin(user, "member", True)
+        store.delete_user(user_id)
+        return {"ok": True}
+
     # Settings ------------------------------------------------------------
 
     @app.get(
@@ -1243,9 +1748,13 @@ def _routes(
         response_model=SettingsModel,
         dependencies=guard,
     )
-    async def get_settings() -> dict[str, Any]:
-        """Everything the settings page shows. Keys are reported as set, never echoed."""
-        return web.as_dict()
+    async def get_settings(me: Principal = caller) -> dict[str, Any]:
+        """Everything the settings page shows. Keys are reported as set, never echoed.
+
+        A member sees the workspace and the run settings; whether a key is set, and the
+        address the server listens on, are an administrator's business.
+        """
+        return _settings_view(web.as_dict(), me)
 
     @app.put(
         "/api/settings",
@@ -1253,13 +1762,24 @@ def _routes(
         response_model=SettingsModel,
         dependencies=guard,
     )
-    async def update_settings(body: Annotated[dict[str, Any], Body()]) -> dict[str, Any]:
+    async def update_settings(
+        body: Annotated[dict[str, Any], Body()], me: Principal = caller
+    ) -> dict[str, Any]:
         """Change any subset. ``ai.anthropic_key`` and ``ai.openai_key`` go to the key file."""
+        if not me.is_admin:
+            refused = sorted(_setting_names(body) - {"theme"})
+            if refused:
+                raise ApiError(
+                    403,
+                    "Forbidden",
+                    f"a member may change the theme and nothing else; {', '.join(refused)} "
+                    "is for an administrator",
+                )
         try:
             web.update(body)
         except ValueError as exc:
             raise bad_request(str(exc)) from exc
-        return web.as_dict()
+        return _settings_view(web.as_dict(), me)
 
     # AI ------------------------------------------------------------------
 
@@ -1275,16 +1795,28 @@ def _routes(
 
     # Health --------------------------------------------------------------
 
-    @app.get("/api/health", operation_id="getHealth", response_model=Health, dependencies=guard)
-    async def health() -> dict[str, Any]:
-        """Is the server up, and what is it working on?"""
-        return {
+    @app.get(
+        "/api/health",
+        operation_id="getHealth",
+        response_model=Health,
+        response_model_exclude_none=True,
+        dependencies=guard,
+    )
+    async def health(me: Principal | None = visitor) -> dict[str, Any]:
+        """Is the server up, and what is it working on?
+
+        No login: this is what a monitor and a login page both ask. Where the workspace
+        is on disk is not a stranger's business, so it is left out until someone signs in.
+        """
+        payload: dict[str, Any] = {
             "ok": True,
             "version": tq.__version__,
-            "workspace": str(workspace),
             "runs_live": supervisor.live_count(),
             "scheduler": scheduler.running,
         }
+        if me is not None:
+            payload["workspace"] = str(workspace)
+        return payload
 
 
 # --------------------------------------------------------------------------- helpers
@@ -1303,6 +1835,27 @@ def _walk(workspace: Path) -> Iterator[Path]:
             continue
         if file.is_file() and inside(workspace, file):
             yield file
+
+
+def _settings_view(data: dict[str, Any], me: Principal) -> dict[str, Any]:
+    """The settings as this caller may see them: a member is told nothing about keys."""
+    if me.is_admin:
+        return data
+    view = dict(data)
+    view["server"] = None
+    view["ai"] = {**dict(view.get("ai") or {}), "has_anthropic_key": None, "has_openai_key": None}
+    return view
+
+
+def _setting_names(patch: Any, prefix: str = "") -> set[str]:
+    """The dotted names a settings body would write, however it was nested."""
+    if not isinstance(patch, dict):
+        return set()
+    names: set[str] = set()
+    for key, value in patch.items():
+        name = f"{prefix}{key}"
+        names |= _setting_names(value, f"{name}.") if isinstance(value, dict) else {name}
+    return names
 
 
 def _existing(workspace: Path, path: str) -> Path:
@@ -1628,13 +2181,16 @@ def _frontend(app: FastAPI, settings: AppSettings) -> None:
 
 __all__ = [
     "ApiError",
+    "Auth",
     "BodyLimit",
+    "Principal",
     "TokenFilter",
     "TokenWall",
     "content_security_policy",
     "create_app",
     "inside",
     "layout_target",
+    "role_for",
     "safe_path",
     "token_ok",
 ]

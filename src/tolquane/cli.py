@@ -3,12 +3,17 @@
 from __future__ import annotations
 
 import argparse
+import ast
+import contextlib
 import importlib.util
+import inspect
 import json
+import os
 import sys
 import threading
 import time
 import webbrowser
+from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
@@ -62,17 +67,95 @@ def _capture_from_main(module: Any, path: str) -> Any:
 def _graph(args: argparse.Namespace) -> Any:
     module = _load_flow(args.flow)
     sample = getattr(args, "sample", None)
+    params = _params(args)
     if hasattr(module, "build"):
-        graph = module.build(source=_read_sample(Path(sample))) if sample else module.build()
-    elif sample:
-        raise SystemExit(
-            f"{args.flow}: --sample needs build(source=None); this flow only has main()"
-        )
+        _check_params(module.build, params, args.flow)
+        if sample:
+            params["source"] = _read_sample(Path(sample))
+        graph = module.build(**params)
+    elif sample or params:
+        flag = "--sample" if sample else "--param"
+        raise SystemExit(f"{args.flow}: {flag} needs build(source=None); this flow only has main()")
     else:
         graph = _capture_from_main(module, args.flow)
     if getattr(args, "optimize", False):
         graph = optimize(graph, verbose=True)
     return graph
+
+
+def _params(args: argparse.Namespace) -> dict[str, Any]:
+    """``--param workers=8 --param path=data.csv`` as the keywords build() is called with."""
+    values: dict[str, Any] = {}
+    for item in getattr(args, "param", None) or []:
+        name, sign, text = item.partition("=")
+        if not sign or not name.strip():
+            raise SystemExit(f"--param takes name=value, not {item!r}")
+        values[name.strip()] = _param_value(text)
+    return values
+
+
+def _param_value(text: str) -> Any:
+    """A Python literal when it is one (`8`, `0.5`, `[1, 2]`, `"x"`), a plain word otherwise."""
+    try:
+        return ast.literal_eval(text)
+    except (ValueError, SyntaxError, MemoryError, RecursionError):
+        return text
+
+
+def _check_params(build: Any, params: dict[str, Any], path: str) -> None:
+    """Every ``--param`` has to be a keyword of this flow's build(); name them all if not."""
+    try:
+        parameters = inspect.signature(build).parameters
+    except (TypeError, ValueError):  # a build() nothing can introspect: let the call speak
+        return
+    if any(p.kind is p.VAR_KEYWORD for p in parameters.values()):
+        return
+    known = [
+        name
+        for name, p in parameters.items()
+        if name != "source" and p.kind in (p.KEYWORD_ONLY, p.POSITIONAL_OR_KEYWORD)
+    ]
+    unknown = [name for name in params if name not in known]
+    if not unknown:
+        return
+    takes = f"this flow's parameters are: {', '.join(known)}" if known else "this flow has none"
+    raise SystemExit(f"{path}: build() has no parameter {unknown[0]!r}; {takes}")
+
+
+@contextlib.contextmanager
+def _environment(variables: dict[str, str]) -> Iterator[None]:
+    """``--env NAME=value`` for as long as the flow is being imported and run."""
+    previous = {name: os.environ.get(name) for name in variables}
+    os.environ.update(variables)
+    try:
+        yield
+    finally:
+        for name, old in previous.items():
+            if old is None:
+                os.environ.pop(name, None)
+            else:
+                os.environ[name] = old
+
+
+def _env(args: argparse.Namespace) -> dict[str, str]:
+    variables: dict[str, str] = {}
+    for item in getattr(args, "env", None) or []:
+        name, sign, value = item.partition("=")
+        if not sign or not name.strip():
+            raise SystemExit(f"--env takes NAME=value, not {item!r}")
+        variables[name.strip()] = value
+    return variables
+
+
+def _json_safe(value: Any) -> Any:
+    """A ``--param`` value as JSON: a tuple or a set becomes a list, anything else its text."""
+    if isinstance(value, dict):
+        return {str(key): _json_safe(item) for key, item in value.items()}
+    if isinstance(value, list | tuple | set | frozenset):
+        return [_json_safe(item) for item in value]
+    if value is None or isinstance(value, str | bool | int | float):
+        return value
+    return repr(value)
 
 
 def _read_sample(path: Path) -> list[Any]:
@@ -104,16 +187,19 @@ def cmd_draw(args: argparse.Namespace) -> int:
 def cmd_run(args: argparse.Namespace) -> int:
     if bool(args.deploy) != bool(args.group):
         raise SystemExit("--deploy and --group go together")
-    if args.events:
-        return _run_with_events(args)
-    report = run(
-        _graph(args),
-        runtime=args.runtime,
-        batch=args.batch,
-        deploy=args.deploy,
-        group=args.group,
-        trace=args.trace,
-    )
+    # The variables are in place before the flow is imported, so a module-level
+    # os.environ read sees them, and they are put back the way they were afterwards.
+    with _environment(_env(args)):
+        if args.events:
+            return _run_with_events(args)
+        report = run(
+            _graph(args),
+            runtime=args.runtime,
+            batch=args.batch,
+            deploy=args.deploy,
+            group=args.group,
+            trace=args.trace,
+        )
     if args.stats:
         print(report, file=sys.stderr)
     return 0
@@ -135,7 +221,16 @@ def _run_with_events(args: argparse.Namespace) -> int:
     with stop_on_signal(stop), capture_output(stream):
         try:
             graph = check(_graph(args))
-            stream.emit("start", graph=graph_view(graph), runtime=args.runtime, flow=args.flow)
+            stream.emit(
+                "start",
+                graph=graph_view(graph),
+                runtime=args.runtime,
+                flow=args.flow,
+                # What the run was given: the parameters by value, the environment by
+                # name only, because a variable's value is where secrets live.
+                params={name: _json_safe(v) for name, v in _params(args).items()},
+                env=sorted(_env(args)),
+            )
             report = run(
                 graph,
                 runtime=args.runtime,
@@ -367,6 +462,80 @@ def _web_check(uvicorn: Any, app: Any, settings: Any) -> int:
     return 0
 
 
+def cmd_web_users(args: argparse.Namespace) -> int:
+    """``tolquane web users ...``: who may sign in, straight in the database.
+
+    No server is started and none has to be running: the file is the one ``tolquane web``
+    would open, ``$TOLQUANE_HOME/web.db`` or ``~/.tolquane/web.db``. This is how the first
+    administrator is made on a machine that is not going to be started with ``--token``.
+    """
+    from .web.settings import default_db_path
+    from .web.store import Store
+
+    with Store(default_db_path()) as store:
+        try:
+            return _users_command(store, args)
+        except ValueError as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 1
+
+
+def _users_command(store: Any, args: argparse.Namespace) -> int:
+    """One ``users`` sub-command. A ``ValueError`` from the store is the user's mistake."""
+    from .web.store import LOCAL_USER
+
+    command = args.users_command
+    if command == "list":
+        users = store.list_users()
+        if not users:
+            print(f"no users: every request is the implicit admin {LOCAL_USER!r} on loopback")
+            return 0
+        width = max(len(user.name) for user in users)
+        for user in users:
+            state = "disabled" if user.disabled else "enabled"
+            if user.must_change_password:
+                state += ", must change password"
+            seen = user.last_seen[:19] if user.last_seen else "never"
+            print(f"{user.name:<{width}}  {user.role:<6}  {state:<32}  last seen {seen}")
+        return 0
+    if command == "add":
+        password = args.password or _ask_password(f"Password for {args.name}: ")
+        user = store.add_user(args.name, password, "admin" if args.admin else "member", False)
+        print(f"added {user.name} ({user.role})")
+        return 0
+    user = store.get_user_by_name(args.name)
+    if user is None:
+        raise ValueError(f"there is no user called {args.name!r}")
+    if command == "passwd":
+        password = args.password or _ask_password(f"New password for {user.name}: ")
+        store.update_user(user.id, password=password, must_change_password=False)
+        print(f"the password of {user.name} is changed")
+        return 0
+    if command == "disable":
+        others = [admin for admin in store.enabled_admins() if admin.id != user.id]
+        if user.role == "admin" and not others:
+            raise ValueError(
+                f"{user.name} is the last administrator who can sign in; "
+                "make somebody else an administrator first"
+            )
+        store.update_user(user.id, disabled=True)
+        print(f"{user.name} can no longer sign in, and their sessions stop working")
+        return 0
+    store.update_user(user.id, disabled=False)
+    print(f"{user.name} can sign in again")
+    return 0
+
+
+def _ask_password(prompt: str) -> str:
+    """Ask twice, without echoing, because nobody can see what they are typing."""
+    import getpass
+
+    first = getpass.getpass(prompt)
+    if first != getpass.getpass("Again: "):
+        raise ValueError("the two passwords are not the same; nothing was changed")
+    return first
+
+
 def cmd_build(args: argparse.Namespace) -> int:
     from .ai import Builder, RecordingProvider, ReplayProvider, make_provider
 
@@ -455,7 +624,23 @@ def main(argv: list[str] | None = None) -> int:
         p = sub.add_parser(name, help=help_text)
         p.add_argument("flow", help="path to a flow.py that defines build(source=None)")
         p.add_argument("--sample", default=None, help="feed a sample file instead of the source")
+        if name in ("run", "check", "explain", "draw"):
+            p.add_argument(
+                "--param",
+                action="append",
+                default=None,
+                metavar="NAME=VALUE",
+                help="a keyword for build(): --param workers=8 (repeatable; the value is a "
+                "Python literal, a plain word stays a string)",
+            )
         if name == "run":
+            p.add_argument(
+                "--env",
+                action="append",
+                default=None,
+                metavar="NAME=VALUE",
+                help="an environment variable for the flow, set before it is imported (repeatable)",
+            )
             p.add_argument("--runtime", default="threads", choices=["threads", "processes", "sync"])
             p.add_argument("--batch", type=int, default=32)
             p.add_argument("--stats", action="store_true", help="print the run report")
@@ -525,6 +710,26 @@ def main(argv: list[str] | None = None) -> int:
         "--version", action="store_true", help="print the version, the GUI assets and the server"
     )
     web_p.set_defaults(func=cmd_web)
+
+    # tolquane web users ...: the accounts, without a server. Everything else about
+    # `web` is the server, so the users live one level down rather than as flags.
+    web_sub = web_p.add_subparsers(dest="web_command")
+    users_p = web_sub.add_parser("users", help="add and manage the people who can sign in")
+    users_sub = users_p.add_subparsers(dest="users_command", required=True)
+    add_p = users_sub.add_parser("add", help="add a user (prompts for the password)")
+    add_p.add_argument("name", help="lower case, 2 to 32 of letters, digits, '_', '.' or '-'")
+    add_p.add_argument("--admin", action="store_true", help="make them an administrator")
+    add_p.add_argument("--password", default=None, help="the password, instead of a prompt")
+    passwd_p = users_sub.add_parser("passwd", help="set a user's password")
+    passwd_p.add_argument("name")
+    passwd_p.add_argument("--password", default=None, help="the password, instead of a prompt")
+    list_p = users_sub.add_parser("list", help="who there is, and when they were last seen")
+    disable_p = users_sub.add_parser("disable", help="stop a user signing in, sessions and all")
+    disable_p.add_argument("name")
+    enable_p = users_sub.add_parser("enable", help="let a user sign in again")
+    enable_p.add_argument("name")
+    for leaf in (add_p, passwd_p, list_p, disable_p, enable_p):
+        leaf.set_defaults(func=cmd_web_users)
 
     args = parser.parse_args(argv)
     try:

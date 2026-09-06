@@ -58,6 +58,8 @@ python -m tolquane.web.model graph flow.py        # prints graph_view as JSON
   (`__call__`, `on_start`, `on_end`), `is_async` for coroutines and async generators.
   `params` are the positional parameter names of the function or of `__call__`.
 - `flow`: the tree of the expression `build()` returns.
+- `params`: `build()`'s keyword-only parameters, in order, as section E describes them;
+  `[]` when it has none, and absent in a model written before 1.3.
 - `start`: the id of the node used when `source is None`, following the convention
   `start = <node> if source is None else tq.from_iterable(source)`; `null` when the
   flow has no source slot (then `build` ignores `source`).
@@ -418,44 +420,66 @@ and no users yet: the token acts as an admin API token, and lets the first admin
 created from the login page). The `--token` value keeps working as an admin API token
 in every mode, for scripts and setup.
 
+With `--token` *and* users, the wall of S4 takes a session or an API token as well as
+the token itself, and the public routes (`GET /api/health`, `GET /api/auth/me`,
+`POST /api/auth/login`) stop asking for the token: a login page that needed the token
+to offer a login box would be a lock with two keys. With `--token` and no users -- token
+mode -- nothing under `/api` answers without it, exactly as in 1.2.
+
 **Store.** `users(id, name unique, role 'admin'|'member', password_hash, created,
 disabled, must_change_password)` with `hashlib.scrypt` (`n=2**14, r=8, p=1`, per-user
 salt, stored as `scrypt$<salt b64>$<hash b64>`); `sessions(id, token_hash sha256,
 user_id, kind 'session'|'api', label, created, expires, last_seen)`. Session tokens
 are `secrets.token_urlsafe(32)`, shown once, sliding 30-day expiry; API tokens do not
-expire. `runs` and `schedules` gain a `user` column (the name; `local` in local mode).
+expire. `runs` and `schedules` gain a `user` column (the name; `local` in local mode,
+and `local` for every row written before 1.3). A password change keeps the sessions
+that were open: it is made from one of them. Disabling a user stops theirs at once, and
+deleting a user takes them with it.
 
 **Routes.**
 
 ```
 POST /api/auth/login        {"name", "password"} -> {"token", "user"}; 401 on a wrong pair, 403 when disabled
 POST /api/auth/logout       -> {"ok": true}   (the session is deleted)
-GET  /api/auth/me           -> {"user": {"id", "name", "role", "must_change_password"} | null, "mode": "local"|"users"|"token",
-                                "can_setup": true when mode is token and no users exist}
-POST /api/auth/setup        {"name", "password"} -> creates the first admin; only in token mode with the token, 409 afterwards
-POST /api/auth/password     {"current", "new"} -> {"ok": true}; clears must_change_password
+GET  /api/auth/me           -> {"user": {"id", "name", "role", "created", "disabled", "must_change_password", "last_seen"} | null,
+                                "mode": "local"|"users"|"token", "can_setup": true when mode is token and no users exist}
+                            local mode and the --token value are users too, with id 0 and the names `local` and `token`
+POST /api/auth/setup        {"name", "password"} -> 201 {"token", "user"}, signed in as the first admin;
+                            only in token mode with the token, 409 afterwards, 403 without --token
+POST /api/auth/password     {"current", "new"} -> {"ok": true}; clears must_change_password; 401 on a wrong current
 GET  /api/auth/tokens       -> {"tokens": [{"id", "label", "created", "last_seen"}]}
-POST /api/auth/tokens       {"label"} -> {"id", "token"}   (the token is shown once)
-DELETE /api/auth/tokens/{id}
+POST /api/auth/tokens       {"label"} -> 201 {"id", "token", "label"}   (the token is shown once)
+DELETE /api/auth/tokens/{id} -> {"ok": true}; somebody else's token id is a 404
 GET  /api/users             admin -> {"users": [{"id", "name", "role", "created", "disabled", "must_change_password", "last_seen"}]}
-POST /api/users             admin {"name", "role", "password"} -> the user (must_change_password true)
-PUT  /api/users/{id}        admin {"role"?, "disabled"?, "password"?} -> the user; 400 when it would leave no enabled admin
+POST /api/users             admin {"name", "role", "password"} -> 201, the user (must_change_password true)
+PUT  /api/users/{id}        admin {"role"?, "disabled"?, "password"?} -> the user; 400 when it would leave no enabled admin;
+                            a new password sets must_change_password
 DELETE /api/users/{id}      admin -> {"ok": true}; 400 for yourself or the last admin
 ```
 
-The bearer token is a session token, an API token, or the `--token` value. Passwords
-are at least 8 characters. Names are `[a-z0-9_.-]{2,32}`, lower-cased.
+The bearer token is a session token, an API token, or the `--token` value, in the
+`Authorization` header or as `?token=`. The three `/api/auth` routes that are about an
+account -- `password`, `tokens`, `tokens/{id}` -- answer 400 to the local admin and to
+the `--token` value, which are not people and have no password to change.
+Passwords are at least 8 characters. Names are `[a-z0-9_.-]{2,32}`, lower-cased.
 
-**Roles.** `member`: flows, runs, schedules, AI, history; `GET /api/settings` (keys
-and server section hidden); `PUT /api/settings` only for `theme`. `admin`: everything,
-including users, settings, keys, `history/init`. A route the role cannot use answers
-403 `{"error": {"type": "Forbidden", ...}}`. `GET /api/health` needs no login and
-omits `workspace` when the caller is not signed in.
+**Roles.** `member`: flows, runs, schedules, AI, history; `GET /api/settings` (the
+`server` section and the `has_*_key` flags come back `null`); `PUT /api/settings` only
+for `theme`, and 403 naming the other fields. `admin`: everything, including users,
+settings, keys, `history/init`. A route the role cannot use answers 403 `{"error":
+{"type": "Forbidden", ...}}`. `GET /api/health` needs no login and leaves `workspace`
+out altogether when the caller is not signed in. The table lives in
+`tolquane.web.server.ROUTE_ROLES`, as data: everything under `/api/users` is `admin`,
+`GET /api/health`, `GET /api/auth/me`, `POST /api/auth/login` and `POST /api/auth/setup`
+are public, and everything else needs a signed-in member.
 
 **CLI.** `tolquane web users add NAME [--admin] [--password P]` (prompts when no
-`--password`), `users list`, `users disable NAME`, `users enable NAME`, `users passwd
-NAME`; all operate on the store named by `TOLQUANE_HOME` or the defaults, without a
-running server.
+`--password`, twice, and refuses two that differ), `users list`, `users disable NAME`,
+`users enable NAME`, `users passwd NAME [--password P]`; all operate on the store named
+by `TOLQUANE_HOME` or the defaults, without a running server. A user made at the command
+line is not asked to change their password: whoever typed it chose it. A duplicate name,
+a name that is not a name, a password under 8 characters, an unknown user and disabling
+the last administrator each print one line and exit 1.
 
 **Frontend.** A `/login` page (name, password; "create the first admin" in token
 mode; the token dialog stays for token mode); an account menu at the bottom of the
@@ -477,8 +501,10 @@ makes the file `CodeOnly` with that reason.
 **CLI.** `tolquane run|check|explain|draw flow.py --param name=value` (repeatable;
 `value` goes through `ast.literal_eval`, a plain word stays a string) and
 `tolquane run --env NAME=value` (repeatable). `build()` is called with the parameters
-as keywords; unknown names are an error naming the flow's parameters. The `--events`
-`start` event carries `params` and `env` (names only).
+as keywords; unknown names are an error naming the flow's parameters. `--env` is applied
+to the process environment before the flow module is imported and put back afterwards,
+so an in-process caller is left as it was found. The `--events` `start` event carries
+`params` (what `--param` gave, JSON-safe) and `env` (names only).
 
 **Runs and schedules.** `POST /api/runs` and the schedule bodies gain `params: {name:
 value}` and `env: {NAME: value}` (both JSON, stored with the run and the schedule);
@@ -493,12 +519,16 @@ install tolquane` line when that fails or the major version differs. `env: {NAME
 value}`: applied to every run; admins see values, members see names only
 (`env_names`). Both in `GET /api/settings`.
 
-**Import probe.** `tolquane.web.probe.probe_imports(source: str, python: str) ->
-list[Probe]` with `Probe(module, ok, hint)`: the top-level modules the file imports
-(ast), minus the standard library (`sys.stdlib_module_names`) and `tolquane`, each
-tried with `python -c "import <module>"` in one child call; `hint` is `pip install
+**Import probe.** `tolquane.web.probe.probe_imports(source: str, python: str, *, path=None,
+timeout=20.0) -> list[Probe]` with `Probe(module, ok, hint)`: the top-level modules the
+file imports (ast, every statement including the ones inside functions), minus the
+standard library (`sys.stdlib_module_names`), `tolquane` and the flow's own neighbours
+(a `.py` or a package next to `path`, which is why the call takes one), each tried with
+`python -c "import <module>"` in one child call, in sorted order; `hint` is `pip install
 <name>` with a small map for the usual renames (`cv2` opencv-python, `PIL` pillow,
 `sklearn` scikit-learn, `yaml` pyyaml, `bs4` beautifulsoup4, `dotenv` python-dotenv).
+An interpreter that cannot be run or does not answer within `timeout` is not an
+exception: every module comes back `ok=False` with `could not ask <python>: <reason>`.
 `POST /api/flows/{path}/check` gains `"imports": [Probe]`; the frontend shows a
 missing import as a warning in Problems with the hint, and the Run popover shows the
 interpreter in use.

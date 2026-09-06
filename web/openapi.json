@@ -11,24 +11,6 @@
         "summary": "List Flows",
         "description": "Every ``.py`` file in the workspace, with when it changed and how it last ran.",
         "operationId": "listFlows",
-        "parameters": [
-          {
-            "name": "authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          }
-        ],
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -39,16 +21,6 @@
                 }
               }
             }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
           }
         }
       },
@@ -56,33 +28,15 @@
         "summary": "Create Flow",
         "description": "Write a new flow from a template or from a model, and return it parsed.",
         "operationId": "createFlow",
-        "parameters": [
-          {
-            "name": "authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          }
-        ],
         "requestBody": {
-          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/NewFlow"
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "201": {
@@ -113,33 +67,15 @@
         "summary": "Parse Flow",
         "description": "Read source that is not saved yet: the model, or why it is code-only.",
         "operationId": "parseFlow",
-        "parameters": [
-          {
-            "name": "authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          }
-        ],
         "requestBody": {
-          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/ParseRequest"
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "200": {
@@ -170,33 +106,15 @@
         "summary": "Generate Flow",
         "description": "The Python for a model. Pure text: nothing is imported or run.",
         "operationId": "generateFlow",
-        "parameters": [
-          {
-            "name": "authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          }
-        ],
         "requestBody": {
-          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/GenerateRequest"
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "200": {
@@ -236,22 +154,6 @@
               "type": "string",
               "title": "Path"
             }
-          },
-          {
-            "name": "authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
           }
         ],
         "responses": {
@@ -289,22 +191,6 @@
             "schema": {
               "type": "string",
               "title": "Path"
-            }
-          },
-          {
-            "name": "authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
             }
           }
         ],
@@ -354,22 +240,6 @@
               "type": "string",
               "title": "Path"
             }
-          },
-          {
-            "name": "authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
           }
         ],
         "responses": {
@@ -409,22 +279,6 @@
             "schema": {
               "type": "string",
               "title": "Path"
-            }
-          },
-          {
-            "name": "authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
             }
           }
         ],
@@ -478,22 +332,6 @@
               "type": "string",
               "title": "Path"
             }
-          },
-          {
-            "name": "authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
           }
         ],
         "requestBody": {
@@ -544,22 +382,6 @@
               "type": "string",
               "title": "Path"
             }
-          },
-          {
-            "name": "authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
           }
         ],
         "responses": {
@@ -599,22 +421,6 @@
             "schema": {
               "type": "string",
               "title": "Path"
-            }
-          },
-          {
-            "name": "authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
             }
           }
         ],
@@ -656,22 +462,6 @@
               "type": "string",
               "title": "Path"
             }
-          },
-          {
-            "name": "authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
           }
         ],
         "responses": {
@@ -711,22 +501,6 @@
             "schema": {
               "type": "string",
               "title": "Path"
-            }
-          },
-          {
-            "name": "authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
             }
           }
         ],
@@ -776,24 +550,6 @@
         "summary": "Start Run",
         "description": "Start a flow in a child process and return the run that was recorded.",
         "operationId": "startRun",
-        "parameters": [
-          {
-            "name": "authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          }
-        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -857,22 +613,6 @@
               "default": 50,
               "title": "Limit"
             }
-          },
-          {
-            "name": "authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
           }
         ],
         "responses": {
@@ -911,22 +651,6 @@
             "schema": {
               "type": "integer",
               "title": "Run Id"
-            }
-          },
-          {
-            "name": "authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
             }
           }
         ],
@@ -968,22 +692,6 @@
               "type": "integer",
               "title": "Run Id"
             }
-          },
-          {
-            "name": "authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
           }
         ],
         "responses": {
@@ -1024,22 +732,6 @@
               "type": "integer",
               "title": "Run Id"
             }
-          },
-          {
-            "name": "authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
           }
         ],
         "responses": {
@@ -1079,22 +771,6 @@
             "schema": {
               "type": "integer",
               "title": "Run Id"
-            }
-          },
-          {
-            "name": "authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
             }
           }
         ],
@@ -1140,22 +816,6 @@
               ],
               "title": "Flow"
             }
-          },
-          {
-            "name": "authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
           }
         ],
         "responses": {
@@ -1185,24 +845,6 @@
         "summary": "Create Schedule",
         "description": "Add a schedule. The cron expression is checked before anything is stored.",
         "operationId": "createSchedule",
-        "parameters": [
-          {
-            "name": "authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          }
-        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -1249,22 +891,6 @@
             "schema": {
               "type": "integer",
               "title": "Schedule Id"
-            }
-          },
-          {
-            "name": "authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
             }
           }
         ],
@@ -1313,22 +939,6 @@
               "type": "integer",
               "title": "Schedule Id"
             }
-          },
-          {
-            "name": "authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
           }
         ],
         "responses": {
@@ -1360,33 +970,15 @@
         "summary": "Preview Schedule",
         "description": "What an expression means, and the next five times it fires.",
         "operationId": "previewSchedule",
-        "parameters": [
-          {
-            "name": "authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          }
-        ],
         "requestBody": {
-          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/CronPreviewRequest"
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "200": {
@@ -1426,22 +1018,6 @@
               "type": "integer",
               "title": "Schedule Id"
             }
-          },
-          {
-            "name": "authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
           }
         ],
         "responses": {
@@ -1468,26 +1044,230 @@
         }
       }
     },
-    "/api/settings": {
+    "/api/auth/login": {
+      "post": {
+        "summary": "Login",
+        "description": "Sign in. The session token comes back once; it is stored only as a sha256.",
+        "operationId": "login",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/logout": {
+      "post": {
+        "summary": "Logout",
+        "description": "Forget this session. A token that is not a session has nothing to forget.",
+        "operationId": "logout",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ok"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/me": {
       "get": {
-        "summary": "Get Settings",
-        "description": "Everything the settings page shows. Keys are reported as set, never echoed.",
-        "operationId": "getSettings",
+        "summary": "Whoami",
+        "description": "Who the caller is and what kind of server this is: the page's first question.",
+        "operationId": "whoami",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/setup": {
+      "post": {
+        "summary": "Setup First Admin",
+        "description": "Make the first administrator, from the login page of a ``--token`` server.",
+        "operationId": "setupFirstAdmin",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/password": {
+      "post": {
+        "summary": "Change Password",
+        "description": "Change your own password. Sessions live on: this is the browser that asked.",
+        "operationId": "changePassword",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasswordChange"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ok"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/tokens": {
+      "get": {
+        "summary": "List Tokens",
+        "description": "Your API tokens. The tokens themselves are not kept, so they are not here.",
+        "operationId": "listApiTokens",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenList"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create Token",
+        "description": "Make an API token for scripts. It never expires and is shown this once.",
+        "operationId": "createApiToken",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewToken"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssuedToken"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/tokens/{token_id}": {
+      "delete": {
+        "summary": "Delete Token",
+        "description": "Take one of your API tokens back. Anything using it stops working at once.",
+        "operationId": "deleteApiToken",
         "parameters": [
           {
-            "name": "authorization",
-            "in": "header",
-            "required": false,
+            "name": "token_id",
+            "in": "path",
+            "required": true,
             "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
+              "type": "integer",
+              "title": "Token Id"
             }
           }
         ],
@@ -1497,7 +1277,113 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SettingsModel"
+                  "$ref": "#/components/schemas/Ok"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/users": {
+      "get": {
+        "summary": "List Users",
+        "description": "Everybody who can sign in, with when each was last seen.",
+        "operationId": "listUsers",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserList"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create User",
+        "description": "Add a user with a password they are asked to change at their first sign-in.",
+        "operationId": "createUser",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewUser"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserModel"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/users/{user_id}": {
+      "put": {
+        "summary": "Update User",
+        "description": "Change a role, disable an account, or set a password the user must change.",
+        "operationId": "updateUser",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "User Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserChange"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserModel"
                 }
               }
             }
@@ -1514,39 +1400,78 @@
           }
         }
       },
+      "delete": {
+        "summary": "Delete User",
+        "description": "Remove a user, and with them every session and token they had.",
+        "operationId": "deleteUser",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "User Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ok"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/settings": {
+      "get": {
+        "summary": "Get Settings",
+        "description": "Everything the settings page shows. Keys are reported as set, never echoed.\n\nA member sees the workspace and the run settings; whether a key is set, and the\naddress the server listens on, are an administrator's business.",
+        "operationId": "getSettings",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SettingsModel"
+                }
+              }
+            }
+          }
+        }
+      },
       "put": {
         "summary": "Update Settings",
         "description": "Change any subset. ``ai.anthropic_key`` and ``ai.openai_key`` go to the key file.",
         "operationId": "updateSettings",
-        "parameters": [
-          {
-            "name": "authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          }
-        ],
         "requestBody": {
-          "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "type": "object",
                 "additionalProperties": true,
+                "type": "object",
                 "title": "Body"
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "200": {
@@ -1577,33 +1502,15 @@
         "summary": "Ai Chat",
         "description": "The builder, as an event stream: its words, its tool calls, the flow it wrote.",
         "operationId": "aiChat",
-        "parameters": [
-          {
-            "name": "authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          }
-        ],
         "requestBody": {
-          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/ChatRequest"
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "200": {
@@ -1630,26 +1537,8 @@
     "/api/health": {
       "get": {
         "summary": "Health",
-        "description": "Is the server up, and what is it working on?",
+        "description": "Is the server up, and what is it working on?\n\nNo login: this is what a monitor and a login page both ask. Where the workspace\nis on disk is not a stranger's business, so it is left out until someone signs in.",
         "operationId": "getHealth",
-        "parameters": [
-          {
-            "name": "authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          }
-        ],
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -1657,16 +1546,6 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Health"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -1695,16 +1574,32 @@
             "title": "Model"
           },
           "has_anthropic_key": {
-            "type": "boolean",
-            "title": "Has Anthropic Key"
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Has Anthropic Key",
+            "description": "null: not an admin"
           },
           "has_openai_key": {
-            "type": "boolean",
-            "title": "Has Openai Key"
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Has Openai Key",
+            "description": "null: not an admin"
           }
         },
         "type": "object",
-        "required": ["provider", "has_anthropic_key", "has_openai_key"],
+        "required": ["provider"],
         "title": "AiSettings"
       },
       "ChatMessage": {
@@ -2021,8 +1916,16 @@
             "title": "Version"
           },
           "workspace": {
-            "type": "string",
-            "title": "Workspace"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workspace",
+            "description": "left out when the caller is not signed in"
           },
           "runs_live": {
             "type": "integer",
@@ -2034,8 +1937,86 @@
           }
         },
         "type": "object",
-        "required": ["ok", "version", "workspace", "runs_live", "scheduler"],
+        "required": ["ok", "version", "runs_live", "scheduler"],
         "title": "Health"
+      },
+      "IssuedToken": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "token": {
+            "type": "string",
+            "title": "Token",
+            "description": "shown once; only its sha256 is kept"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": ["id", "token"],
+        "title": "IssuedToken"
+      },
+      "LoginRequest": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "password": {
+            "type": "string",
+            "title": "Password"
+          }
+        },
+        "type": "object",
+        "required": ["name", "password"],
+        "title": "LoginRequest"
+      },
+      "LoginResult": {
+        "properties": {
+          "token": {
+            "type": "string",
+            "title": "Token",
+            "description": "the session token; it is not shown again"
+          },
+          "user": {
+            "$ref": "#/components/schemas/UserModel"
+          }
+        },
+        "type": "object",
+        "required": ["token", "user"],
+        "title": "LoginResult"
+      },
+      "MeResult": {
+        "properties": {
+          "user": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/UserModel"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "mode": {
+            "type": "string",
+            "title": "Mode",
+            "description": "local | users | token"
+          },
+          "can_setup": {
+            "type": "boolean",
+            "title": "Can Setup",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": ["mode"],
+        "title": "MeResult"
       },
       "NewFlow": {
         "properties": {
@@ -2102,6 +2083,37 @@
         "type": "object",
         "required": ["flow", "cron"],
         "title": "NewSchedule"
+      },
+      "NewToken": {
+        "properties": {
+          "label": {
+            "type": "string",
+            "title": "Label",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "title": "NewToken"
+      },
+      "NewUser": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "password": {
+            "type": "string",
+            "title": "Password"
+          },
+          "role": {
+            "type": "string",
+            "title": "Role",
+            "default": "member"
+          }
+        },
+        "type": "object",
+        "required": ["name", "password"],
+        "title": "NewUser"
       },
       "Ok": {
         "properties": {
@@ -2221,6 +2233,22 @@
         "type": "object",
         "title": "ParseResult"
       },
+      "PasswordChange": {
+        "properties": {
+          "current": {
+            "type": "string",
+            "title": "Current",
+            "default": ""
+          },
+          "new": {
+            "type": "string",
+            "title": "New"
+          }
+        },
+        "type": "object",
+        "required": ["new"],
+        "title": "PasswordChange"
+      },
       "RenameFlow": {
         "properties": {
           "path": {
@@ -2274,6 +2302,11 @@
           "trigger": {
             "type": "string",
             "title": "Trigger"
+          },
+          "user": {
+            "type": "string",
+            "title": "User",
+            "default": "local"
           },
           "started": {
             "type": "string",
@@ -2478,6 +2511,11 @@
             "type": "string",
             "title": "Created"
           },
+          "user": {
+            "type": "string",
+            "title": "User",
+            "default": "local"
+          },
           "last_run": {
             "anyOf": [
               {
@@ -2597,7 +2635,15 @@
             "$ref": "#/components/schemas/AiSettings"
           },
           "server": {
-            "$ref": "#/components/schemas/ServerSettings"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ServerSettings"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "the address and whether a token is set; admins only"
           }
         },
         "type": "object",
@@ -2611,8 +2657,7 @@
           "cancel_grace",
           "keep_traces_days",
           "theme",
-          "ai",
-          "server"
+          "ai"
         ],
         "title": "SettingsModel"
       },
@@ -2674,6 +2719,150 @@
         "type": "object",
         "required": ["path"],
         "title": "StartRun"
+      },
+      "TokenList": {
+        "properties": {
+          "tokens": {
+            "items": {
+              "$ref": "#/components/schemas/TokenModel"
+            },
+            "type": "array",
+            "title": "Tokens"
+          }
+        },
+        "type": "object",
+        "required": ["tokens"],
+        "title": "TokenList"
+      },
+      "TokenModel": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label",
+            "default": ""
+          },
+          "created": {
+            "type": "string",
+            "title": "Created"
+          },
+          "last_seen": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Seen"
+          }
+        },
+        "type": "object",
+        "required": ["id", "created"],
+        "title": "TokenModel"
+      },
+      "UserChange": {
+        "properties": {
+          "role": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Role"
+          },
+          "disabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Disabled"
+          },
+          "password": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Password"
+          }
+        },
+        "type": "object",
+        "title": "UserChange"
+      },
+      "UserList": {
+        "properties": {
+          "users": {
+            "items": {
+              "$ref": "#/components/schemas/UserModel"
+            },
+            "type": "array",
+            "title": "Users"
+          }
+        },
+        "type": "object",
+        "required": ["users"],
+        "title": "UserList"
+      },
+      "UserModel": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id",
+            "description": "0 for the implicit local admin and for the server token"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "role": {
+            "type": "string",
+            "title": "Role"
+          },
+          "created": {
+            "type": "string",
+            "title": "Created",
+            "default": ""
+          },
+          "disabled": {
+            "type": "boolean",
+            "title": "Disabled",
+            "default": false
+          },
+          "must_change_password": {
+            "type": "boolean",
+            "title": "Must Change Password",
+            "default": false
+          },
+          "last_seen": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Seen"
+          }
+        },
+        "type": "object",
+        "required": ["id", "name", "role"],
+        "title": "UserModel"
       },
       "ValidationError": {
         "properties": {

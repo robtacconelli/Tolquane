@@ -92,7 +92,7 @@ def test_a_later_migration_adds_a_column_to_an_existing_file(tmp_path: Path) -> 
     store_module._MIGRATIONS.append(add_note)
     try:
         with Store(path) as second:
-            assert second.version == schema_version() == 2
+            assert second.version == schema_version() == len(store_module._MIGRATIONS)
             assert second.get_run(run.id) is not None
             assert "note" in columns_of(path, "runs")
     finally:
@@ -205,6 +205,7 @@ def test_run_to_dict_is_json_ready(store: Store) -> None:
         "log",
         "trace_path",
         "error",
+        "user",
     }
 
 
@@ -296,6 +297,7 @@ def test_schedule_to_dict_is_json_ready(store: Store) -> None:
         "last_run",
         "last_status",
         "next_run",
+        "user",
     }
 
 

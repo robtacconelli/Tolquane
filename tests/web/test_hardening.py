@@ -26,10 +26,14 @@ from test_server import HELLO, make_settings, wait_for_run, workspace  # noqa: F
 
 from tolquane.web import supervisor as sup
 from tolquane.web.server import (
+    ADMIN,
+    MEMBER,
+    PUBLIC,
     TokenFilter,
     content_security_policy,
     create_app,
     hide_tokens_in_logs,
+    role_for,
     token_ok,
 )
 from tolquane.web.settings import WebSettings, packaged_static
@@ -232,6 +236,68 @@ def test_static_files_are_served_without_a_token(tmp_path: Path, workspace: Path
         assert client.get("/assets/app.js").status_code == 200
         assert client.get("/runs/1").status_code == 200  # a route inside the app
         assert client.get("/api/flows").status_code == 401
+
+
+# ------------------------------------------------------------------------------ the users
+
+
+PASSWORD = "a-long-enough-password"
+
+
+def test_a_session_gets_past_the_token_wall_and_a_stranger_does_not(
+    tmp_path: Path,
+    workspace: Path,  # noqa: F811
+) -> None:
+    """With ``--token`` and users, a signed-in person is as good as the token.
+
+    Otherwise a shared server would need two secrets to answer one request, and the
+    login page could not be reached to get the second.
+    """
+    settings = make_settings(tmp_path, workspace, token=TOKEN)
+    with Store(settings.db_path) as store:
+        store.add_user("ada", PASSWORD, "admin", False)
+    with TestClient(create_app(settings)) as client:
+        assert client.get("/api/flows").status_code == 401
+        assert client.get("/api/flows", headers={"Authorization": "Bearer nope"}).status_code == 401
+        assert client.get("/api/flows", headers=auth()).status_code == 200
+        token = client.post("/api/auth/login", json={"name": "ada", "password": PASSWORD}).json()[
+            "token"
+        ]
+        assert client.get(
+            "/api/flows", headers={"Authorization": f"Bearer {token}"}
+        ).status_code == (200)
+
+
+def test_no_answer_ever_carries_a_password_hash(
+    tmp_path: Path,
+    workspace: Path,  # noqa: F811
+) -> None:
+    """The hash is in one column and stays there, whichever route asks about a user."""
+    settings = make_settings(tmp_path, workspace)
+    with Store(settings.db_path) as store:
+        store.add_user("ada", PASSWORD, "admin", False)
+    with TestClient(create_app(settings)) as client:
+        token = client.post("/api/auth/login", json={"name": "ada", "password": PASSWORD}).json()[
+            "token"
+        ]
+        headers = {"Authorization": f"Bearer {token}"}
+        for url in ("/api/users", "/api/auth/me", "/api/auth/tokens"):
+            body = client.get(url, headers=headers).text
+            assert "scrypt$" not in body, url
+            assert "password_hash" not in body, url
+            assert PASSWORD not in body, url
+
+
+def test_every_route_in_the_document_is_in_the_role_table(client: TestClient) -> None:
+    """The table answers for every path the contract has, and for the ones it has not."""
+    document = client.get("/api/openapi.json").json()
+    for path, methods in document["paths"].items():
+        for method in methods:
+            role = role_for(method, _example(path))
+            assert role in (PUBLIC, MEMBER, ADMIN), f"{method.upper()} {path}"
+            if path.startswith("/api/users"):
+                assert role == ADMIN, f"{method.upper()} {path} is not for administrators"
+    assert role_for("GET", "/api/nothing-here") == MEMBER, "an unknown path is not a way in"
 
 
 # -------------------------------------------------------------------------- the workspace

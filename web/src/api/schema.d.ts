@@ -396,6 +396,198 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/auth/login': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Login
+     * @description Sign in. The session token comes back once; it is stored only as a sha256.
+     */
+    post: operations['login'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/auth/logout': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Logout
+     * @description Forget this session. A token that is not a session has nothing to forget.
+     */
+    post: operations['logout'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/auth/me': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Whoami
+     * @description Who the caller is and what kind of server this is: the page's first question.
+     */
+    get: operations['whoami'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/auth/setup': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Setup First Admin
+     * @description Make the first administrator, from the login page of a ``--token`` server.
+     */
+    post: operations['setupFirstAdmin'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/auth/password': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Change Password
+     * @description Change your own password. Sessions live on: this is the browser that asked.
+     */
+    post: operations['changePassword'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/auth/tokens': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List Tokens
+     * @description Your API tokens. The tokens themselves are not kept, so they are not here.
+     */
+    get: operations['listApiTokens'];
+    put?: never;
+    /**
+     * Create Token
+     * @description Make an API token for scripts. It never expires and is shown this once.
+     */
+    post: operations['createApiToken'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/auth/tokens/{token_id}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    /**
+     * Delete Token
+     * @description Take one of your API tokens back. Anything using it stops working at once.
+     */
+    delete: operations['deleteApiToken'];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/users': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List Users
+     * @description Everybody who can sign in, with when each was last seen.
+     */
+    get: operations['listUsers'];
+    put?: never;
+    /**
+     * Create User
+     * @description Add a user with a password they are asked to change at their first sign-in.
+     */
+    post: operations['createUser'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/users/{user_id}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /**
+     * Update User
+     * @description Change a role, disable an account, or set a password the user must change.
+     */
+    put: operations['updateUser'];
+    post?: never;
+    /**
+     * Delete User
+     * @description Remove a user, and with them every session and token they had.
+     */
+    delete: operations['deleteUser'];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/settings': {
     parameters: {
       query?: never;
@@ -406,6 +598,9 @@ export interface paths {
     /**
      * Get Settings
      * @description Everything the settings page shows. Keys are reported as set, never echoed.
+     *
+     *     A member sees the workspace and the run settings; whether a key is set, and the
+     *     address the server listens on, are an administrator's business.
      */
     get: operations['getSettings'];
     /**
@@ -450,6 +645,9 @@ export interface paths {
     /**
      * Health
      * @description Is the server up, and what is it working on?
+     *
+     *     No login: this is what a monitor and a login page both ask. Where the workspace
+     *     is on disk is not a stranger's business, so it is left out until someone signs in.
      */
     get: operations['getHealth'];
     put?: never;
@@ -470,10 +668,16 @@ export interface components {
       provider: string;
       /** Model */
       model?: string | null;
-      /** Has Anthropic Key */
-      has_anthropic_key: boolean;
-      /** Has Openai Key */
-      has_openai_key: boolean;
+      /**
+       * Has Anthropic Key
+       * @description null: not an admin
+       */
+      has_anthropic_key?: boolean | null;
+      /**
+       * Has Openai Key
+       * @description null: not an admin
+       */
+      has_openai_key?: boolean | null;
     };
     /** ChatMessage */
     ChatMessage: {
@@ -598,12 +802,60 @@ export interface components {
       ok: boolean;
       /** Version */
       version: string;
-      /** Workspace */
-      workspace: string;
+      /**
+       * Workspace
+       * @description left out when the caller is not signed in
+       */
+      workspace?: string | null;
       /** Runs Live */
       runs_live: number;
       /** Scheduler */
       scheduler: boolean;
+    };
+    /** IssuedToken */
+    IssuedToken: {
+      /** Id */
+      id: number;
+      /**
+       * Token
+       * @description shown once; only its sha256 is kept
+       */
+      token: string;
+      /**
+       * Label
+       * @default
+       */
+      label: string;
+    };
+    /** LoginRequest */
+    LoginRequest: {
+      /** Name */
+      name: string;
+      /** Password */
+      password: string;
+    };
+    /** LoginResult */
+    LoginResult: {
+      /**
+       * Token
+       * @description the session token; it is not shown again
+       */
+      token: string;
+      user: components['schemas']['UserModel'];
+    };
+    /** MeResult */
+    MeResult: {
+      user?: components['schemas']['UserModel'] | null;
+      /**
+       * Mode
+       * @description local | users | token
+       */
+      mode: string;
+      /**
+       * Can Setup
+       * @default false
+       */
+      can_setup: boolean;
     };
     /** NewFlow */
     NewFlow: {
@@ -634,6 +886,26 @@ export interface components {
        * @default true
        */
       enabled: boolean;
+    };
+    /** NewToken */
+    NewToken: {
+      /**
+       * Label
+       * @default
+       */
+      label: string;
+    };
+    /** NewUser */
+    NewUser: {
+      /** Name */
+      name: string;
+      /** Password */
+      password: string;
+      /**
+       * Role
+       * @default member
+       */
+      role: string;
     };
     /** Ok */
     Ok: {
@@ -690,6 +962,16 @@ export interface components {
         [key: string]: unknown;
       } | null;
     };
+    /** PasswordChange */
+    PasswordChange: {
+      /**
+       * Current
+       * @default
+       */
+      current: string;
+      /** New */
+      new: string;
+    };
     /** RenameFlow */
     RenameFlow: {
       /** Path */
@@ -712,6 +994,11 @@ export interface components {
       sample?: string | null;
       /** Trigger */
       trigger: string;
+      /**
+       * User
+       * @default local
+       */
+      user: string;
       /** Started */
       started: string;
       /** Ended */
@@ -781,6 +1068,11 @@ export interface components {
       enabled: boolean;
       /** Created */
       created: string;
+      /**
+       * User
+       * @default local
+       */
+      user: string;
       /** Last Run */
       last_run?: number | null;
       /** Last Status */
@@ -822,7 +1114,8 @@ export interface components {
       /** Theme */
       theme: string;
       ai: components['schemas']['AiSettings'];
-      server: components['schemas']['ServerSettings'];
+      /** @description the address and whether a token is set; admins only */
+      server?: components['schemas']['ServerSettings'] | null;
     };
     /** StartRun */
     StartRun: {
@@ -850,6 +1143,68 @@ export interface components {
        */
       optimize: boolean;
     };
+    /** TokenList */
+    TokenList: {
+      /** Tokens */
+      tokens: components['schemas']['TokenModel'][];
+    };
+    /** TokenModel */
+    TokenModel: {
+      /** Id */
+      id: number;
+      /**
+       * Label
+       * @default
+       */
+      label: string;
+      /** Created */
+      created: string;
+      /** Last Seen */
+      last_seen?: string | null;
+    };
+    /** UserChange */
+    UserChange: {
+      /** Role */
+      role?: string | null;
+      /** Disabled */
+      disabled?: boolean | null;
+      /** Password */
+      password?: string | null;
+    };
+    /** UserList */
+    UserList: {
+      /** Users */
+      users: components['schemas']['UserModel'][];
+    };
+    /** UserModel */
+    UserModel: {
+      /**
+       * Id
+       * @description 0 for the implicit local admin and for the server token
+       */
+      id: number;
+      /** Name */
+      name: string;
+      /** Role */
+      role: string;
+      /**
+       * Created
+       * @default
+       */
+      created: string;
+      /**
+       * Disabled
+       * @default false
+       */
+      disabled: boolean;
+      /**
+       * Must Change Password
+       * @default false
+       */
+      must_change_password: boolean;
+      /** Last Seen */
+      last_seen?: string | null;
+    };
     /** ValidationError */
     ValidationError: {
       /** Location */
@@ -875,9 +1230,7 @@ export interface operations {
   listFlows: {
     parameters: {
       query?: never;
-      header?: {
-        authorization?: string | null;
-      };
+      header?: never;
       path?: never;
       cookie?: never;
     };
@@ -892,23 +1245,12 @@ export interface operations {
           'application/json': components['schemas']['FlowList'];
         };
       };
-      /** @description Validation Error */
-      422: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['HTTPValidationError'];
-        };
-      };
     };
   };
   createFlow: {
     parameters: {
       query?: never;
-      header?: {
-        authorization?: string | null;
-      };
+      header?: never;
       path?: never;
       cookie?: never;
     };
@@ -941,9 +1283,7 @@ export interface operations {
   parseFlow: {
     parameters: {
       query?: never;
-      header?: {
-        authorization?: string | null;
-      };
+      header?: never;
       path?: never;
       cookie?: never;
     };
@@ -976,9 +1316,7 @@ export interface operations {
   generateFlow: {
     parameters: {
       query?: never;
-      header?: {
-        authorization?: string | null;
-      };
+      header?: never;
       path?: never;
       cookie?: never;
     };
@@ -1011,9 +1349,7 @@ export interface operations {
   getFlow: {
     parameters: {
       query?: never;
-      header?: {
-        authorization?: string | null;
-      };
+      header?: never;
       path: {
         path: string;
       };
@@ -1044,9 +1380,7 @@ export interface operations {
   saveFlow: {
     parameters: {
       query?: never;
-      header?: {
-        authorization?: string | null;
-      };
+      header?: never;
       path: {
         path: string;
       };
@@ -1081,9 +1415,7 @@ export interface operations {
   deleteFlow: {
     parameters: {
       query?: never;
-      header?: {
-        authorization?: string | null;
-      };
+      header?: never;
       path: {
         path: string;
       };
@@ -1114,9 +1446,7 @@ export interface operations {
   saveLayout: {
     parameters: {
       query?: never;
-      header?: {
-        authorization?: string | null;
-      };
+      header?: never;
       path: {
         path: string;
       };
@@ -1153,9 +1483,7 @@ export interface operations {
   renameFlow: {
     parameters: {
       query?: never;
-      header?: {
-        authorization?: string | null;
-      };
+      header?: never;
       path: {
         path: string;
       };
@@ -1190,9 +1518,7 @@ export interface operations {
   checkFlow: {
     parameters: {
       query?: never;
-      header?: {
-        authorization?: string | null;
-      };
+      header?: never;
       path: {
         path: string;
       };
@@ -1223,9 +1549,7 @@ export interface operations {
   explainFlow: {
     parameters: {
       query?: never;
-      header?: {
-        authorization?: string | null;
-      };
+      header?: never;
       path: {
         path: string;
       };
@@ -1256,9 +1580,7 @@ export interface operations {
   drawFlow: {
     parameters: {
       query?: never;
-      header?: {
-        authorization?: string | null;
-      };
+      header?: never;
       path: {
         path: string;
       };
@@ -1289,9 +1611,7 @@ export interface operations {
   optimizeFlow: {
     parameters: {
       query?: never;
-      header?: {
-        authorization?: string | null;
-      };
+      header?: never;
       path: {
         path: string;
       };
@@ -1329,9 +1649,7 @@ export interface operations {
         flow?: string | null;
         limit?: number;
       };
-      header?: {
-        authorization?: string | null;
-      };
+      header?: never;
       path?: never;
       cookie?: never;
     };
@@ -1360,9 +1678,7 @@ export interface operations {
   startRun: {
     parameters: {
       query?: never;
-      header?: {
-        authorization?: string | null;
-      };
+      header?: never;
       path?: never;
       cookie?: never;
     };
@@ -1395,9 +1711,7 @@ export interface operations {
   getRun: {
     parameters: {
       query?: never;
-      header?: {
-        authorization?: string | null;
-      };
+      header?: never;
       path: {
         run_id: number;
       };
@@ -1428,9 +1742,7 @@ export interface operations {
   cancelRun: {
     parameters: {
       query?: never;
-      header?: {
-        authorization?: string | null;
-      };
+      header?: never;
       path: {
         run_id: number;
       };
@@ -1461,9 +1773,7 @@ export interface operations {
   getRunLog: {
     parameters: {
       query?: never;
-      header?: {
-        authorization?: string | null;
-      };
+      header?: never;
       path: {
         run_id: number;
       };
@@ -1494,9 +1804,7 @@ export interface operations {
   getRunTrace: {
     parameters: {
       query?: never;
-      header?: {
-        authorization?: string | null;
-      };
+      header?: never;
       path: {
         run_id: number;
       };
@@ -1529,9 +1837,7 @@ export interface operations {
       query?: {
         flow?: string | null;
       };
-      header?: {
-        authorization?: string | null;
-      };
+      header?: never;
       path?: never;
       cookie?: never;
     };
@@ -1560,9 +1866,7 @@ export interface operations {
   createSchedule: {
     parameters: {
       query?: never;
-      header?: {
-        authorization?: string | null;
-      };
+      header?: never;
       path?: never;
       cookie?: never;
     };
@@ -1595,9 +1899,7 @@ export interface operations {
   updateSchedule: {
     parameters: {
       query?: never;
-      header?: {
-        authorization?: string | null;
-      };
+      header?: never;
       path: {
         schedule_id: number;
       };
@@ -1632,9 +1934,7 @@ export interface operations {
   deleteSchedule: {
     parameters: {
       query?: never;
-      header?: {
-        authorization?: string | null;
-      };
+      header?: never;
       path: {
         schedule_id: number;
       };
@@ -1665,9 +1965,7 @@ export interface operations {
   previewSchedule: {
     parameters: {
       query?: never;
-      header?: {
-        authorization?: string | null;
-      };
+      header?: never;
       path?: never;
       cookie?: never;
     };
@@ -1700,9 +1998,7 @@ export interface operations {
   runScheduleNow: {
     parameters: {
       query?: never;
-      header?: {
-        authorization?: string | null;
-      };
+      header?: never;
       path: {
         schedule_id: number;
       };
@@ -1730,12 +2026,352 @@ export interface operations {
       };
     };
   };
+  login: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['LoginRequest'];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['LoginResult'];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  logout: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['Ok'];
+        };
+      };
+    };
+  };
+  whoami: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['MeResult'];
+        };
+      };
+    };
+  };
+  setupFirstAdmin: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['LoginRequest'];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['LoginResult'];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  changePassword: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['PasswordChange'];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['Ok'];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  listApiTokens: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['TokenList'];
+        };
+      };
+    };
+  };
+  createApiToken: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['NewToken'];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['IssuedToken'];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  deleteApiToken: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        token_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['Ok'];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  listUsers: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['UserList'];
+        };
+      };
+    };
+  };
+  createUser: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['NewUser'];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['UserModel'];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  updateUser: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        user_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['UserChange'];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['UserModel'];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  deleteUser: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        user_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['Ok'];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
   getSettings: {
     parameters: {
       query?: never;
-      header?: {
-        authorization?: string | null;
-      };
+      header?: never;
       path?: never;
       cookie?: never;
     };
@@ -1750,23 +2386,12 @@ export interface operations {
           'application/json': components['schemas']['SettingsModel'];
         };
       };
-      /** @description Validation Error */
-      422: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['HTTPValidationError'];
-        };
-      };
     };
   };
   updateSettings: {
     parameters: {
       query?: never;
-      header?: {
-        authorization?: string | null;
-      };
+      header?: never;
       path?: never;
       cookie?: never;
     };
@@ -1801,9 +2426,7 @@ export interface operations {
   aiChat: {
     parameters: {
       query?: never;
-      header?: {
-        authorization?: string | null;
-      };
+      header?: never;
       path?: never;
       cookie?: never;
     };
@@ -1836,9 +2459,7 @@ export interface operations {
   getHealth: {
     parameters: {
       query?: never;
-      header?: {
-        authorization?: string | null;
-      };
+      header?: never;
       path?: never;
       cookie?: never;
     };
@@ -1851,15 +2472,6 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['Health'];
-        };
-      };
-      /** @description Validation Error */
-      422: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['HTTPValidationError'];
         };
       };
     };
