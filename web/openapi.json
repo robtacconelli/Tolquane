@@ -6,6 +6,193 @@
     "version": "1.2.0"
   },
   "paths": {
+    "/api/workspace/history": {
+      "get": {
+        "summary": "Workspace History",
+        "description": "Is this workspace in a git repository, and how much of it is uncommitted?",
+        "operationId": "getWorkspaceHistory",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HistoryStatus"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/workspace/history/init": {
+      "post": {
+        "summary": "Init Workspace History",
+        "description": "``git init`` here, with a ``.gitignore`` that leaves the server's own files out.",
+        "operationId": "initWorkspaceHistory",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ok"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/flows/{path}/history/{rev}": {
+      "get": {
+        "summary": "Flow Version",
+        "description": "One old version of a flow, and how it differs from the file as it is now.",
+        "operationId": "getFlowVersion",
+        "parameters": [
+          {
+            "name": "path",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Path"
+            }
+          },
+          {
+            "name": "rev",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Rev"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HistoryVersion"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/flows/{path}/history": {
+      "get": {
+        "summary": "Flow History",
+        "description": "The commits that touched this flow, newest first, and whether it has changed.",
+        "operationId": "getFlowHistory",
+        "parameters": [
+          {
+            "name": "path",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Path"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 50,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HistoryList"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/flows/{path}/restore": {
+      "post": {
+        "summary": "Restore Flow",
+        "description": "Put a flow, and its sidecar, back as they were. Nothing is committed.",
+        "operationId": "restoreFlow",
+        "parameters": [
+          {
+            "name": "path",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Path"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RestoreRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FlowDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/flows": {
       "get": {
         "summary": "List Flows",
@@ -181,7 +368,7 @@
       },
       "put": {
         "summary": "Save Flow",
-        "description": "Write a flow. A ``modified`` that no longer matches answers 409 with the file.",
+        "description": "Write a flow. A ``modified`` that no longer matches answers 409 with the file.\n\n``commit`` asks for the save to be committed with that message, and the\n``auto_commit`` setting asks for every save to be. A commit that was asked for\nexplicitly is checked before anything is written: a workspace with no repository\nanswers 400 with the file untouched, rather than saving and quietly not committing.",
         "operationId": "saveFlow",
         "parameters": [
           {
@@ -371,7 +558,7 @@
     "/api/flows/{path}/check": {
       "post": {
         "summary": "Check Flow",
-        "description": "``tq.check`` in a child process: the counts, or the GraphError as it stands.",
+        "description": "``tq.check`` in a child process: the counts, or the GraphError as it stands.\n\nThe imports are probed first, with the interpreter the run would use, and travel\nwith the failure as well as with the success: a flow that does not check because\n``import pandas`` fails is exactly the one whose Problems panel needs the ``pip\ninstall`` line.",
         "operationId": "checkFlow",
         "parameters": [
           {
@@ -796,6 +983,46 @@
         }
       }
     },
+    "/api/runs/{run_id}/notifications": {
+      "get": {
+        "summary": "Run Notifications",
+        "description": "Every attempt to tell somebody about this run, sent or failed, oldest first.",
+        "operationId": "getRunNotifications",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Run Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationList"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/schedules": {
       "get": {
         "summary": "List Schedules",
@@ -1027,6 +1254,46 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RunModel"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/schedules/{schedule_id}/test": {
+      "post": {
+        "summary": "Test Schedule",
+        "description": "Send this schedule's notifications now, and say what each channel answered.\n\nThe message is the real one, with ``event`` set to ``test`` and the schedule's\nlast run in it when it has had one. Delivery is not retried here: somebody is\nwaiting for the answer, and a webhook that is down should say so in ten seconds\nrather than in forty.",
+        "operationId": "testScheduleNotifications",
+        "parameters": [
+          {
+            "name": "schedule_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Schedule Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TestResults"
                 }
               }
             }
@@ -1459,7 +1726,7 @@
       },
       "put": {
         "summary": "Update Settings",
-        "description": "Change any subset. ``ai.anthropic_key`` and ``ai.openai_key`` go to the key file.",
+        "description": "Change any subset. The three secrets -- ``ai.anthropic_key``, ``ai.openai_key``\nand ``notifications.smtp_password`` -- go to the key file, never to the store.",
         "operationId": "updateSettings",
         "requestBody": {
           "content": {
@@ -1688,11 +1955,45 @@
           "edges": {
             "type": "integer",
             "title": "Edges"
+          },
+          "imports": {
+            "items": {
+              "$ref": "#/components/schemas/ImportProbe"
+            },
+            "type": "array",
+            "title": "Imports",
+            "description": "what the flow imports and whether the run interpreter has it"
           }
         },
         "type": "object",
         "required": ["ok", "nodes", "edges"],
         "title": "CheckResult"
+      },
+      "CommitMessage": {
+        "properties": {
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "title": "CommitMessage"
+      },
+      "Committed": {
+        "properties": {
+          "rev": {
+            "type": "string",
+            "title": "Rev"
+          },
+          "short": {
+            "type": "string",
+            "title": "Short"
+          }
+        },
+        "type": "object",
+        "required": ["rev", "short"],
+        "title": "Committed"
       },
       "CronPreview": {
         "properties": {
@@ -1722,6 +2023,36 @@
         "type": "object",
         "required": ["cron"],
         "title": "CronPreviewRequest"
+      },
+      "DeliveryModel": {
+        "properties": {
+          "channel": {
+            "type": "string",
+            "title": "Channel"
+          },
+          "target": {
+            "type": "string",
+            "title": "Target"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          }
+        },
+        "type": "object",
+        "required": ["channel", "target", "status"],
+        "title": "DeliveryModel"
       },
       "DrawResult": {
         "properties": {
@@ -1806,6 +2137,17 @@
               }
             ],
             "title": "Layout"
+          },
+          "commit": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Committed"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "the commit this save made, when it made one"
           }
         },
         "type": "object",
@@ -1940,6 +2282,145 @@
         "required": ["ok", "version", "runs_live", "scheduler"],
         "title": "Health"
       },
+      "HistoryEntry": {
+        "properties": {
+          "rev": {
+            "type": "string",
+            "title": "Rev"
+          },
+          "short": {
+            "type": "string",
+            "title": "Short"
+          },
+          "author": {
+            "type": "string",
+            "title": "Author"
+          },
+          "date": {
+            "type": "string",
+            "title": "Date"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "head": {
+            "type": "boolean",
+            "title": "Head",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": ["rev", "short", "author", "date", "message"],
+        "title": "HistoryEntry"
+      },
+      "HistoryList": {
+        "properties": {
+          "entries": {
+            "items": {
+              "$ref": "#/components/schemas/HistoryEntry"
+            },
+            "type": "array",
+            "title": "Entries"
+          },
+          "uncommitted": {
+            "type": "boolean",
+            "title": "Uncommitted",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": ["entries"],
+        "title": "HistoryList"
+      },
+      "HistoryStatus": {
+        "properties": {
+          "available": {
+            "type": "boolean",
+            "title": "Available"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "repo": {
+            "type": "boolean",
+            "title": "Repo",
+            "default": false
+          },
+          "root": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Root"
+          },
+          "dirty": {
+            "type": "integer",
+            "title": "Dirty",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": ["available"],
+        "title": "HistoryStatus"
+      },
+      "HistoryVersion": {
+        "properties": {
+          "rev": {
+            "type": "string",
+            "title": "Rev"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source"
+          },
+          "diff": {
+            "type": "string",
+            "title": "Diff"
+          }
+        },
+        "type": "object",
+        "required": ["rev", "source", "diff"],
+        "title": "HistoryVersion"
+      },
+      "ImportProbe": {
+        "properties": {
+          "module": {
+            "type": "string",
+            "title": "Module"
+          },
+          "ok": {
+            "type": "boolean",
+            "title": "Ok"
+          },
+          "hint": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hint"
+          }
+        },
+        "type": "object",
+        "required": ["module", "ok"],
+        "title": "ImportProbe"
+      },
       "IssuedToken": {
         "properties": {
           "id": {
@@ -1960,6 +2441,25 @@
         "type": "object",
         "required": ["id", "token"],
         "title": "IssuedToken"
+      },
+      "LastOutcome": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "attempts": {
+            "type": "integer",
+            "title": "Attempts"
+          },
+          "notified": {
+            "type": "boolean",
+            "title": "Notified"
+          }
+        },
+        "type": "object",
+        "required": ["status", "attempts", "notified"],
+        "title": "LastOutcome"
       },
       "LoginRequest": {
         "properties": {
@@ -2078,6 +2578,38 @@
             "type": "boolean",
             "title": "Enabled",
             "default": true
+          },
+          "params": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Params"
+          },
+          "env": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Env"
+          },
+          "notify": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Notify"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "retries": {
+            "type": "integer",
+            "title": "Retries",
+            "default": 0
+          },
+          "retry_delay": {
+            "type": "number",
+            "title": "Retry Delay",
+            "default": 60.0
           }
         },
         "type": "object",
@@ -2114,6 +2646,153 @@
         "type": "object",
         "required": ["name", "password"],
         "title": "NewUser"
+      },
+      "NotificationList": {
+        "properties": {
+          "notifications": {
+            "items": {
+              "$ref": "#/components/schemas/NotificationModel"
+            },
+            "type": "array",
+            "title": "Notifications"
+          }
+        },
+        "type": "object",
+        "required": ["notifications"],
+        "title": "NotificationList"
+      },
+      "NotificationModel": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "run_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Id"
+          },
+          "schedule_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Schedule Id"
+          },
+          "channel": {
+            "type": "string",
+            "title": "Channel"
+          },
+          "target": {
+            "type": "string",
+            "title": "Target"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "created": {
+            "type": "string",
+            "title": "Created"
+          }
+        },
+        "type": "object",
+        "required": ["id", "channel", "target", "status", "created"],
+        "title": "NotificationModel"
+      },
+      "NotificationSettings": {
+        "properties": {
+          "webhook_default": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Webhook Default"
+          },
+          "smtp": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SmtpSettings"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "has_smtp_password": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Has Smtp Password",
+            "description": "null: not an admin"
+          }
+        },
+        "type": "object",
+        "title": "NotificationSettings"
+      },
+      "Notify": {
+        "properties": {
+          "events": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Events",
+            "description": "failed, deadlock, cancelled, done"
+          },
+          "webhook": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Webhook",
+            "description": "null: the default from settings"
+          },
+          "emails": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Emails"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "Notify"
       },
       "Ok": {
         "properties": {
@@ -2260,6 +2939,17 @@
         "required": ["path"],
         "title": "RenameFlow"
       },
+      "RestoreRequest": {
+        "properties": {
+          "rev": {
+            "type": "string",
+            "title": "Rev"
+          }
+        },
+        "type": "object",
+        "required": ["rev"],
+        "title": "RestoreRequest"
+      },
       "RunList": {
         "properties": {
           "runs": {
@@ -2366,6 +3056,18 @@
             ],
             "title": "Error"
           },
+          "params": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Params"
+          },
+          "env": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Env"
+          },
           "live": {
             "type": "boolean",
             "title": "Live",
@@ -2393,6 +3095,17 @@
             ],
             "title": "Modified",
             "description": "the `modified` you were given; a mismatch answers 409"
+          },
+          "commit": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CommitMessage"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "commit the file after saving it, with this message"
           }
         },
         "type": "object",
@@ -2455,6 +3168,64 @@
               }
             ],
             "title": "Enabled"
+          },
+          "params": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Params"
+          },
+          "env": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Env"
+          },
+          "notify": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Notify"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "retries": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retries"
+          },
+          "retry_delay": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retry Delay"
           }
         },
         "type": "object",
@@ -2549,6 +3320,41 @@
             ],
             "title": "Next Run"
           },
+          "params": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Params"
+          },
+          "env": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Env"
+          },
+          "notify": {
+            "$ref": "#/components/schemas/Notify"
+          },
+          "retries": {
+            "type": "integer",
+            "title": "Retries",
+            "default": 0
+          },
+          "retry_delay": {
+            "type": "number",
+            "title": "Retry Delay",
+            "default": 60.0
+          },
+          "last_outcome": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LastOutcome"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "description": {
             "type": "string",
             "title": "Description"
@@ -2631,6 +3437,42 @@
             "type": "string",
             "title": "Theme"
           },
+          "python": {
+            "type": "string",
+            "title": "Python",
+            "description": "the interpreter runs and one-shot commands use"
+          },
+          "auto_commit": {
+            "type": "boolean",
+            "title": "Auto Commit",
+            "default": false
+          },
+          "env": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Env",
+            "description": "the workspace environment; null: not an admin"
+          },
+          "env_names": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Env Names",
+            "description": "the names of the workspace environment"
+          },
+          "notifications": {
+            "$ref": "#/components/schemas/NotificationSettings"
+          },
           "ai": {
             "$ref": "#/components/schemas/AiSettings"
           },
@@ -2657,9 +3499,42 @@
           "cancel_grace",
           "keep_traces_days",
           "theme",
+          "python",
+          "notifications",
           "ai"
         ],
         "title": "SettingsModel"
+      },
+      "SmtpSettings": {
+        "properties": {
+          "host": {
+            "type": "string",
+            "title": "Host"
+          },
+          "port": {
+            "type": "integer",
+            "title": "Port",
+            "default": 587
+          },
+          "username": {
+            "type": "string",
+            "title": "Username",
+            "default": ""
+          },
+          "from": {
+            "type": "string",
+            "title": "From",
+            "default": ""
+          },
+          "starttls": {
+            "type": "boolean",
+            "title": "Starttls",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": ["host"],
+        "title": "SmtpSettings"
       },
       "StartRun": {
         "properties": {
@@ -2714,11 +3589,39 @@
             "type": "boolean",
             "title": "Optimize",
             "default": false
+          },
+          "params": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Params",
+            "description": "keywords for the flow's build()"
+          },
+          "env": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Env",
+            "description": "variables this run's child process gets"
           }
         },
         "type": "object",
         "required": ["path"],
         "title": "StartRun"
+      },
+      "TestResults": {
+        "properties": {
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/DeliveryModel"
+            },
+            "type": "array",
+            "title": "Results"
+          }
+        },
+        "type": "object",
+        "required": ["results"],
+        "title": "TestResults"
       },
       "TokenList": {
         "properties": {

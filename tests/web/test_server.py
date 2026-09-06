@@ -290,7 +290,8 @@ def test_parse_generate_and_the_tools(client: TestClient, workspace: Path) -> No
     assert "tq.farm(double, 2)" in generated["source"]
     assert client.post("/api/flows/generate", json={"model": {"flow": 3}}).status_code == 400
 
-    assert client.post("/api/flows/hello.py/check").json() == {"ok": True, "nodes": 6, "edges": 6}
+    checked = client.post("/api/flows/hello.py/check").json()
+    assert checked == {"ok": True, "nodes": 6, "edges": 6, "imports": []}
     explained = client.post("/api/flows/hello.py/explain").json()["text"]
     assert "double.emitter" in explained
     assert client.post("/api/flows/hello.py/draw").json()["mermaid"].startswith("flowchart LR")

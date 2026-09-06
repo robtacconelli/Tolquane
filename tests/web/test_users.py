@@ -284,6 +284,7 @@ def test_every_admin_route_in_the_document_refuses_a_member(team: Team) -> None:
         "DELETE /api/users/{user_id}",
         "GET /api/users",
         "POST /api/users",
+        "POST /api/workspace/history/init",
         "PUT /api/users/{user_id}",
     ]
 

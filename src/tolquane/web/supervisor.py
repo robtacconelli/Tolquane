@@ -32,13 +32,13 @@ import subprocess
 import sys
 import threading
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
 from .settings import WebSettings
-from .store import LOG_LIMIT, Run, Store
+from .store import LOCAL_USER, LOG_LIMIT, Run, Store
 
 log = logging.getLogger(__name__)
 
@@ -59,21 +59,46 @@ never is: it carries the graph) and counted, and the socket says how many once."
 KILL_AFTER_SHUTDOWN = 3.0
 """How long a child gets between the server's SIGTERM and its SIGKILL at exit."""
 
-SECRET_ENV = ("ANTHROPIC_API_KEY", "OPENAI_API_KEY", "TOLQUANE_WEB_TOKEN")
+SECRET_ENV = (
+    "ANTHROPIC_API_KEY",
+    "OPENAI_API_KEY",
+    "TOLQUANE_WEB_TOKEN",
+    "TOLQUANE_SMTP_PASSWORD",
+)
 """Environment variables no child of this server is allowed to inherit."""
 
 
-def child_env(token: str | None = None) -> dict[str, str]:
+def child_env(
+    token: str | None = None,
+    *,
+    workspace: Mapping[str, str] | None = None,
+    run: Mapping[str, str] | None = None,
+) -> dict[str, str]:
     """The environment a child gets: this process's, without the secrets in it.
 
     A flow the server runs is a stranger's code with the server's own privileges. It has
     no business reading the key the AI panel uses or the token that guards the API, and
     a value that happens to be the token goes too, whatever it is called.
+
+    Then the workspace's own variables, and then the run's: both are put back *after* the
+    stripping, so a flow can be given anything it needs -- including a key of its own --
+    without ever seeing the server's.
     """
     env = {key: value for key, value in os.environ.items() if key not in SECRET_ENV}
     if token:
         env = {key: value for key, value in env.items() if value != token}
+    env.update({str(k): str(v) for k, v in (workspace or {}).items()})
+    env.update({str(k): str(v) for k, v in (run or {}).items()})
     return env
+
+
+def param_argument(name: str, value: Any) -> str:
+    """One ``--param name=value`` for the CLI, which reads the value as a Python literal.
+
+    ``repr`` is what makes the round trip exact: ``"8"`` comes back a string and ``8`` a
+    number, where a bare ``8`` would arrive as either depending on the flow.
+    """
+    return f"{name}={value!r}"
 
 
 class SupervisorError(Exception):
@@ -155,18 +180,23 @@ def json_command(argv: list[str], cwd: Path, timeout: float) -> Any:
         raise ChildFailed(f"the command did not answer with JSON: {result.stdout[:200]}") from exc
 
 
-def model_command(command: str, target: Path, cwd: Path, timeout: float) -> Any:
+def model_command(
+    command: str, target: Path, cwd: Path, timeout: float, python: str | None = None
+) -> Any:
     """``python -m tolquane.web.model parse|generate|graph``, as data."""
-    argv = [sys.executable, "-m", "tolquane.web.model", command, str(target)]
+    argv = [python or sys.executable, "-m", "tolquane.web.model", command, str(target)]
     data = json_command(argv, cwd, timeout)
     if isinstance(data, dict) and "error" in data and len(data) == 1:
         raise ChildFailed(str(data["error"]))
     return data
 
 
-def tolquane_command(command: str, flow: Path, cwd: Path, timeout: float) -> str:
+def tolquane_command(
+    command: str, flow: Path, cwd: Path, timeout: float, python: str | None = None
+) -> str:
     """``python -m tolquane check|explain|draw <flow>``, as the text it prints."""
-    result = run_command([sys.executable, "-m", "tolquane", command, str(flow)], cwd, timeout)
+    argv = [python or sys.executable, "-m", "tolquane", command, str(flow)]
+    result = run_command(argv, cwd, timeout)
     if not result.ok:
         raise ChildFailed(result.message)
     return result.stdout
@@ -196,9 +226,11 @@ needs and asks for JSON back.
 """
 
 
-def optimize_command(flow: Path, cwd: Path, timeout: float, all2all: bool) -> dict[str, Any]:
+def optimize_command(
+    flow: Path, cwd: Path, timeout: float, all2all: bool, python: str | None = None
+) -> dict[str, Any]:
     """What ``tq.optimize`` makes of a flow: its notes and the graph that comes out."""
-    argv = [sys.executable, "-c", _OPTIMIZE, str(flow), "1" if all2all else "0"]
+    argv = [python or sys.executable, "-c", _OPTIMIZE, str(flow), "1" if all2all else "0"]
     data = json_command(argv, cwd, timeout)
     if not isinstance(data, dict):  # pragma: no cover - the child prints one object
         raise ChildFailed("the optimizer did not answer with an object")
@@ -340,8 +372,16 @@ class Supervisor:
         trace: bool = False,
         optimize: bool = False,
         trigger: str = "manual",
+        params: dict[str, Any] | None = None,
+        env: dict[str, str] | None = None,
+        user: str = LOCAL_USER,
     ) -> Run:
-        """Start a run of ``flow`` (a path relative to the workspace) and record it."""
+        """Start a run of ``flow`` (a path relative to the workspace) and record it.
+
+        ``params`` become ``--param name=value`` on the child's command line and ``env``
+        becomes ``--env NAME=value``; both are stored with the run, so a run page can say
+        what it was given and a retry can be started with the same input.
+        """
         if self.closed:  # pragma: no cover - only after shutdown
             raise SupervisorError("the server is shutting down")
         self._purge()
@@ -351,10 +391,20 @@ class Supervisor:
                 f"{limit} runs are already going, which is max_concurrent_runs; "
                 "wait for one to end, cancel one, or raise the limit in settings"
             )
-        run = self.store.add_run(flow, runtime, sample_name, trigger)
+        run = self.store.add_run(
+            flow,
+            runtime,
+            sample_name,
+            trigger,
+            user,
+            params=params,
+            env=env,
+        )
         sample_file = self._write_sample(run.id, sample_items)
         trace_file = self._trace_path(run.id) if trace else None
-        argv = self._argv(flow, runtime, tap, sample_file, batch, trace_file, optimize)
+        argv = self._argv(
+            flow, runtime, tap, sample_file, batch, trace_file, optimize, run.params, run.env
+        )
         try:
             proc = subprocess.Popen(
                 argv,
@@ -365,7 +415,7 @@ class Supervisor:
                 encoding="utf-8",
                 errors="replace",
                 bufsize=1,
-                env=child_env(self.settings.app.token),
+                env=child_env(self.settings.app.token, workspace=self.settings.env, run=run.env),
             )
         except OSError as exc:  # pragma: no cover - a broken interpreter path
             self.store.finish_run(run.id, "failed", None, "", None, str(exc))
@@ -401,9 +451,11 @@ class Supervisor:
         batch: int | None,
         trace_file: Path | None,
         optimize: bool,
+        params: dict[str, Any] | None = None,
+        env: dict[str, str] | None = None,
     ) -> list[str]:
         argv = [
-            sys.executable,
+            self.settings.python,
             "-m",
             "tolquane",
             "run",
@@ -424,6 +476,10 @@ class Supervisor:
             argv += ["--trace", self._relative(trace_file)]
         if optimize:
             argv.append("--optimize")
+        for name, value in (params or {}).items():
+            argv += ["--param", param_argument(name, value)]
+        for name, value in (env or {}).items():
+            argv += ["--env", f"{name}={value}"]
         return argv
 
     def _relative(self, path: Path) -> str:
@@ -701,6 +757,7 @@ __all__ = [
     "json_command",
     "model_command",
     "optimize_command",
+    "param_argument",
     "run_command",
     "tolquane_command",
 ]

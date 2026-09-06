@@ -41,3 +41,5 @@ release", and the I3 hardening pass).
 | Sharing a flow as a link | `web.md` | A read-only page for one flow and one run, addressable and safe to send; needs the multi-user model, or a signed link that carries its own token. |
 | Per-user rate limiting on the AI panel | I3 hardening | The chat spends the owner's key and has no limit of its own beyond the provider's; a request counter per hour would make an accident cheaper. |
 | Events on disk for a long run | I3 hardening | Events are kept in memory and bounded (`MAX_EVENTS`), so a very long run loses its middle. Writing them to a file under `.tolquane-web/` would let the drawer scroll the whole run back. |
+| Retries and notifications that survive a restart | 1.3 B3 | A pending retry is a `threading.Timer` and a delivery is a daemon thread, so a server that stops between two attempts drops the chain and a message in flight is lost. A queue in the store, drained at startup, would make both survive. |
+| Notifications beyond a webhook and email | 1.3 B3 | Slack, Teams and the like go through the webhook today, in Tolquane's own JSON shape; per-target templates, or first-class integrations, if anybody asks. |

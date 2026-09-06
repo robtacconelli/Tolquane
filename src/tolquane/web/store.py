@@ -5,9 +5,13 @@ schedules the scheduler fires and every setting that is not a secret. The file i
 once and shared by every thread of the server behind a lock, in WAL mode so a reader
 never waits for a writer.
 
-API keys never come here. ``set_setting`` refuses any key whose name ends in ``_key`` or
-``_secret``: those belong in the Tolquane Web settings file, which is written with
-owner-only permissions, or in the environment.
+API keys never come here. ``set_setting`` refuses any key whose name ends in ``_key``,
+``_secret`` or ``_password``: those belong in the Tolquane Web settings file, which is
+written with owner-only permissions, or in the environment.
+
+From 1.3 the store also holds what a run was given (``params`` and ``env``), what a
+schedule does about a failure (``notify``, ``retries``, ``retry_delay``, ``last_outcome``)
+and every attempt to tell somebody about a run (the ``notifications`` table).
 
 Users live here too, from 1.3: a name, a role and a scrypt hash of a password, with the
 sessions and API tokens made from them. A password is never stored and a token is never
@@ -26,7 +30,7 @@ import secrets
 import sqlite3
 import threading
 from collections.abc import Callable, Iterable
-from dataclasses import asdict, dataclass, replace
+from dataclasses import asdict, dataclass, field, replace
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any, NamedTuple
@@ -36,7 +40,30 @@ LOG_LIMIT = 64 * 1024
 
 RUN_STATUSES = ("running", "done", "failed", "cancelled", "deadlock")
 
-SECRET_SUFFIXES = ("_key", "_secret")
+SECRET_SUFFIXES = ("_key", "_secret", "_password")
+
+NOTIFY_EVENTS = ("failed", "deadlock", "cancelled", "done")
+"""The ends of a run a schedule may be told about. ``running`` is not one of them."""
+
+MAX_RETRIES = 5
+"""How many times a scheduled run may be tried again. Past that it is not a retry, it is
+a loop, and a flow that fails five times in a row is not going to work on the sixth."""
+
+NOTIFY_NONE: dict[str, Any] = {"events": [], "webhook": None, "emails": []}
+"""A schedule that tells nobody: the default, and the shape every other notify has."""
+
+DEFAULT_RETRY_DELAY = 60.0
+"""Seconds between a failed scheduled run and the next attempt."""
+
+NOTIFY_CHANNELS = ("webhook", "email")
+
+NOTIFY_STATUSES = ("sent", "failed")
+
+ENV_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+"""What an environment variable may be called: what a shell would accept."""
+
+EMAIL_PATTERN = re.compile(r"^[^@\s,;]+@[^@\s,;]+\.[^@\s,;]+$")
+"""Enough of an address to catch a typed mistake; the mail server judges the rest."""
 
 LOCAL_USER = "local"
 """The name a run or a schedule carries when nobody signed in: local mode, and every row
@@ -73,6 +100,12 @@ _SCHEDULE_FIELDS = (
     "last_status",
     "next_run",
     "user",
+    "params",
+    "env",
+    "notify",
+    "retries",
+    "retry_delay",
+    "last_outcome",
 )
 
 _USER_FIELDS = ("role", "disabled", "must_change_password", "password")
@@ -122,6 +155,10 @@ class Run:
     trace_path: str | None
     error: str | None
     user: str = LOCAL_USER
+    params: dict[str, Any] = field(default_factory=dict)
+    """The keywords ``build()`` was called with, as the client sent them."""
+    env: dict[str, str] = field(default_factory=dict)
+    """The variables this one run added to its child's environment."""
 
     def to_dict(self) -> dict[str, Any]:
         """The run as JSON-ready data, exactly the shape the server returns."""
@@ -143,9 +180,34 @@ class Schedule:
     last_status: str | None
     next_run: str | None
     user: str = LOCAL_USER
+    params: dict[str, Any] = field(default_factory=dict)
+    env: dict[str, str] = field(default_factory=dict)
+    notify: dict[str, Any] = field(default_factory=lambda: dict(NOTIFY_NONE))
+    """Who to tell and when: ``{"events": [...], "webhook": url | None, "emails": [...]}``."""
+    retries: int = 0
+    retry_delay: float = 60.0
+    last_outcome: dict[str, Any] | None = None
+    """How the last chain of attempts ended: ``{"status", "attempts", "notified"}``."""
 
     def to_dict(self) -> dict[str, Any]:
         """The schedule as JSON-ready data, exactly the shape the server returns."""
+        return asdict(self)
+
+
+@dataclass(frozen=True)
+class Notification:
+    """One attempt to tell somebody how a run ended, and whether it got through."""
+
+    id: int
+    run_id: int | None
+    schedule_id: int | None
+    channel: str
+    target: str
+    status: str
+    error: str | None
+    created: str
+
+    def to_dict(self) -> dict[str, Any]:
         return asdict(self)
 
 
@@ -238,6 +300,109 @@ def check_role(role: str) -> str:
     if role not in ROLES:
         raise ValueError(f"unknown role {role!r}; use one of {', '.join(ROLES)}")
     return role
+
+
+# ------------------------------------------------------------- inputs and environments
+
+
+def check_params(value: Any) -> dict[str, Any]:
+    """``{"threshold": 0.5}`` as it will be stored, or ``ValueError`` saying what is wrong.
+
+    The names are the keywords of the flow's ``build()``, so they have to be identifiers;
+    the values are whatever JSON carried, because the flow decides what a parameter means.
+    """
+    if value is None:
+        return {}
+    if not isinstance(value, dict):
+        raise ValueError("params must be an object of name to value")
+    out: dict[str, Any] = {}
+    for name, item in value.items():
+        text = str(name).strip()
+        if not text.isidentifier():
+            raise ValueError(f"{name!r} is not a parameter name; build() takes identifiers")
+        try:
+            json.dumps(item)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(f"the value of {text} cannot be stored as JSON: {exc}") from exc
+        out[text] = item
+    return out
+
+
+def check_env(value: Any, what: str = "env") -> dict[str, str]:
+    """``{"TZ": "UTC"}`` as it will be stored. Names are a shell's names; values are text."""
+    if value is None:
+        return {}
+    if not isinstance(value, dict):
+        raise ValueError(f"{what} must be an object of NAME to value")
+    out: dict[str, str] = {}
+    for name, item in value.items():
+        text = str(name).strip()
+        if not ENV_NAME.match(text):
+            raise ValueError(
+                f"{name!r} is not an environment variable name; use letters, digits and "
+                "'_', starting with a letter or '_'"
+            )
+        if isinstance(item, bool) or not isinstance(item, str | int | float):
+            raise ValueError(f"the value of {text} must be text or a number")
+        if "\x00" in str(item):
+            raise ValueError(f"the value of {text} cannot contain a null byte")
+        out[text] = str(item)
+    return out
+
+
+def check_webhook(value: Any, what: str = "notify.webhook") -> str | None:
+    """An ``http(s)://`` URL, or ``None``. Anything else is a mistake, not a target."""
+    if value is None or (isinstance(value, str) and not value.strip()):
+        return None
+    if not isinstance(value, str):
+        raise ValueError(f"{what} must be a URL or null")
+    url = value.strip()
+    scheme, _, rest = url.partition("://")
+    if scheme.lower() not in ("http", "https") or not rest.strip("/"):
+        raise ValueError(f"{what} must be an http:// or https:// URL, not {value!r}")
+    return url
+
+
+def check_notify(value: Any) -> dict[str, Any]:
+    """``{"events": [...], "webhook": ..., "emails": [...]}``, checked and filled in."""
+    if value is None:
+        return dict(NOTIFY_NONE)
+    if not isinstance(value, dict):
+        raise ValueError("notify must be an object with events, webhook and emails")
+    unknown = sorted(set(value) - {"events", "webhook", "emails"})
+    if unknown:
+        raise ValueError(
+            f"unknown notify field(s) {', '.join(unknown)}; notify takes events, webhook and emails"
+        )
+    events = value.get("events") or []
+    if not isinstance(events, list | tuple) or any(event not in NOTIFY_EVENTS for event in events):
+        raise ValueError(f"notify.events must be a list of {', '.join(NOTIFY_EVENTS)}")
+    emails = value.get("emails") or []
+    if not isinstance(emails, list | tuple):
+        raise ValueError("notify.emails must be a list of addresses")
+    addresses = []
+    for address in emails:
+        text = str(address).strip()
+        if not EMAIL_PATTERN.match(text):
+            raise ValueError(f"{address!r} is not an email address")
+        addresses.append(text)
+    return {
+        "events": sorted({str(event) for event in events}, key=NOTIFY_EVENTS.index),
+        "webhook": check_webhook(value.get("webhook")),
+        "emails": addresses,
+    }
+
+
+def check_retries(value: Any) -> int:
+    if isinstance(value, bool) or not isinstance(value, int) or not 0 <= value <= MAX_RETRIES:
+        raise ValueError(f"retries must be a whole number between 0 and {MAX_RETRIES}")
+    return value
+
+
+def check_retry_delay(value: Any) -> float:
+    if isinstance(value, bool) or not isinstance(value, int | float) or value < 0:
+        raise ValueError("retry_delay must be a number of seconds, 0 or more")
+    return float(value)
 
 
 def _scrypt(password: str, salt: bytes) -> bytes:
@@ -361,7 +526,37 @@ def _migration_2(conn: sqlite3.Connection) -> None:
         conn.execute(statement)
 
 
-_MIGRATIONS: list[Callable[[sqlite3.Connection], None]] = [_migration_1, _migration_2]
+def _migration_3(conn: sqlite3.Connection) -> None:
+    """1.3: what a run was given, what a schedule does about a failure, and who was told."""
+    for statement in (
+        "ALTER TABLE runs ADD COLUMN params TEXT NOT NULL DEFAULT '{}'",
+        "ALTER TABLE runs ADD COLUMN env TEXT NOT NULL DEFAULT '{}'",
+        "ALTER TABLE schedules ADD COLUMN params TEXT NOT NULL DEFAULT '{}'",
+        "ALTER TABLE schedules ADD COLUMN env TEXT NOT NULL DEFAULT '{}'",
+        "ALTER TABLE schedules ADD COLUMN notify TEXT NOT NULL DEFAULT '{}'",
+        "ALTER TABLE schedules ADD COLUMN retries INTEGER NOT NULL DEFAULT 0",
+        f"ALTER TABLE schedules ADD COLUMN retry_delay REAL NOT NULL DEFAULT {DEFAULT_RETRY_DELAY}",
+        "ALTER TABLE schedules ADD COLUMN last_outcome TEXT",
+        """CREATE TABLE notifications (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            run_id      INTEGER,
+            schedule_id INTEGER,
+            channel     TEXT    NOT NULL,
+            target      TEXT    NOT NULL,
+            status      TEXT    NOT NULL,
+            error       TEXT,
+            created     TEXT    NOT NULL
+        )""",
+        "CREATE INDEX notifications_run ON notifications (run_id, id)",
+    ):
+        conn.execute(statement)
+
+
+_MIGRATIONS: list[Callable[[sqlite3.Connection], None]] = [
+    _migration_1,
+    _migration_2,
+    _migration_3,
+]
 """Steps from one schema version to the next. Migration ``i`` takes version ``i`` to
 ``i + 1``, so adding a column is appending a function that runs ``ALTER TABLE``; never
 edit a step that has shipped."""
@@ -461,22 +656,39 @@ class Store:
         sample: str | None = None,
         trigger: str = "manual",
         user: str = LOCAL_USER,
+        params: dict[str, Any] | None = None,
+        env: dict[str, str] | None = None,
     ) -> Run:
-        """Record a run that has just started. ``trigger`` is ``"manual"``, ``"api"`` or
-        ``"schedule:<id>"``; ``user`` is the name of whoever asked for it."""
+        """Record a run that has just started. ``trigger`` is ``"manual"``, ``"api"``,
+        ``"schedule:<id>"`` or ``"retry:<id>:<attempt>"``; ``user`` is the name of
+        whoever asked for it; ``params`` and ``env`` are what it was given."""
         started = self.now()
+        checked_params = check_params(params)
+        checked_env = check_env(env)
         with self._lock:
             cur = self._conn.execute(
-                'INSERT INTO runs (flow, runtime, sample, "trigger", started, status, log, "user")'
-                " VALUES (?, ?, ?, ?, ?, 'running', '', ?)",
-                (flow, runtime, sample, trigger, started, user),
+                'INSERT INTO runs (flow, runtime, sample, "trigger", started, status, log,'
+                " \"user\", params, env) VALUES (?, ?, ?, ?, ?, 'running', '', ?, ?, ?)",
+                (
+                    flow,
+                    runtime,
+                    sample,
+                    trigger,
+                    started,
+                    user,
+                    json.dumps(checked_params),
+                    json.dumps(checked_env),
+                ),
             )
             run_id = int(cur.lastrowid or 0)
             return self._require_run(run_id)
 
     def set_run_user(self, run_id: int, user: str) -> Run:
-        """Say who a run belongs to. The supervisor records the run; the server, which is
-        the only part that knows who is calling, names the user right afterwards."""
+        """Say who a run belongs to, after the fact.
+
+        The server names the user when it starts the run, so nothing in Tolquane Web
+        needs this; it is here for a script that adopts rows written by another tool.
+        """
         with self._lock:
             if self.get_run(run_id) is None:
                 raise ValueError(f"no run {run_id}")
@@ -549,14 +761,27 @@ class Store:
         runtime: str = "threads",
         enabled: bool = True,
         user: str = LOCAL_USER,
+        params: dict[str, Any] | None = None,
+        env: dict[str, str] | None = None,
+        notify: dict[str, Any] | None = None,
+        retries: int = 0,
+        retry_delay: float = DEFAULT_RETRY_DELAY,
     ) -> Schedule:
         """Add a schedule. ``next_run`` starts empty; the scheduler fills it in on its
         next pass, which is also what recomputes it when the cron changes."""
+        values = (
+            json.dumps(check_params(params)),
+            json.dumps(check_env(env)),
+            json.dumps(check_notify(notify)),
+            check_retries(retries),
+            check_retry_delay(retry_delay),
+        )
         with self._lock:
             cur = self._conn.execute(
-                'INSERT INTO schedules (flow, cron, sample, runtime, enabled, created, "user")'
-                " VALUES (?, ?, ?, ?, ?, ?, ?)",
-                (flow, cron, sample, runtime, int(enabled), self.now(), user),
+                'INSERT INTO schedules (flow, cron, sample, runtime, enabled, created, "user",'
+                " params, env, notify, retries, retry_delay)"
+                " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (flow, cron, sample, runtime, int(enabled), self.now(), user, *values),
             )
             return self._require_schedule(int(cur.lastrowid or 0))
 
@@ -614,6 +839,58 @@ class Store:
         if schedule is None:  # pragma: no cover - the row was just written under the lock
             raise ValueError(f"no schedule {schedule_id}")
         return schedule
+
+    # Notifications --------------------------------------------------------
+
+    def add_notification(
+        self,
+        channel: str,
+        target: str,
+        status: str,
+        *,
+        run_id: int | None = None,
+        schedule_id: int | None = None,
+        error: str | None = None,
+    ) -> Notification:
+        """Record one attempt to tell somebody about a run: what went where, and whether
+        it arrived. A failure is a row like any other; that is the point of the table."""
+        if channel not in NOTIFY_CHANNELS:
+            raise ValueError(
+                f"unknown channel {channel!r}; use one of {', '.join(NOTIFY_CHANNELS)}"
+            )
+        if status not in NOTIFY_STATUSES:
+            raise ValueError(
+                f"unknown notification status {status!r}; use one of {', '.join(NOTIFY_STATUSES)}"
+            )
+        with self._lock:
+            cur = self._conn.execute(
+                "INSERT INTO notifications (run_id, schedule_id, channel, target, status,"
+                " error, created) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (run_id, schedule_id, channel, target, status, error, self.now()),
+            )
+            row = self._conn.execute(
+                "SELECT * FROM notifications WHERE id = ?", (int(cur.lastrowid or 0),)
+            ).fetchone()
+        return _notification_of(row)
+
+    def list_notifications(
+        self, run_id: int | None = None, schedule_id: int | None = None, limit: int = 100
+    ) -> list[Notification]:
+        """The attempts made for one run, one schedule, or everything, oldest first."""
+        sql = "SELECT * FROM notifications"
+        where, args = [], []
+        if run_id is not None:
+            where.append("run_id = ?")
+            args.append(run_id)
+        if schedule_id is not None:
+            where.append("schedule_id = ?")
+            args.append(schedule_id)
+        if where:
+            sql += " WHERE " + " AND ".join(where)
+        sql += " ORDER BY id LIMIT ?"
+        with self._lock:
+            rows = self._conn.execute(sql, [*args, limit]).fetchall()
+        return [_notification_of(row) for row in rows]
 
     # Users ---------------------------------------------------------------
 
@@ -851,6 +1128,18 @@ def _schedule_value(name: str, value: Any) -> Any:
         return _as_iso(value)
     if name == "last_run" and value is not None:
         return int(value)
+    if name == "params":
+        return json.dumps(check_params(value))
+    if name == "env":
+        return json.dumps(check_env(value))
+    if name == "notify":
+        return json.dumps(check_notify(value))
+    if name == "retries":
+        return check_retries(value)
+    if name == "retry_delay":
+        return check_retry_delay(value)
+    if name == "last_outcome":
+        return None if value is None else json.dumps(value)
     return value
 
 
@@ -870,7 +1159,30 @@ def _run_of(row: sqlite3.Row) -> Run:
         trace_path=row["trace_path"],
         error=row["error"],
         user=str(row["user"]),
+        params=_json_object(row["params"]),
+        env={str(k): str(v) for k, v in _json_object(row["env"]).items()},
     )
+
+
+def _json_object(value: Any) -> dict[str, Any]:
+    """A JSON column as a dictionary. A row edited by hand is empty rather than fatal."""
+    if not value:
+        return {}
+    try:
+        loaded = json.loads(str(value))
+    except json.JSONDecodeError:  # pragma: no cover - a column edited by hand
+        return {}
+    return loaded if isinstance(loaded, dict) else {}
+
+
+def _notify_of(value: Any) -> dict[str, Any]:
+    """The stored notify, filled out: a row from before 1.3 tells nobody."""
+    stored = _json_object(value)
+    return {
+        "events": [str(event) for event in stored.get("events") or []],
+        "webhook": stored.get("webhook") or None,
+        "emails": [str(address) for address in stored.get("emails") or []],
+    }
 
 
 def _schedule_of(row: sqlite3.Row) -> Schedule:
@@ -886,6 +1198,25 @@ def _schedule_of(row: sqlite3.Row) -> Schedule:
         last_status=row["last_status"],
         next_run=row["next_run"],
         user=str(row["user"]),
+        params=_json_object(row["params"]),
+        env={str(k): str(v) for k, v in _json_object(row["env"]).items()},
+        notify=_notify_of(row["notify"]),
+        retries=int(row["retries"]),
+        retry_delay=float(row["retry_delay"]),
+        last_outcome=_json_object(row["last_outcome"]) or None,
+    )
+
+
+def _notification_of(row: sqlite3.Row) -> Notification:
+    return Notification(
+        id=int(row["id"]),
+        run_id=row["run_id"],
+        schedule_id=row["schedule_id"],
+        channel=str(row["channel"]),
+        target=str(row["target"]),
+        status=str(row["status"]),
+        error=row["error"],
+        created=str(row["created"]),
     )
 
 

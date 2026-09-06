@@ -59,6 +59,36 @@ def test_a_schema_version_zero_file_is_migrated(tmp_path: Path) -> None:
         assert store.add_run("a.py", "threads").flow == "a.py"
 
 
+def test_a_database_from_1_2_gains_the_new_columns_with_their_defaults(tmp_path: Path) -> None:
+    """The 1.3 columns are added by a migration, so a workspace keeps its history."""
+    path = tmp_path / "old.db"
+    conn = sqlite3.connect(path)
+    store_module._migration_1(conn)
+    store_module._migration_2(conn)
+    conn.execute("CREATE TABLE schema_version (version INTEGER NOT NULL)")
+    conn.execute("INSERT INTO schema_version (version) VALUES (2)")
+    conn.execute(
+        'INSERT INTO runs (flow, runtime, "trigger", started, status)'
+        " VALUES ('a.py', 'sync', 'manual', '2026-01-01T00:00:00+00:00', 'done')"
+    )
+    conn.execute(
+        "INSERT INTO schedules (flow, cron, runtime, created)"
+        " VALUES ('a.py', '@daily', 'sync', '2026-01-01T00:00:00+00:00')"
+    )
+    conn.commit()
+    conn.close()
+    with Store(path) as store:
+        assert store.version == schema_version()
+        run = store.list_runs()[0]
+        assert (run.params, run.env) == ({}, {})
+        schedule = store.list_schedules()[0]
+        assert schedule.notify == {"events": [], "webhook": None, "emails": []}
+        assert (schedule.retries, schedule.retry_delay, schedule.last_outcome) == (0, 60.0, None)
+        assert store.list_notifications() == []
+    assert columns_of(path, "runs") >= {"params", "env"}
+    assert columns_of(path, "schedules") >= {"notify", "retries", "retry_delay", "last_outcome"}
+
+
 def test_the_file_is_in_wal_mode(tmp_path: Path) -> None:
     path = tmp_path / "web.db"
     with Store(path):
@@ -206,6 +236,8 @@ def test_run_to_dict_is_json_ready(store: Store) -> None:
         "trace_path",
         "error",
         "user",
+        "params",
+        "env",
     }
 
 
@@ -298,7 +330,102 @@ def test_schedule_to_dict_is_json_ready(store: Store) -> None:
         "last_status",
         "next_run",
         "user",
+        "params",
+        "env",
+        "notify",
+        "retries",
+        "retry_delay",
+        "last_outcome",
     }
+
+
+# Outcomes and notifications ----------------------------------------------
+
+
+def test_a_schedule_keeps_its_input_and_its_outcome(store: Store) -> None:
+    schedule = store.add_schedule(
+        "a.py",
+        "@daily",
+        params={"threshold": 0.5},
+        env={"TZ": "UTC"},
+        notify={"events": ["failed", "done"], "webhook": "https://example.test/h"},
+        retries=2,
+        retry_delay=5,
+    )
+    assert schedule.params == {"threshold": 0.5}
+    assert schedule.env == {"TZ": "UTC"}
+    assert schedule.notify == {
+        "events": ["failed", "done"],
+        "webhook": "https://example.test/h",
+        "emails": [],
+    }
+    assert (schedule.retries, schedule.retry_delay) == (2, 5.0)
+    assert schedule.last_outcome is None
+
+    changed = store.update_schedule(
+        schedule.id, last_outcome={"status": "failed", "attempts": 3, "notified": True}
+    )
+    assert changed.last_outcome == {"status": "failed", "attempts": 3, "notified": True}
+    assert store.get_schedule(schedule.id) == changed
+
+
+def test_a_schedule_from_before_1_3_tells_nobody(store: Store) -> None:
+    """The columns were added with defaults, so an old row reads as one that says no."""
+    schedule = store.add_schedule("a.py", "@daily")
+    assert schedule.notify == {"events": [], "webhook": None, "emails": []}
+    assert schedule.retries == 0
+    assert schedule.retry_delay == 60.0
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "says"),
+    [
+        ("params", {"not a name": 1}, "not a parameter name"),
+        ("env", {"9lives": "x"}, "environment variable name"),
+        ("notify", {"events": ["exploded"]}, "notify.events must be"),
+        ("notify", {"webhook": "ftp://x"}, "http:// or https://"),
+        ("notify", {"emails": ["nope"]}, "not an email address"),
+        ("retries", 6, "between 0 and 5"),
+        ("retry_delay", -1, "0 or more"),
+    ],
+)
+def test_a_schedule_field_that_is_not_what_it_should_be(
+    store: Store, field: str, value: object, says: str
+) -> None:
+    schedule = store.add_schedule("a.py", "@daily")
+    with pytest.raises(ValueError, match=says):
+        store.update_schedule(schedule.id, **{field: value})
+    assert store.get_schedule(schedule.id) == schedule
+
+
+def test_a_run_keeps_what_it_was_given(store: Store) -> None:
+    run = store.add_run("a.py", "sync", params={"n": [1, 2]}, env={"TZ": "UTC"})
+    assert run.params == {"n": [1, 2]}
+    assert run.env == {"TZ": "UTC"}
+    assert store.get_run(run.id) == run
+    with pytest.raises(ValueError, match="not a parameter name"):
+        store.add_run("a.py", "sync", params={"two words": 1})
+
+
+def test_notifications_are_recorded_and_read_back(store: Store) -> None:
+    run = store.add_run("a.py", "sync", trigger="schedule:1")
+    schedule = store.add_schedule("a.py", "@daily")
+    sent = store.add_notification(
+        "webhook", "https://example.test/h", "sent", run_id=run.id, schedule_id=schedule.id
+    )
+    store.add_notification(
+        "email", "ada@example.test", "failed", run_id=run.id, error="no SMTP settings"
+    )
+    assert sent.created
+    rows = store.list_notifications(run_id=run.id)
+    assert [(row.channel, row.status) for row in rows] == [("webhook", "sent"), ("email", "failed")]
+    assert rows[1].error == "no SMTP settings"
+    assert store.list_notifications(schedule_id=schedule.id) == [sent]
+    assert store.list_notifications(run_id=999) == []
+    with pytest.raises(ValueError, match="unknown channel"):
+        store.add_notification("pigeon", "ada", "sent")
+    with pytest.raises(ValueError, match="unknown notification status"):
+        store.add_notification("email", "ada@example.test", "maybe")
 
 
 # Settings ----------------------------------------------------------------
@@ -345,7 +472,10 @@ def test_delete_setting_brings_back_the_default(store: Store) -> None:
     store.delete_setting("theme")
 
 
-@pytest.mark.parametrize("key", ["anthropic_key", "ai.openai_key", "TOKEN_SECRET", "api_Key"])
+@pytest.mark.parametrize(
+    "key",
+    ["anthropic_key", "ai.openai_key", "TOKEN_SECRET", "api_Key", "notifications.smtp_password"],
+)
 def test_secrets_are_refused_and_told_where_to_go(store: Store, key: str) -> None:
     with pytest.raises(ValueError, match="never go in the database") as caught:
         store.set_setting(key, "sk-not-a-real-key")

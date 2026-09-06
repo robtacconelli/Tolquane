@@ -13,15 +13,19 @@ three keys that also appear in ``AppSettings`` (``workspace``, ``server.host``,
 ones it was given, and :func:`startup_settings` reads them back when no flag says
 otherwise, so saving them on the settings page is not a change that disappears.
 
-``Keys`` is the API keys, which never go near the database. They live in
-``~/.tolquane/web.toml`` (or the file ``TOLQUANE_WEB_CONFIG`` names) written with mode
-600, and are read from there or from ``ANTHROPIC_API_KEY`` / ``OPENAI_API_KEY``. Only
-whether a key is set is ever reported.
+``Keys`` is the secrets, which never go near the database: the two API keys and, from
+1.3, the SMTP password the notifications use. They live in ``~/.tolquane/web.toml`` (or
+the file ``TOLQUANE_WEB_CONFIG`` names) written with mode 600, and are read from there or
+from ``ANTHROPIC_API_KEY`` / ``OPENAI_API_KEY`` / ``TOLQUANE_SMTP_PASSWORD``. Only whether
+a key is set is ever reported.
 """
 
 from __future__ import annotations
 
 import os
+import shutil
+import subprocess
+import sys
 import tomllib
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
@@ -29,7 +33,9 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from .store import Store
+import tolquane as tq
+
+from .store import EMAIL_PATTERN, Store, check_env, check_webhook
 
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 8765
@@ -39,8 +45,18 @@ LOOPBACK = frozenset({"127.0.0.1", "::1", "localhost"})
 
 CONFIG_ENV = "TOLQUANE_WEB_CONFIG"
 
-KEY_NAMES = ("anthropic_key", "openai_key")
-KEY_ENV = {"anthropic_key": "ANTHROPIC_API_KEY", "openai_key": "OPENAI_API_KEY"}
+KEY_NAMES = ("anthropic_key", "openai_key", "smtp_password")
+"""Every secret the settings page may write. None of them goes near the database."""
+
+KEY_ENV = {
+    "anthropic_key": "ANTHROPIC_API_KEY",
+    "openai_key": "OPENAI_API_KEY",
+    "smtp_password": "TOLQUANE_SMTP_PASSWORD",
+}
+
+KEY_SECTIONS = {"anthropic_key": "ai", "openai_key": "ai", "smtp_password": "notifications"}
+"""Which table of the key file each secret lives in, and the settings section that owns
+it: ``ai.anthropic_key`` and ``notifications.smtp_password`` are written the same way."""
 
 RUNTIMES = ("threads", "processes", "sync")
 
@@ -179,18 +195,20 @@ class Keys:
             return {}
 
     def stored(self) -> dict[str, str]:
-        """The keys the file holds, by short name."""
-        section = self._document().get("ai")
-        if not isinstance(section, Mapping):
-            return {}
-        return {
-            name: str(section[name])
-            for name in KEY_NAMES
-            if isinstance(section.get(name), str) and section[name]
-        }
+        """The secrets the file holds, by short name, whichever table each lives in."""
+        document = self._document()
+        found: dict[str, str] = {}
+        for name in KEY_NAMES:
+            section = document.get(KEY_SECTIONS[name])
+            if not isinstance(section, Mapping):
+                continue
+            value = section.get(name)
+            if isinstance(value, str) and value:
+                found[name] = value
+        return found
 
     def get(self, name: str) -> str | None:
-        """The key called ``anthropic_key`` or ``openai_key``: the file, then the shell."""
+        """One of :data:`KEY_NAMES`, from the file first and then from the shell."""
         if name not in KEY_ENV:
             raise ValueError(f"unknown key {name!r}; use one of {', '.join(KEY_NAMES)}")
         stored = self.stored().get(name)
@@ -208,13 +226,14 @@ class Keys:
         text = (value or "").strip()
         if any(char in text for char in "\r\n"):
             raise ValueError(f"{name} cannot contain a line break")
+        table = KEY_SECTIONS[name]
         document = self._document()
-        section = dict(document.get("ai") or {}) if _is_table(document.get("ai")) else {}
+        section = dict(document.get(table) or {}) if _is_table(document.get(table)) else {}
         if text:
             section[name] = text
         else:
             section.pop(name, None)
-        document["ai"] = section
+        document[table] = section
         self._write(document)
 
     def _write(self, document: Mapping[str, Any]) -> None:
@@ -285,12 +304,133 @@ def _port(name: str) -> Callable[[Any], Any]:
     return check
 
 
+def _flag(name: str) -> Callable[[Any], Any]:
+    def check(value: Any) -> Any:
+        if not isinstance(value, bool):
+            raise ValueError(f"{name} must be true or false")
+        return value
+
+    return check
+
+
 def _model(value: Any) -> Any:
     if value is None or (isinstance(value, str) and not value.strip()):
         return None
     if not isinstance(value, str):
         raise ValueError("ai.model must be a model id or null")
     return value.strip()
+
+
+# ------------------------------------------------- the interpreter runs are started with
+
+PYTHON_CHECK = "import tolquane, sys; print(tolquane.__version__)"
+"""What an interpreter is asked before it is saved: can it import the library at all?"""
+
+PYTHON_TIMEOUT = 30.0
+"""Seconds the candidate interpreter gets to answer. A cold import of a big environment
+is slow the first time and instant afterwards."""
+
+
+def ask_interpreter(path: str, timeout: float = PYTHON_TIMEOUT) -> str:
+    """The Tolquane version ``path`` has, or ``ValueError`` saying how to give it one.
+
+    The check is the contract's: run the interpreter with ``import tolquane`` and read the
+    version it prints. A path that is not there, one that cannot import the library and
+    one whose Tolquane is of another major version are all refused with the ``pip
+    install`` line that would fix them, because a run started with any of them fails in a
+    child process where nobody is watching.
+    """
+    fix = f"install it there with: {path} -m pip install tolquane"
+    try:
+        done = subprocess.run(
+            [path, "-c", PYTHON_CHECK],
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise ValueError(f"{path} did not answer within {timeout:g}s") from exc
+    except OSError as exc:
+        raise ValueError(
+            f"{path} cannot be run: {exc}. Point python at an interpreter that exists and {fix}"
+        ) from exc
+    if done.returncode != 0:
+        why = _last_line(done.stderr) or f"it exited with code {done.returncode}"
+        raise ValueError(f"{path} cannot import tolquane: {why}. {fix}")
+    found = done.stdout.strip().splitlines()[-1].strip() if done.stdout.strip() else ""
+    if not found:
+        raise ValueError(f"{path} printed no version. {fix}")
+    ours, theirs = tq.__version__.split(".")[0], found.split(".")[0]
+    if ours != theirs:
+        raise ValueError(
+            f"{path} has tolquane {found} and this server is {tq.__version__}; a run would "
+            f"not understand the other one. Install a matching one there with: {path} -m "
+            f'pip install "tolquane=={ours}.*"'
+        )
+    return found
+
+
+def _last_line(text: str) -> str:
+    lines = [line.strip() for line in (text or "").splitlines() if line.strip()]
+    return lines[-1] if lines else ""
+
+
+def _python(value: Any) -> Any:
+    """``python``: an interpreter that exists and has a Tolquane this server agrees with."""
+    if value is None or (isinstance(value, str) and not value.strip()):
+        return sys.executable
+    if not isinstance(value, str):
+        raise ValueError("python must be the path to an interpreter")
+    path = shutil.which(value.strip()) or str(Path(value.strip()).expanduser())
+    ask_interpreter(path)
+    return path
+
+
+def _env(value: Any) -> Any:
+    """``env``: the variables every run of this workspace starts with."""
+    return check_env(value, "env")
+
+
+def _webhook(value: Any) -> Any:
+    return check_webhook(value, "notifications.webhook_default")
+
+
+SMTP_FIELDS = ("host", "port", "username", "from", "starttls")
+
+
+def _smtp(value: Any) -> Any:
+    """``notifications.smtp``: where the mail goes, without the password, which is a key."""
+    if value is None or value == {}:
+        return None
+    if not isinstance(value, Mapping):
+        raise ValueError("notifications.smtp must be an object, or null to forget it")
+    unknown = sorted(set(value) - set(SMTP_FIELDS) - {"password"})
+    if unknown:
+        raise ValueError(
+            f"unknown notifications.smtp field(s) {', '.join(unknown)}; it takes "
+            f"{', '.join(SMTP_FIELDS)}"
+        )
+    if "password" in value:
+        raise ValueError(
+            "the SMTP password is not stored with the settings; send it as "
+            "notifications.smtp_password and it goes to the key file"
+        )
+    host = str(value.get("host") or "").strip()
+    if not host:
+        raise ValueError("notifications.smtp needs a host")
+    port = value.get("port", 587)
+    if isinstance(port, bool) or not isinstance(port, int) or not 1 <= port <= 65535:
+        raise ValueError("notifications.smtp.port must be a port between 1 and 65535")
+    sender = str(value.get("from") or "").strip()
+    if sender and not EMAIL_PATTERN.match(sender):
+        raise ValueError(f"notifications.smtp.from is not an email address: {sender!r}")
+    return {
+        "host": host,
+        "port": port,
+        "username": str(value.get("username") or "").strip(),
+        "from": sender,
+        "starttls": bool(value.get("starttls", True)),
+    }
 
 
 VALIDATORS: dict[str, Callable[[Any], Any]] = {
@@ -303,8 +443,13 @@ VALIDATORS: dict[str, Callable[[Any], Any]] = {
     "cancel_grace": _positive_number("cancel_grace"),
     "keep_traces_days": _positive_int("keep_traces_days", 0),
     "theme": _one_of("theme", ("dark", "light", "system")),
+    "auto_commit": _flag("auto_commit"),
+    "python": _python,
+    "env": _env,
     "ai.provider": _text("ai.provider"),
     "ai.model": _model,
+    "notifications.webhook_default": _webhook,
+    "notifications.smtp": _smtp,
     "server.host": _text("server.host"),
     "server.port": _port("server.port"),
 }
@@ -320,9 +465,17 @@ DEFAULTS: dict[str, Any] = {
     "cancel_grace": 10.0,
     "keep_traces_days": 7,
     "theme": "dark",
+    "auto_commit": False,
     "ai.provider": "anthropic",
     "ai.model": None,
+    "notifications.webhook_default": None,
+    "notifications.smtp": None,
 }
+
+OBJECT_SETTINGS = frozenset({"env", "notifications.smtp"})
+"""Settings whose value is itself an object. Every other nested key in a ``PUT`` body is
+a section (``{"ai": {"model": ...}}`` is ``ai.model``); these two are values, and
+flattening them would turn one variable into one unknown setting per name."""
 
 
 class WebSettings:
@@ -374,6 +527,47 @@ class WebSettings:
         return int(self.get("keep_traces_days"))
 
     @property
+    def auto_commit(self) -> bool:
+        """Does every save through the web page commit? Off unless the workspace asks."""
+        return bool(self.get("auto_commit"))
+
+    @property
+    def python(self) -> str:
+        """The interpreter runs and one-shot commands are started with.
+
+        The server's own by default, so a workspace that was never configured behaves as
+        it did before there was a setting. A saved value that has since been removed --
+        a virtualenv deleted, a path that moved -- falls back to the server's own rather
+        than making every run fail with "no such file".
+        """
+        stored = self.get("python")
+        if isinstance(stored, str) and stored.strip() and Path(stored).exists():
+            return stored
+        return sys.executable
+
+    @property
+    def env(self) -> dict[str, str]:
+        """The variables every run of this workspace starts with."""
+        stored = self.get("env")
+        return check_env(stored, "env") if isinstance(stored, dict) else {}
+
+    @property
+    def webhook_default(self) -> str | None:
+        """The URL a schedule uses when it asks for a webhook without naming one."""
+        stored = self.get("notifications.webhook_default")
+        return str(stored) if stored else None
+
+    @property
+    def smtp(self) -> dict[str, Any] | None:
+        """Where email goes, without the password: that is in the key file."""
+        stored = self.get("notifications.smtp")
+        return dict(stored) if isinstance(stored, dict) else None
+
+    @property
+    def smtp_password(self) -> str | None:
+        return self.keys.get("smtp_password")
+
+    @property
     def ai_provider(self) -> str:
         return str(self.get("ai.provider"))
 
@@ -396,6 +590,15 @@ class WebSettings:
             "cancel_grace": self.cancel_grace,
             "keep_traces_days": self.keep_traces_days,
             "theme": str(self.get("theme")),
+            "auto_commit": self.auto_commit,
+            "python": self.python,
+            "env": dict(self.env),
+            "env_names": sorted(self.env),
+            "notifications": {
+                "webhook_default": self.webhook_default,
+                "smtp": self.smtp,
+                "has_smtp_password": self.keys.has("smtp_password"),
+            },
             "ai": {
                 "provider": self.ai_provider,
                 "model": self.ai_model,
@@ -412,42 +615,64 @@ class WebSettings:
     def update(self, patch: Mapping[str, Any]) -> None:
         """Apply ``PUT /api/settings``: flat or nested, keys to the file, rest to the
         store. Nothing is written until every value has been checked."""
-        flat = _flatten(patch)
-        secrets = {name: flat.pop(f"ai.{name}") for name in KEY_NAMES if f"ai.{name}" in flat}
+        flat = flatten_settings(patch)
+        secrets = {
+            name: flat.pop(dotted)
+            for name in KEY_NAMES
+            if (dotted := f"{KEY_SECTIONS[name]}.{name}") in flat
+        }
         unknown = sorted(set(flat) - set(VALIDATORS))
         if unknown:
+            written = ", ".join(f"{KEY_SECTIONS[name]}.{name}" for name in KEY_NAMES)
             raise ValueError(
                 f"unknown setting(s) {', '.join(unknown)}; the settings are "
-                f"{', '.join(sorted(VALIDATORS))}, ai.anthropic_key and ai.openai_key"
+                f"{', '.join(sorted(VALIDATORS))}, and the write-only {written}"
             )
         checked = {key: VALIDATORS[key](value) for key, value in flat.items()}
         for name, value in secrets.items():
             if value is not None and not isinstance(value, str):
-                raise ValueError(f"ai.{name} must be a string, or null to forget it")
+                raise ValueError(
+                    f"{KEY_SECTIONS[name]}.{name} must be a string, or null to forget it"
+                )
         for key, value in checked.items():
             self.store.set_setting(key, value)
         for name, value in secrets.items():
             self.keys.set(name, None if value is None else str(value))
 
 
-def _flatten(patch: Mapping[str, Any], prefix: str = "") -> dict[str, Any]:
-    """``{"ai": {"model": "x"}}`` and ``{"ai.model": "x"}`` are the same request."""
+def flatten_settings(patch: Mapping[str, Any], prefix: str = "") -> dict[str, Any]:
+    """``{"ai": {"model": "x"}}`` and ``{"ai.model": "x"}`` are the same request.
+
+    :data:`OBJECT_SETTINGS` stop the descent: ``{"env": {"TZ": "UTC"}}`` is one setting
+    whose value is an object, not a section holding the setting ``env.TZ``.
+    """
     out: dict[str, Any] = {}
     for key, value in patch.items():
         name = f"{prefix}{key}"
-        if isinstance(value, Mapping):
-            out.update(_flatten(value, f"{name}."))
+        if isinstance(value, Mapping) and name not in OBJECT_SETTINGS:
+            out.update(flatten_settings(value, f"{name}."))
         else:
             out[name] = value
     return out
 
 
+def setting_names(patch: Any) -> set[str]:
+    """The dotted names a settings body would write, however it was nested."""
+    if not isinstance(patch, Mapping):
+        return set()
+    return set(flatten_settings(patch))
+
+
 __all__ = [
+    "OBJECT_SETTINGS",
     "AppSettings",
     "Keys",
     "WebSettings",
+    "ask_interpreter",
     "default_config_path",
     "default_db_path",
+    "flatten_settings",
     "packaged_static",
+    "setting_names",
     "startup_settings",
 ]

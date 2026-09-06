@@ -4,6 +4,106 @@
  */
 
 export interface paths {
+  '/api/workspace/history': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Workspace History
+     * @description Is this workspace in a git repository, and how much of it is uncommitted?
+     */
+    get: operations['getWorkspaceHistory'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/workspace/history/init': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Init Workspace History
+     * @description ``git init`` here, with a ``.gitignore`` that leaves the server's own files out.
+     */
+    post: operations['initWorkspaceHistory'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/flows/{path}/history/{rev}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Flow Version
+     * @description One old version of a flow, and how it differs from the file as it is now.
+     */
+    get: operations['getFlowVersion'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/flows/{path}/history': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Flow History
+     * @description The commits that touched this flow, newest first, and whether it has changed.
+     */
+    get: operations['getFlowHistory'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/flows/{path}/restore': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Restore Flow
+     * @description Put a flow, and its sidecar, back as they were. Nothing is committed.
+     */
+    post: operations['restoreFlow'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/flows': {
     parameters: {
       query?: never;
@@ -83,6 +183,11 @@ export interface paths {
     /**
      * Save Flow
      * @description Write a flow. A ``modified`` that no longer matches answers 409 with the file.
+     *
+     *     ``commit`` asks for the save to be committed with that message, and the
+     *     ``auto_commit`` setting asks for every save to be. A commit that was asked for
+     *     explicitly is checked before anything is written: a workspace with no repository
+     *     answers 400 with the file untouched, rather than saving and quietly not committing.
      */
     put: operations['saveFlow'];
     post?: never;
@@ -148,6 +253,11 @@ export interface paths {
     /**
      * Check Flow
      * @description ``tq.check`` in a child process: the counts, or the GraphError as it stands.
+     *
+     *     The imports are probed first, with the interpreter the run would use, and travel
+     *     with the failure as well as with the success: a flow that does not check because
+     *     ``import pandas`` fails is exactly the one whose Problems panel needs the ``pip
+     *     install`` line.
      */
     post: operations['checkFlow'];
     delete?: never;
@@ -317,6 +427,26 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/runs/{run_id}/notifications': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Run Notifications
+     * @description Every attempt to tell somebody about this run, sent or failed, oldest first.
+     */
+    get: operations['getRunNotifications'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/schedules': {
     parameters: {
       query?: never;
@@ -390,6 +520,31 @@ export interface paths {
      * @description Fire a schedule now, the way the scheduler would.
      */
     post: operations['runScheduleNow'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/schedules/{schedule_id}/test': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Test Schedule
+     * @description Send this schedule's notifications now, and say what each channel answered.
+     *
+     *     The message is the real one, with ``event`` set to ``test`` and the schedule's
+     *     last run in it when it has had one. Delivery is not retried here: somebody is
+     *     waiting for the answer, and a webhook that is down should say so in ten seconds
+     *     rather than in forty.
+     */
+    post: operations['testScheduleNotifications'];
     delete?: never;
     options?: never;
     head?: never;
@@ -605,7 +760,8 @@ export interface paths {
     get: operations['getSettings'];
     /**
      * Update Settings
-     * @description Change any subset. ``ai.anthropic_key`` and ``ai.openai_key`` go to the key file.
+     * @description Change any subset. The three secrets -- ``ai.anthropic_key``, ``ai.openai_key``
+     *     and ``notifications.smtp_password`` -- go to the key file, never to the store.
      */
     put: operations['updateSettings'];
     post?: never;
@@ -707,6 +863,26 @@ export interface components {
       nodes: number;
       /** Edges */
       edges: number;
+      /**
+       * Imports
+       * @description what the flow imports and whether the run interpreter has it
+       */
+      imports?: components['schemas']['ImportProbe'][];
+    };
+    /** CommitMessage */
+    CommitMessage: {
+      /**
+       * Message
+       * @default
+       */
+      message: string;
+    };
+    /** Committed */
+    Committed: {
+      /** Rev */
+      rev: string;
+      /** Short */
+      short: string;
     };
     /** CronPreview */
     CronPreview: {
@@ -719,6 +895,17 @@ export interface components {
     CronPreviewRequest: {
       /** Cron */
       cron: string;
+    };
+    /** DeliveryModel */
+    DeliveryModel: {
+      /** Channel */
+      channel: string;
+      /** Target */
+      target: string;
+      /** Status */
+      status: string;
+      /** Error */
+      error?: string | null;
     };
     /** DrawResult */
     DrawResult: {
@@ -754,6 +941,8 @@ export interface components {
       layout?: {
         [key: string]: unknown;
       } | null;
+      /** @description the commit this save made, when it made one */
+      commit?: components['schemas']['Committed'] | null;
     };
     /** FlowList */
     FlowList: {
@@ -812,6 +1001,71 @@ export interface components {
       /** Scheduler */
       scheduler: boolean;
     };
+    /** HistoryEntry */
+    HistoryEntry: {
+      /** Rev */
+      rev: string;
+      /** Short */
+      short: string;
+      /** Author */
+      author: string;
+      /** Date */
+      date: string;
+      /** Message */
+      message: string;
+      /**
+       * Head
+       * @default false
+       */
+      head: boolean;
+    };
+    /** HistoryList */
+    HistoryList: {
+      /** Entries */
+      entries: components['schemas']['HistoryEntry'][];
+      /**
+       * Uncommitted
+       * @default false
+       */
+      uncommitted: boolean;
+    };
+    /** HistoryStatus */
+    HistoryStatus: {
+      /** Available */
+      available: boolean;
+      /** Reason */
+      reason?: string | null;
+      /**
+       * Repo
+       * @default false
+       */
+      repo: boolean;
+      /** Root */
+      root?: string | null;
+      /**
+       * Dirty
+       * @default 0
+       */
+      dirty: number;
+    };
+    /** HistoryVersion */
+    HistoryVersion: {
+      /** Rev */
+      rev: string;
+      /** Source */
+      source: string;
+      /** Diff */
+      diff: string;
+    };
+    /** ImportProbe */
+    ImportProbe: {
+      /** Module */
+      module: string;
+      /** Ok */
+      ok: boolean;
+      /** Hint */
+      hint?: string | null;
+    };
     /** IssuedToken */
     IssuedToken: {
       /** Id */
@@ -826,6 +1080,15 @@ export interface components {
        * @default
        */
       label: string;
+    };
+    /** LastOutcome */
+    LastOutcome: {
+      /** Status */
+      status: string;
+      /** Attempts */
+      attempts: number;
+      /** Notified */
+      notified: boolean;
     };
     /** LoginRequest */
     LoginRequest: {
@@ -886,6 +1149,25 @@ export interface components {
        * @default true
        */
       enabled: boolean;
+      /** Params */
+      params?: {
+        [key: string]: unknown;
+      };
+      /** Env */
+      env?: {
+        [key: string]: string;
+      };
+      notify?: components['schemas']['Notify'] | null;
+      /**
+       * Retries
+       * @default 0
+       */
+      retries: number;
+      /**
+       * Retry Delay
+       * @default 60
+       */
+      retry_delay: number;
     };
     /** NewToken */
     NewToken: {
@@ -906,6 +1188,56 @@ export interface components {
        * @default member
        */
       role: string;
+    };
+    /** NotificationList */
+    NotificationList: {
+      /** Notifications */
+      notifications: components['schemas']['NotificationModel'][];
+    };
+    /** NotificationModel */
+    NotificationModel: {
+      /** Id */
+      id: number;
+      /** Run Id */
+      run_id?: number | null;
+      /** Schedule Id */
+      schedule_id?: number | null;
+      /** Channel */
+      channel: string;
+      /** Target */
+      target: string;
+      /** Status */
+      status: string;
+      /** Error */
+      error?: string | null;
+      /** Created */
+      created: string;
+    };
+    /** NotificationSettings */
+    NotificationSettings: {
+      /** Webhook Default */
+      webhook_default?: string | null;
+      smtp?: components['schemas']['SmtpSettings'] | null;
+      /**
+       * Has Smtp Password
+       * @description null: not an admin
+       */
+      has_smtp_password?: boolean | null;
+    };
+    /** Notify */
+    Notify: {
+      /**
+       * Events
+       * @description failed, deadlock, cancelled, done
+       */
+      events?: string[];
+      /**
+       * Webhook
+       * @description null: the default from settings
+       */
+      webhook?: string | null;
+      /** Emails */
+      emails?: string[];
     };
     /** Ok */
     Ok: {
@@ -977,6 +1309,11 @@ export interface components {
       /** Path */
       path: string;
     };
+    /** RestoreRequest */
+    RestoreRequest: {
+      /** Rev */
+      rev: string;
+    };
     /** RunList */
     RunList: {
       /** Runs */
@@ -1018,6 +1355,14 @@ export interface components {
       trace_path?: string | null;
       /** Error */
       error?: string | null;
+      /** Params */
+      params?: {
+        [key: string]: unknown;
+      };
+      /** Env */
+      env?: {
+        [key: string]: string;
+      };
       /**
        * Live
        * @default false
@@ -1033,6 +1378,8 @@ export interface components {
        * @description the `modified` you were given; a mismatch answers 409
        */
       modified?: string | null;
+      /** @description commit the file after saving it, with this message */
+      commit?: components['schemas']['CommitMessage'] | null;
     };
     /** ScheduleChange */
     ScheduleChange: {
@@ -1046,6 +1393,19 @@ export interface components {
       runtime?: string | null;
       /** Enabled */
       enabled?: boolean | null;
+      /** Params */
+      params?: {
+        [key: string]: unknown;
+      } | null;
+      /** Env */
+      env?: {
+        [key: string]: string;
+      } | null;
+      notify?: components['schemas']['Notify'] | null;
+      /** Retries */
+      retries?: number | null;
+      /** Retry Delay */
+      retry_delay?: number | null;
     };
     /** ScheduleList */
     ScheduleList: {
@@ -1079,6 +1439,26 @@ export interface components {
       last_status?: string | null;
       /** Next Run */
       next_run?: string | null;
+      /** Params */
+      params?: {
+        [key: string]: unknown;
+      };
+      /** Env */
+      env?: {
+        [key: string]: string;
+      };
+      notify?: components['schemas']['Notify'];
+      /**
+       * Retries
+       * @default 0
+       */
+      retries: number;
+      /**
+       * Retry Delay
+       * @default 60
+       */
+      retry_delay: number;
+      last_outcome?: components['schemas']['LastOutcome'] | null;
       /** Description */
       description: string;
       /** Next Five */
@@ -1113,9 +1493,57 @@ export interface components {
       keep_traces_days: number;
       /** Theme */
       theme: string;
+      /**
+       * Python
+       * @description the interpreter runs and one-shot commands use
+       */
+      python: string;
+      /**
+       * Auto Commit
+       * @default false
+       */
+      auto_commit: boolean;
+      /**
+       * Env
+       * @description the workspace environment; null: not an admin
+       */
+      env?: {
+        [key: string]: string;
+      } | null;
+      /**
+       * Env Names
+       * @description the names of the workspace environment
+       */
+      env_names?: string[];
+      notifications: components['schemas']['NotificationSettings'];
       ai: components['schemas']['AiSettings'];
       /** @description the address and whether a token is set; admins only */
       server?: components['schemas']['ServerSettings'] | null;
+    };
+    /** SmtpSettings */
+    SmtpSettings: {
+      /** Host */
+      host: string;
+      /**
+       * Port
+       * @default 587
+       */
+      port: number;
+      /**
+       * Username
+       * @default
+       */
+      username: string;
+      /**
+       * From
+       * @default
+       */
+      from: string;
+      /**
+       * Starttls
+       * @default true
+       */
+      starttls: boolean;
     };
     /** StartRun */
     StartRun: {
@@ -1142,6 +1570,25 @@ export interface components {
        * @default false
        */
       optimize: boolean;
+      /**
+       * Params
+       * @description keywords for the flow's build()
+       */
+      params?: {
+        [key: string]: unknown;
+      };
+      /**
+       * Env
+       * @description variables this run's child process gets
+       */
+      env?: {
+        [key: string]: string;
+      };
+    };
+    /** TestResults */
+    TestResults: {
+      /** Results */
+      results: components['schemas']['DeliveryModel'][];
     };
     /** TokenList */
     TokenList: {
@@ -1227,6 +1674,146 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+  getWorkspaceHistory: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HistoryStatus'];
+        };
+      };
+    };
+  };
+  initWorkspaceHistory: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['Ok'];
+        };
+      };
+    };
+  };
+  getFlowVersion: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        path: string;
+        rev: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HistoryVersion'];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  getFlowHistory: {
+    parameters: {
+      query?: {
+        limit?: number;
+      };
+      header?: never;
+      path: {
+        path: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HistoryList'];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  restoreFlow: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        path: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['RestoreRequest'];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['FlowDetail'];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
   listFlows: {
     parameters: {
       query?: never;
@@ -1832,6 +2419,37 @@ export interface operations {
       };
     };
   };
+  getRunNotifications: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        run_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['NotificationList'];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
   listSchedules: {
     parameters: {
       query?: {
@@ -2013,6 +2631,37 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['RunModel'];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  testScheduleNotifications: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        schedule_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['TestResults'];
         };
       };
       /** @description Validation Error */

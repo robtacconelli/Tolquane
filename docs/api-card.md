@@ -74,6 +74,8 @@ tq.run(graph, capacity=64)                    # bound every edge (default 1024; 
 tq.run(graph, batch=1)                        # hand over every item alone (default 32, flushed within 1 ms)
 tq.run(graph, trace="trace.json")             # Chrome trace of every node's runs and waits (Perfetto, chrome://tracing)
 #   tolquane run flow.py --trace trace.json     # shell: the same file
+#   tolquane run flow.py --param threshold=0.5 --param name=fast   # keywords for build(); the value is a Python literal, a plain word stays a string (also on check, explain, draw)
+#   tolquane run flow.py --env TZ=UTC --env API_HOST=localhost     # variables set before the flow is imported, and put back afterwards
 print(report)                                 # items in/out, busy and wait time per node; report.busiest() names the bottleneck
 
 with tq.session(tq.farm(work, 4)) as s:       # keep a graph running

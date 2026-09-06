@@ -533,6 +533,15 @@ exception: every module comes back `ok=False` with `could not ask <python>: <rea
 missing import as a warning in Problems with the hint, and the Run popover shows the
 interpreter in use.
 
+**As built.** `POST /api/flows/{path}/check` answers `imports` on success, and carries
+the same list in the `detail` of its 400 when the flow does not check: an `import pandas`
+that is not installed is exactly the failure whose fix belongs in Problems. `GET
+/api/settings` answers `env` and `env_names`; a member sees `env: null` and the names, the
+way they see `server: null`. `python` accepts a bare name and resolves it on `PATH`, and
+falls back to the server's own interpreter when a saved path has since gone, so a deleted
+virtualenv does not make every run fail; it is also the interpreter the one-shot commands
+(parse, graph, check, explain, draw, optimize) use.
+
 **Frontend.** The Run popover gains a Parameters section (one field per parameter,
 typed from the default: number, boolean toggle, text, or a code field for anything
 else; last values remembered per flow in localStorage) and an Environment section
@@ -561,6 +570,18 @@ name> <name@tolquane.local>"` and only add the flow's own files. Setting
 `auto_commit: bool` (default false): every save commits, with the given message or
 `Edit <path>`; the AI apply passes `AI: <first line of the request>`; a restore does
 not commit. Nothing ever runs `git push`, `reset` or `checkout`.
+
+**As built.** The history lives in `tolquane.web.history`, and every route answers 400
+with git's own reason when there is no history to read (no git, or no repository). A
+`PUT` that asks for a commit in a workspace that is not a repository is refused *before*
+the file is written, so nothing is saved that could not be committed; a commit that git
+refuses for any other reason, and every `auto_commit` failure, leaves `commit: null` and
+a line in the server log rather than failing the save that already happened. A save that
+changes nothing is `commit: null` too. Restores never touch the index: the old text is
+read with `git show` and written over the file. The `.py` and its `.layout.json` are
+added by name, so a commit never picks up whatever else was uncommitted. `auto_commit`
+is in `GET /api/settings` beside `theme`. The history routes are registered before
+`GET /api/flows/{path}`, which would otherwise match `hello.py/history` as a flow name.
 
 **Frontend.** The editor's right column gains a History tab (Properties | AI |
 History): the entries with relative dates, author and message, "uncommitted changes"
@@ -598,6 +619,23 @@ POST /api/schedules/{id}/test        -> {"results": [{"channel", "target", "stat
 ```
 
 Schedule rows gain `last_outcome: {"status", "attempts", "notified": bool}`.
+
+**As built.** The webhook body's `run` is `Run.to_dict()` with `log` emptied: the tail
+is already there as `log_tail`, and a receiver has no use for sixty-four kilobytes of it
+twice. One `notifications` row is written per *attempt*, so a webhook that failed and
+then succeeded leaves a `failed` row and a `sent` row, and the run dialog can show the
+chain. `last_outcome` is written after every attempt, with `notified: false` while the
+chain is still going, and again at the end with the final status and count.
+`POST /api/schedules/{id}/test` sends without the retry -- somebody is waiting for the
+answer -- and answers 400 when the schedule has no webhook, no addresses and no default;
+its message describes the schedule's last run, or a placeholder run with `id: 0` when it
+has never had one. The SMTP password lives in the key file under `[notifications]`,
+beside the API keys, and is read from `TOLQUANE_SMTP_PASSWORD` when the file has none;
+like the other secrets, it is stripped from the environment of every child process. A
+`notify` object with a field this server does not know is a 400 rather than a schedule
+that quietly tells nobody. Delivery for a run is done on a daemon thread
+(`Notifier.deliver_later`), and the retry chain is a `threading.Timer` per attempt
+(`Outcomes`), cancelled when the server stops.
 
 **Frontend.** The schedule dialog gains an Outcomes section (notify-on chips, webhook
 with "use the default", emails, retries and delay, Send a test); the schedule list

@@ -16,6 +16,9 @@ Three rules shape the code:
   ``/api/openapi.json``, so every route carries an ``operation_id`` that reads like a
   method name and a response model that says what comes back.
 
+The two things a route here does not do itself live next door: ``history`` runs git for
+the History tab, and ``notify`` delivers a schedule's outcome and decides its retries.
+
 Who is calling is worked out once, in :class:`Auth`, and what they may do is one table,
 :data:`ROUTE_ROLES`. Both are read twice: by :class:`TokenWall`, one layer outside the
 routes, where the paths FastAPI adds for itself and the paths that match nothing are
@@ -60,11 +63,23 @@ from starlette.websockets import WebSocketDisconnect
 import tolquane as tq
 
 from ..errors import TolquaneError
+from . import history
 from . import model as flow_model
 from .cron import Cron
+from .notify import TEST_EVENT, Notifier, Outcome, Outcomes, base_url
+from .probe import probe_imports
 from .scheduler import Scheduler, local_now
-from .settings import AppSettings, WebSettings
-from .store import LOCAL_USER, Run, Schedule, Store, User, verify_password
+from .settings import AppSettings, WebSettings, setting_names
+from .store import (
+    LOCAL_USER,
+    Run,
+    Schedule,
+    Store,
+    User,
+    check_env,
+    check_params,
+    verify_password,
+)
 from .supervisor import (
     WORK_DIR,
     ChildFailed,
@@ -192,6 +207,11 @@ class FlowList(BaseModel):
     flows: list[FlowSummary]
 
 
+class Committed(BaseModel):
+    rev: str
+    short: str
+
+
 class FlowDetail(BaseModel):
     path: str
     source: str
@@ -200,6 +220,9 @@ class FlowDetail(BaseModel):
     code_only: dict[str, Any] | None = None
     graph: dict[str, Any] | None = None
     layout: dict[str, Any] | None = None
+    commit: Committed | None = Field(
+        default=None, description="the commit this save made, when it made one"
+    )
 
 
 class NewFlow(BaseModel):
@@ -207,10 +230,17 @@ class NewFlow(BaseModel):
     template: str | dict[str, Any] = "empty"
 
 
+class CommitMessage(BaseModel):
+    message: str = ""
+
+
 class SaveFlow(BaseModel):
     source: str
     modified: str | None = Field(
         default=None, description="the `modified` you were given; a mismatch answers 409"
+    )
+    commit: CommitMessage | None = Field(
+        default=None, description="commit the file after saving it, with this message"
     )
 
 
@@ -237,10 +267,20 @@ class GenerateResult(BaseModel):
     source: str
 
 
+class ImportProbe(BaseModel):
+    module: str
+    ok: bool
+    hint: str | None = None
+
+
 class CheckResult(BaseModel):
     ok: bool
     nodes: int
     edges: int
+    imports: list[ImportProbe] = Field(
+        default_factory=list,
+        description="what the flow imports and whether the run interpreter has it",
+    )
 
 
 class ExplainResult(BaseModel):
@@ -278,6 +318,8 @@ class RunModel(BaseModel):
     log: str = ""
     trace_path: str | None = None
     error: str | None = None
+    params: dict[str, Any] = Field(default_factory=dict)
+    env: dict[str, str] = Field(default_factory=dict)
     live: bool = False
 
 
@@ -293,6 +335,28 @@ class StartRun(BaseModel):
     tap: int = 0
     trace: bool = False
     optimize: bool = False
+    params: dict[str, Any] = Field(
+        default_factory=dict, description="keywords for the flow's build()"
+    )
+    env: dict[str, str] = Field(
+        default_factory=dict, description="variables this run's child process gets"
+    )
+
+
+class Notify(BaseModel):
+    events: list[str] = Field(default_factory=list, description="failed, deadlock, cancelled, done")
+    webhook: str | None = Field(default=None, description="null: the default from settings")
+    emails: list[str] = Field(default_factory=list)
+
+    # A field this does not know is a mistake worth saying out loud: a notify silently
+    # dropped is a schedule that quietly tells nobody.
+    model_config = {"extra": "forbid"}
+
+
+class LastOutcome(BaseModel):
+    status: str
+    attempts: int
+    notified: bool
 
 
 class ScheduleModel(BaseModel):
@@ -307,6 +371,12 @@ class ScheduleModel(BaseModel):
     last_run: int | None = None
     last_status: str | None = None
     next_run: str | None = None
+    params: dict[str, Any] = Field(default_factory=dict)
+    env: dict[str, str] = Field(default_factory=dict)
+    notify: Notify = Field(default_factory=Notify)
+    retries: int = 0
+    retry_delay: float = 60.0
+    last_outcome: LastOutcome | None = None
     description: str
     next_five: list[str]
 
@@ -321,6 +391,11 @@ class NewSchedule(BaseModel):
     sample: str | None = None
     runtime: str | None = None
     enabled: bool = True
+    params: dict[str, Any] = Field(default_factory=dict)
+    env: dict[str, str] = Field(default_factory=dict)
+    notify: Notify | None = None
+    retries: int = 0
+    retry_delay: float = 60.0
 
 
 class ScheduleChange(BaseModel):
@@ -329,6 +404,11 @@ class ScheduleChange(BaseModel):
     sample: str | None = None
     runtime: str | None = None
     enabled: bool | None = None
+    params: dict[str, Any] | None = None
+    env: dict[str, str] | None = None
+    notify: Notify | None = None
+    retries: int | None = None
+    retry_delay: float | None = None
 
 
 class CronPreviewRequest(BaseModel):
@@ -353,6 +433,22 @@ class ServerSettings(BaseModel):
     token_set: bool
 
 
+class SmtpSettings(BaseModel):
+    host: str
+    port: int = 587
+    username: str = ""
+    from_: str = Field(default="", alias="from")
+    starttls: bool = True
+
+    model_config = {"populate_by_name": True}
+
+
+class NotificationSettings(BaseModel):
+    webhook_default: str | None = None
+    smtp: SmtpSettings | None = None
+    has_smtp_password: bool | None = Field(default=None, description="null: not an admin")
+
+
 class SettingsModel(BaseModel):
     workspace: str
     default_runtime: str
@@ -363,6 +459,15 @@ class SettingsModel(BaseModel):
     cancel_grace: float
     keep_traces_days: int
     theme: str
+    python: str = Field(description="the interpreter runs and one-shot commands use")
+    auto_commit: bool = False
+    env: dict[str, str] | None = Field(
+        default=None, description="the workspace environment; null: not an admin"
+    )
+    env_names: list[str] = Field(
+        default_factory=list, description="the names of the workspace environment"
+    )
+    notifications: NotificationSettings
     ai: AiSettings
     server: ServerSettings | None = Field(
         default=None, description="the address and whether a token is set; admins only"
@@ -380,6 +485,67 @@ class ChatRequest(BaseModel):
     provider: str | None = None
     model: str | None = None
     sample: str | None = None
+
+
+# ------------------------------------------------------------- history, and outcomes
+
+
+class HistoryStatus(BaseModel):
+    available: bool
+    reason: str | None = None
+    repo: bool = False
+    root: str | None = None
+    dirty: int = 0
+
+
+class HistoryEntry(BaseModel):
+    rev: str
+    short: str
+    author: str
+    date: str
+    message: str
+    head: bool = False
+
+
+class HistoryList(BaseModel):
+    entries: list[HistoryEntry]
+    uncommitted: bool = False
+
+
+class HistoryVersion(BaseModel):
+    rev: str
+    source: str
+    diff: str
+
+
+class RestoreRequest(BaseModel):
+    rev: str
+
+
+class NotificationModel(BaseModel):
+    id: int
+    run_id: int | None = None
+    schedule_id: int | None = None
+    channel: str
+    target: str
+    status: str
+    error: str | None = None
+    created: str
+
+
+class NotificationList(BaseModel):
+    notifications: list[NotificationModel]
+
+
+class DeliveryModel(BaseModel):
+    channel: str
+    target: str
+    status: str
+    error: str | None = None
+
+
+class TestResults(BaseModel):
+    results: list[DeliveryModel]
 
 
 class Health(BaseModel):
@@ -477,27 +643,40 @@ def create_app(settings: AppSettings) -> FastAPI:
     web = WebSettings(store, settings)
     auth = Auth(settings, store)
 
+    notifier = Notifier(store, web, url_base=base_url(settings.host, settings.port))
+
     def finished(run: Run) -> None:
-        """A run that a schedule started leaves its status on the schedule."""
-        if run.trigger.startswith("schedule:"):
-            with contextlib.suppress(ValueError):
-                store.update_schedule(int(run.trigger.split(":", 1)[1]), last_status=run.status)
+        """A run that a schedule started leaves its status, its next attempt and its news."""
+        with contextlib.suppress(ValueError):
+            outcomes.finished(run)
 
     supervisor = Supervisor(settings.workspace, store, web, on_finish=finished)
 
-    def fire(schedule: Schedule) -> None:
-        """The scheduler's callback: start the run and remember it on the schedule."""
+    def start_scheduled(schedule: Schedule, trigger: str) -> Run:
+        """Start one attempt of a schedule: the first one, or a retry of it.
+
+        A scheduled run belongs to whoever made the schedule, not to whoever was signed
+        in when the minute came round, and it is given the schedule's own parameters and
+        environment, so a retry runs exactly what failed.
+        """
         run = supervisor.start(
             schedule.flow,
             runtime=schedule.runtime,
             sample_name=schedule.sample,
             sample_items=_sample_items(settings.workspace, schedule.flow, schedule.sample),
-            trigger=f"schedule:{schedule.id}",
+            trigger=trigger,
+            params=schedule.params,
+            env=schedule.env,
+            user=schedule.user,
         )
-        # A scheduled run belongs to whoever made the schedule, not to whoever was
-        # signed in when the minute came round.
-        store.set_run_user(run.id, schedule.user)
         store.update_schedule(schedule.id, last_run=run.id, last_status="running")
+        return run
+
+    outcomes = Outcomes(store, notifier, start_scheduled)
+
+    def fire(schedule: Schedule) -> None:
+        """The scheduler's callback: start the run and remember it on the schedule."""
+        start_scheduled(schedule, f"schedule:{schedule.id}")
 
     scheduler = Scheduler(
         store,
@@ -520,6 +699,7 @@ def create_app(settings: AppSettings) -> FastAPI:
             yield
         finally:
             scheduler.stop()
+            outcomes.close()
             supervisor.shutdown()
             store.close()
 
@@ -538,9 +718,11 @@ def create_app(settings: AppSettings) -> FastAPI:
     app.state.web_settings = web
     app.state.supervisor = supervisor
     app.state.scheduler = scheduler
+    app.state.notifier = notifier
+    app.state.outcomes = outcomes
 
     _errors(app)
-    _routes(app, settings, store, web, supervisor, scheduler, auth)
+    _routes(app, settings, store, web, supervisor, scheduler, auth, notifier)
     _frontend(app, settings)
     # No CORS middleware, on purpose: the page and the API are the same origin, so a
     # site in another tab gets no answer it could read. Added last, so they run first.
@@ -646,6 +828,7 @@ ROUTE_ROLES: tuple[tuple[str, str, str], ...] = (
     ("POST", "/api/auth/login", PUBLIC),
     ("POST", "/api/auth/setup", PUBLIC),
     ("*", "/api/users", ADMIN),
+    ("POST", "/api/workspace/history/init", ADMIN),
 )
 """What each route needs, in one place rather than in thirty decorators.
 
@@ -1041,6 +1224,7 @@ def _routes(
     supervisor: Supervisor,
     scheduler: Scheduler,
     auth: Auth,
+    notifier: Notifier,
 ) -> None:
     guard = [Depends(_guard(auth))]
     workspace = settings.workspace
@@ -1092,7 +1276,7 @@ def _routes(
         """The model, the code-only reason and the graph of one file, from children."""
         timeout = web.exec_timeout
         try:
-            parsed = model_command("parse", file, workspace, timeout)
+            parsed = model_command("parse", file, workspace, timeout, web.python)
         except ChildTimeout as exc:
             raise ApiError(400, "Timeout", str(exc)) from exc
         except ChildFailed as exc:
@@ -1107,7 +1291,7 @@ def _routes(
             }
         graph: dict[str, Any] | None
         try:
-            graph = model_command("graph", file, workspace, timeout)
+            graph = model_command("graph", file, workspace, timeout, web.python)
         except ChildFailed:
             graph = None
         return {"model": parsed, "code_only": None, "graph": graph}
@@ -1138,6 +1322,107 @@ def _routes(
             "description": cron.describe(),
             "next_five": _next_five(cron, settings.clock or local_now),
         }
+
+    # History -------------------------------------------------------------
+    #
+    # Registered before the flow routes because ``/api/flows/{path:path}`` would
+    # otherwise match ``hello.py/history`` as the name of a flow: Starlette takes the
+    # first route whose pattern fits, and the wildcard fits everything.
+
+    def git_files(file: Path) -> list[str]:
+        """What a commit of this flow covers: the file, and its sidecar when there is one."""
+        sidecar = layout_target(workspace, file)
+        names = [relative(workspace, file)]
+        if sidecar.is_file():
+            names.append(relative(workspace, sidecar))
+        return names
+
+    def told(call: Callable[[], Any]) -> Any:
+        """Run a git call, turning what it refuses into the error shape of the contract."""
+        try:
+            return call()
+        except history.HistoryError as exc:
+            raise bad_request(str(exc)) from exc
+        except ValueError as exc:
+            raise bad_request(str(exc)) from exc
+
+    def commit_for(file: Path, message: str, author: str) -> dict[str, Any] | None:
+        """Commit a flow and its sidecar, or answer ``None`` when there was nothing to do.
+
+        A save is not a commit: the file is already written when this runs, so a git that
+        refuses is logged and reported as "no commit", never as a failed save.
+        """
+        try:
+            made = history.commit(workspace, git_files(file), message, author)
+        except history.HistoryError as exc:
+            log.warning("could not commit %s: %s", relative(workspace, file), exc)
+            return None
+        return made.to_dict() if made is not None else None
+
+    @app.get(
+        "/api/workspace/history",
+        operation_id="getWorkspaceHistory",
+        response_model=HistoryStatus,
+        dependencies=guard,
+    )
+    async def workspace_history() -> dict[str, Any]:
+        """Is this workspace in a git repository, and how much of it is uncommitted?"""
+        return history.status(workspace).to_dict()
+
+    @app.post(
+        "/api/workspace/history/init",
+        operation_id="initWorkspaceHistory",
+        response_model=Ok,
+        dependencies=guard,
+    )
+    async def init_workspace_history() -> dict[str, Any]:
+        """``git init`` here, with a ``.gitignore`` that leaves the server's own files out."""
+        told(lambda: history.init(workspace))
+        return {"ok": True}
+
+    @app.get(
+        "/api/flows/{path:path}/history/{rev}",
+        operation_id="getFlowVersion",
+        response_model=HistoryVersion,
+        dependencies=guard,
+    )
+    async def flow_version(path: str, rev: str) -> dict[str, Any]:
+        """One old version of a flow, and how it differs from the file as it is now."""
+        file = safe_path(workspace, path)
+        name = relative(workspace, file)
+        source = told(lambda: history.show(workspace, rev, name))
+        return {
+            "rev": rev,
+            "source": source,
+            "diff": told(lambda: history.diff(workspace, rev, name)),
+        }
+
+    @app.get(
+        "/api/flows/{path:path}/history",
+        operation_id="getFlowHistory",
+        response_model=HistoryList,
+        dependencies=guard,
+    )
+    async def flow_history(path: str, limit: int = 50) -> dict[str, Any]:
+        """The commits that touched this flow, newest first, and whether it has changed."""
+        file = safe_path(workspace, path)
+        name = relative(workspace, file)
+        found, dirty = told(lambda: history.entries(workspace, name, max(1, min(limit, 500))))
+        return {"entries": [entry.to_dict() for entry in found], "uncommitted": dirty}
+
+    @app.post(
+        "/api/flows/{path:path}/restore",
+        operation_id="restoreFlow",
+        response_model=FlowDetail,
+        dependencies=guard,
+    )
+    async def restore_flow(path: str, body: RestoreRequest) -> dict[str, Any]:
+        """Put a flow, and its sidecar, back as they were. Nothing is committed."""
+        file = safe_path(workspace, path)
+        name = relative(workspace, file)
+        sidecar = relative(workspace, layout_target(workspace, file))
+        told(lambda: history.restore(workspace, body.rev, [name, sidecar]))
+        return detail(file)
 
     # Flows ---------------------------------------------------------------
 
@@ -1276,11 +1561,25 @@ def _routes(
         dependencies=guard,
     )
     async def check_flow(path: str) -> dict[str, Any]:
-        """``tq.check`` in a child process: the counts, or the GraphError as it stands."""
+        """``tq.check`` in a child process: the counts, or the GraphError as it stands.
+
+        The imports are probed first, with the interpreter the run would use, and travel
+        with the failure as well as with the success: a flow that does not check because
+        ``import pandas`` fails is exactly the one whose Problems panel needs the ``pip
+        install`` line.
+        """
         file = _existing(workspace, path)
-        text = _child_text("check", file, workspace, web.exec_timeout)
+        imports = _imports(file, web)
+        try:
+            text = _child_text("check", file, workspace, web.exec_timeout, web.python)
+        except ApiError as exc:
+            exc.detail = {
+                **(exc.detail if isinstance(exc.detail, dict) else {}),
+                "imports": imports,
+            }
+            raise
         nodes, edges = _counts(text)
-        return {"ok": True, "nodes": nodes, "edges": edges}
+        return {"ok": True, "nodes": nodes, "edges": edges, "imports": imports}
 
     @app.post(
         "/api/flows/{path:path}/explain",
@@ -1291,7 +1590,7 @@ def _routes(
     async def explain_flow(path: str) -> dict[str, Any]:
         """``tq.explain``: one line per node and edge."""
         file = _existing(workspace, path)
-        return {"text": _child_text("explain", file, workspace, web.exec_timeout)}
+        return {"text": _child_text("explain", file, workspace, web.exec_timeout, web.python)}
 
     @app.post(
         "/api/flows/{path:path}/draw",
@@ -1302,7 +1601,7 @@ def _routes(
     async def draw_flow(path: str) -> dict[str, Any]:
         """``tq.draw``: the Mermaid text for the expanded graph."""
         file = _existing(workspace, path)
-        return {"mermaid": _child_text("draw", file, workspace, web.exec_timeout)}
+        return {"mermaid": _child_text("draw", file, workspace, web.exec_timeout, web.python)}
 
     @app.post(
         "/api/flows/{path:path}/optimize",
@@ -1315,7 +1614,9 @@ def _routes(
         file = _existing(workspace, path)
         options = body or OptimizeRequest()
         try:
-            result = optimize_command(file, workspace, web.exec_timeout, options.all2all)
+            result = optimize_command(
+                file, workspace, web.exec_timeout, options.all2all, web.python
+            )
         except ChildTimeout as exc:
             raise ApiError(400, "Timeout", str(exc)) from exc
         except ChildFailed as exc:
@@ -1334,8 +1635,14 @@ def _routes(
         response_model=FlowDetail,
         dependencies=guard,
     )
-    async def save_flow(path: str, body: SaveFlow) -> dict[str, Any]:
-        """Write a flow. A ``modified`` that no longer matches answers 409 with the file."""
+    async def save_flow(path: str, body: SaveFlow, me: Principal = caller) -> dict[str, Any]:
+        """Write a flow. A ``modified`` that no longer matches answers 409 with the file.
+
+        ``commit`` asks for the save to be committed with that message, and the
+        ``auto_commit`` setting asks for every save to be. A commit that was asked for
+        explicitly is checked before anything is written: a workspace with no repository
+        answers 400 with the file untouched, rather than saving and quietly not committing.
+        """
         file = safe_path(workspace, path)
         _check_size(body.source, web.max_source_bytes)
         if file.is_file() and body.modified is not None:
@@ -1347,9 +1654,15 @@ def _routes(
                     f"{path} changed on disk since you opened it; merge the two versions",
                     {"source": file.read_text(encoding="utf-8"), "modified": current},
                 )
+        if body.commit is not None:
+            told(lambda: history.require(workspace))
         file.parent.mkdir(parents=True, exist_ok=True)
         file.write_text(body.source, encoding="utf-8")
-        return detail(file)
+        made = None
+        if body.commit is not None or web.auto_commit:
+            message = (body.commit.message if body.commit else "").strip() or f"Edit {path}"
+            made = commit_for(file, message, me.name)
+        return {**detail(file), "commit": made}
 
     @app.delete(
         "/api/flows/{path:path}",
@@ -1384,10 +1697,13 @@ def _routes(
                 trace=body.trace,
                 optimize=body.optimize,
                 trigger="manual",
+                params=made(lambda: check_params(body.params)),
+                env=made(lambda: check_env(body.env)),
+                user=me.name,
             )
         except TooManyRuns as exc:
             raise ApiError(429, "TooManyRuns", str(exc)) from exc
-        return run_dict(store.set_run_user(run.id, me.name))
+        return run_dict(run)
 
     @app.get("/api/runs", operation_id="listRuns", response_model=RunList, dependencies=guard)
     async def list_runs(flow: str | None = None, limit: int = 50) -> dict[str, Any]:
@@ -1435,6 +1751,17 @@ def _routes(
         return FileResponse(
             run.trace_path, media_type="application/json", filename=f"run-{run_id}-trace.json"
         )
+
+    @app.get(
+        "/api/runs/{run_id}/notifications",
+        operation_id="getRunNotifications",
+        response_model=NotificationList,
+        dependencies=guard,
+    )
+    async def run_notifications(run_id: int) -> dict[str, Any]:
+        """Every attempt to tell somebody about this run, sent or failed, oldest first."""
+        _run(store, run_id)
+        return {"notifications": [n.to_dict() for n in store.list_notifications(run_id=run_id)]}
 
     @app.websocket("/api/runs/{run_id}/events")
     async def run_events(websocket: WebSocket, run_id: int) -> None:
@@ -1497,13 +1824,20 @@ def _routes(
         """Add a schedule. The cron expression is checked before anything is stored."""
         _existing(workspace, body.flow)
         _cron(body.cron)
-        schedule = store.add_schedule(
-            relative(workspace, safe_path(workspace, body.flow)),
-            body.cron,
-            body.sample,
-            body.runtime or web.default_runtime,
-            body.enabled,
-            user=me.name,
+        schedule = made(
+            lambda: store.add_schedule(
+                relative(workspace, safe_path(workspace, body.flow)),
+                body.cron,
+                body.sample,
+                body.runtime or web.default_runtime,
+                body.enabled,
+                user=me.name,
+                params=body.params,
+                env=body.env,
+                notify=body.notify.model_dump() if body.notify is not None else None,
+                retries=body.retries,
+                retry_delay=body.retry_delay,
+            )
         )
         scheduler.reload()
         return schedule_dict(schedule)
@@ -1523,7 +1857,7 @@ def _routes(
             _cron(str(fields["cron"]))
         if "flow" in fields:
             fields["flow"] = relative(workspace, _existing(workspace, str(fields["flow"])))
-        schedule = store.update_schedule(schedule_id, **fields)
+        schedule = made(lambda: store.update_schedule(schedule_id, **fields))
         scheduler.reload()
         return schedule_dict(schedule)
 
@@ -1572,6 +1906,32 @@ def _routes(
         if run is None:  # pragma: no cover - fire always records a run
             raise ApiError(500, "RunError", "the run was started but not recorded")
         return run_dict(run)
+
+    @app.post(
+        "/api/schedules/{schedule_id}/test",
+        operation_id="testScheduleNotifications",
+        response_model=TestResults,
+        dependencies=guard,
+    )
+    async def test_schedule(schedule_id: int) -> dict[str, Any]:
+        """Send this schedule's notifications now, and say what each channel answered.
+
+        The message is the real one, with ``event`` set to ``test`` and the schedule's
+        last run in it when it has had one. Delivery is not retried here: somebody is
+        waiting for the answer, and a webhook that is down should say so in ten seconds
+        rather than in forty.
+        """
+        schedule = _schedule(store, schedule_id)
+        last = store.get_run(schedule.last_run) if schedule.last_run else None
+        run = last if last is not None else _placeholder_run(store, schedule)
+        outcome = Outcome(event=TEST_EVENT, run=run, schedule=schedule, attempts=1)
+        results = await asyncio.to_thread(notifier.deliver, outcome, retry=False)
+        if not results:
+            raise bad_request(
+                "this schedule has nowhere to send to: give it a webhook or an address, "
+                "or set notifications.webhook_default in settings"
+            )
+        return {"results": [result.to_dict() for result in results]}
 
     # Users and sessions --------------------------------------------------
 
@@ -1765,9 +2125,10 @@ def _routes(
     async def update_settings(
         body: Annotated[dict[str, Any], Body()], me: Principal = caller
     ) -> dict[str, Any]:
-        """Change any subset. ``ai.anthropic_key`` and ``ai.openai_key`` go to the key file."""
+        """Change any subset. The three secrets -- ``ai.anthropic_key``, ``ai.openai_key``
+        and ``notifications.smtp_password`` -- go to the key file, never to the store."""
         if not me.is_admin:
-            refused = sorted(_setting_names(body) - {"theme"})
+            refused = sorted(setting_names(body) - {"theme"})
             if refused:
                 raise ApiError(
                     403,
@@ -1776,7 +2137,9 @@ def _routes(
                     "is for an administrator",
                 )
         try:
-            web.update(body)
+            # The interpreter is checked by running it, so this goes to a thread rather
+            # than holding the event loop while a cold Python starts.
+            await asyncio.to_thread(web.update, body)
         except ValueError as exc:
             raise bad_request(str(exc)) from exc
         return _settings_view(web.as_dict(), me)
@@ -1838,24 +2201,23 @@ def _walk(workspace: Path) -> Iterator[Path]:
 
 
 def _settings_view(data: dict[str, Any], me: Principal) -> dict[str, Any]:
-    """The settings as this caller may see them: a member is told nothing about keys."""
+    """The settings as this caller may see them: a member is told nothing about secrets.
+
+    The workspace environment is one of them: a member sees ``env_names``, so the Run
+    popover can say which variables a run will have, and not the values, which are where
+    a workspace keeps its own keys.
+    """
     if me.is_admin:
         return data
     view = dict(data)
     view["server"] = None
+    view["env"] = None
     view["ai"] = {**dict(view.get("ai") or {}), "has_anthropic_key": None, "has_openai_key": None}
+    view["notifications"] = {
+        **dict(view.get("notifications") or {}),
+        "has_smtp_password": None,
+    }
     return view
-
-
-def _setting_names(patch: Any, prefix: str = "") -> set[str]:
-    """The dotted names a settings body would write, however it was nested."""
-    if not isinstance(patch, dict):
-        return set()
-    names: set[str] = set()
-    for key, value in patch.items():
-        name = f"{prefix}{key}"
-        names |= _setting_names(value, f"{name}.") if isinstance(value, dict) else {name}
-    return names
 
 
 def _existing(workspace: Path, path: str) -> Path:
@@ -1874,9 +2236,11 @@ def _generate(model: Any) -> str:
         raise bad_request(f"that model cannot be written as Python: {exc}") from exc
 
 
-def _child_text(command: str, file: Path, workspace: Path, timeout: float) -> str:
+def _child_text(
+    command: str, file: Path, workspace: Path, timeout: float, python: str | None = None
+) -> str:
     try:
-        return tolquane_command(command, file, workspace, timeout).strip()
+        return tolquane_command(command, file, workspace, timeout, python).strip()
     except ChildTimeout as exc:
         raise ApiError(400, "Timeout", str(exc)) from exc
     except ChildFailed as exc:
@@ -1884,11 +2248,43 @@ def _child_text(command: str, file: Path, workspace: Path, timeout: float) -> st
         raise ApiError(400, "GraphError", str(exc)) from exc
 
 
+def _imports(file: Path, web: WebSettings) -> list[dict[str, Any]]:
+    """What this flow imports and whether the run interpreter has it. Never raises: an
+    interpreter that cannot answer is itself the answer, one line per module."""
+    try:
+        source = file.read_text(encoding="utf-8")
+    except OSError:  # pragma: no cover - the file was there a line ago
+        return []
+    found = probe_imports(source, web.python, path=str(file), timeout=web.exec_timeout)
+    return [probe.to_dict() for probe in found]
+
+
 def _counts(text: str) -> tuple[int, int]:
     """``OK: 6 nodes, 6 edges`` from ``tolquane check``."""
     first = text.splitlines()[0] if text else ""
     numbers = [int(word) for word in first.replace(",", " ").split() if word.isdigit()]
     return (numbers[0], numbers[1]) if len(numbers) >= 2 else (0, 0)
+
+
+def _placeholder_run(store: Store, schedule: Schedule) -> Run:
+    """A run to describe when a schedule has never had one: the test message needs one."""
+    return Run(
+        id=0,
+        flow=schedule.flow,
+        runtime=schedule.runtime,
+        sample=schedule.sample,
+        trigger=f"schedule:{schedule.id}",
+        started=store.now(),
+        ended=store.now(),
+        status="done",
+        report=None,
+        log="",
+        trace_path=None,
+        error=None,
+        user=schedule.user,
+        params=dict(schedule.params),
+        env=dict(schedule.env),
+    )
 
 
 def _run(store: Store, run_id: int) -> Run:
@@ -2012,7 +2408,8 @@ def _chat_worker(
         builder = Builder(provider, workdir, sample_path=sample_path, on_event=on_event)
         result = builder.build(_prompt(body, source))
         if result.code:
-            emit({"type": "flow", **_written(workdir, workspace, result.code, web.exec_timeout)})
+            written = _written(workdir, workspace, result.code, web.exec_timeout, web.python)
+            emit({"type": "flow", **written})
         emit({"type": "done", "usage": result.usage, "ok": result.ok, "summary": result.summary})
     except ApiError as exc:
         emit({"type": "error", "message": exc.message})
@@ -2031,18 +2428,20 @@ def _call_summary(call: Any) -> str:
     return json.dumps(call.args, default=str)[:200]
 
 
-def _written(workdir: Path, workspace: Path, code: str, timeout: float) -> dict[str, Any]:
+def _written(
+    workdir: Path, workspace: Path, code: str, timeout: float, python: str | None = None
+) -> dict[str, Any]:
     """The flow the builder ended with, parsed the same way an open file is."""
     file = workdir / "flow.py"
     payload: dict[str, Any] = {"source": code, "model": None, "graph": None}
     if not file.is_file():  # pragma: no cover - the builder writes before it reports code
         return payload
     with contextlib.suppress(ChildFailed):
-        parsed = model_command("parse", file, workdir, timeout)
+        parsed = model_command("parse", file, workdir, timeout, python)
         if isinstance(parsed, dict) and not parsed.get("code_only"):
             payload["model"] = parsed
             with contextlib.suppress(ChildFailed):
-                payload["graph"] = model_command("graph", file, workdir, timeout)
+                payload["graph"] = model_command("graph", file, workdir, timeout, python)
         elif isinstance(parsed, dict):
             payload["code_only"] = {"reason": parsed.get("reason", "")}
             payload["graph"] = parsed.get("graph")

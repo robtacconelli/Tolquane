@@ -461,13 +461,30 @@ def test_the_one_shot_children_are_stripped_too(
 def test_child_env_drops_the_secrets_and_the_token(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-a")
     monkeypatch.setenv("OPENAI_API_KEY", "sk-o")
+    monkeypatch.setenv("TOLQUANE_SMTP_PASSWORD", "not-a-real-password")
     monkeypatch.setenv("MY_SERVER_TOKEN", TOKEN)
     monkeypatch.setenv("PATH_TO_KEEP", "/usr/bin")
     env = child_env(TOKEN)
     assert "ANTHROPIC_API_KEY" not in env
     assert "OPENAI_API_KEY" not in env
+    assert "TOLQUANE_SMTP_PASSWORD" not in env, "the mail password is the server's, not a flow's"
     assert "MY_SERVER_TOKEN" not in env, "a variable holding the token goes whatever it is called"
     assert env["PATH_TO_KEEP"] == "/usr/bin"
+
+
+def test_child_env_puts_the_workspace_and_the_run_back_after_the_stripping(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A run may be given anything, including a key of its own; it just never inherits ours."""
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-server-only")
+    env = child_env(
+        TOKEN,
+        workspace={"TZ": "UTC", "GREETING": "workspace"},
+        run={"GREETING": "run", "ANTHROPIC_API_KEY": "sk-the-flows-own"},
+    )
+    assert env["TZ"] == "UTC"
+    assert env["GREETING"] == "run", "the run is applied after the workspace"
+    assert env["ANTHROPIC_API_KEY"] == "sk-the-flows-own"
 
 
 # ------------------------------------------------------------------------------- the limits
