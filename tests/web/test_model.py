@@ -576,3 +576,209 @@ def test_cli_without_a_command() -> None:
     done = run_cli("explain", "flow.py")
     assert done.returncode == 2
     assert "usage" in done.stderr
+
+
+# --------------------------------------------------------------------------- parameters
+
+
+PARAMETERS = '''"""A flow whose build() takes parameters."""
+
+import tolquane as tq
+
+
+@tq.source
+def numbers():
+    yield from range(10)
+
+
+@tq.node
+def double(x: int) -> int:
+    return x * 2
+
+
+@tq.sink
+def show(x: int) -> None:
+    print(x)
+
+
+def build(source=None, *, workers: int = 2, label="doubling"):
+    start = numbers if source is None else tq.from_iterable(source)
+    return start >> tq.farm(double, workers, name=label) >> show
+
+
+def main() -> None:
+    tq.run(build())
+
+
+if __name__ == "__main__":
+    main()
+'''
+
+NO_DEFAULT = PARAMETERS.replace("workers: int = 2", "workers: int")
+COMPUTED = PARAMETERS.replace("workers: int = 2", "workers: int = len(TEXT)")
+POSITIONAL = PARAMETERS.replace("source=None, *, workers: int = 2, label=", "source=None, workers=")
+
+
+def test_the_parameters_of_build_are_read_in_order() -> None:
+    model = parse_source(PARAMETERS, "parameters")
+    assert isinstance(model, FlowModel), getattr(model, "reason", "")
+    assert [p.to_dict() for p in model.params] == [
+        {"name": "workers", "default": "2", "annotation": "int"},
+        {"name": "label", "default": '"doubling"', "annotation": None},
+    ]
+
+
+def test_a_flow_with_parameters_makes_the_whole_round_trip(tmp_path: Path) -> None:
+    original = tmp_path / "parameters.py"
+    original.write_text(PARAMETERS, encoding="utf-8")
+    model = model_of(original)
+    first = to_python(model)
+    assert 'def build(source=None, *, workers: int = 2, label="doubling"):' in first
+    assert first == PARAMETERS  # the file was already in the house style
+    again = parse_source(first, "parameters")
+    assert isinstance(again, FlowModel), getattr(again, "reason", "")
+    assert to_python(again) == first
+    assert graph_view(first) == graph_view(original)
+    for node in model.nodes:
+        assert node.source in first
+    generated = tmp_path / "generated.py"
+    generated.write_text(first, encoding="utf-8")
+    done = subprocess.run(
+        [ruff(), "format", "--check", "--config", str(CONFIG), str(generated)],
+        capture_output=True,
+        text=True,
+        timeout=120,
+    )
+    assert done.returncode == 0, done.stdout
+    assert not ruff_codes(generated) - ruff_codes(original)
+
+
+def test_main_still_calls_build_with_the_defaults() -> None:
+    model = parse_source(PARAMETERS, "parameters")
+    assert isinstance(model, FlowModel)
+    assert model.main is None
+    assert "def main() -> None:\n    tq.run(build())" in to_python(model)
+
+
+def test_a_parameter_is_a_name_the_flow_can_use() -> None:
+    """`workers` sizes the farm, so the farm stays verbatim and build() still runs."""
+    model = parse_source(PARAMETERS, "parameters")
+    assert isinstance(model, FlowModel)
+    assert model.flow["stages"][1] == {
+        "type": "inline",
+        "source": "tq.farm(double, workers, name=label)",
+    }
+    assert check_model(model) == []
+
+
+def test_every_literal_default_survives_the_trip() -> None:
+    signature = (
+        "source=None, *, ratio: float = 0.5, quiet: bool = False, tag: str = 'a\"b', "
+        "limit=None, rows: tuple = (1, 2), gap: int = -1"
+    )
+    text = PARAMETERS.replace(
+        'source=None, *, workers: int = 2, label="doubling"', signature
+    ).replace("tq.farm(double, workers, name=label)", "tq.farm(double, 2)")
+    model = parse_source(text, "literals")
+    assert isinstance(model, FlowModel), getattr(model, "reason", "")
+    assert [(p.name, p.default) for p in model.params] == [
+        ("ratio", "0.5"),
+        ("quiet", "False"),
+        ("tag", "'a\"b'"),
+        ("limit", "None"),
+        ("rows", "(1, 2)"),
+        ("gap", "-1"),
+    ]
+    first = to_python(model)
+    again = parse_source(first, "literals")
+    assert isinstance(again, FlowModel), getattr(again, "reason", "")
+    assert to_python(again) == first
+
+
+def test_a_long_signature_is_written_one_parameter_per_line(tmp_path: Path) -> None:
+    signature = (
+        'source=None, *, threshold: float = 0.5, path: str = "some/rather/long/data.csv", '
+        'retries: int = 3, verbose: bool = False, label: str = "the run of the day"'
+    )
+    text = PARAMETERS.replace(
+        'source=None, *, workers: int = 2, label="doubling"', signature
+    ).replace("tq.farm(double, workers, name=label)", "tq.farm(double, retries)")
+    model = parse_source(text, "wide_signature")
+    assert isinstance(model, FlowModel), getattr(model, "reason", "")
+    generated = to_python(model)
+    assert "def build(\n    source=None,\n    *,\n    threshold: float = 0.5,\n" in generated
+    assert '    label: str = "the run of the day",\n):\n' in generated
+    assert max(len(line) for line in generated.split("\n")) <= 100
+    written = tmp_path / "wide_signature.py"
+    written.write_text(generated, encoding="utf-8")
+    done = subprocess.run(
+        [ruff(), "format", "--check", "--config", str(CONFIG), str(written)],
+        capture_output=True,
+        text=True,
+        timeout=120,
+    )
+    assert done.returncode == 0, done.stdout
+
+
+def test_a_parameter_without_a_default_is_code_only() -> None:
+    parsed = parse_source(NO_DEFAULT, "no_default")
+    assert isinstance(parsed, CodeOnly)
+    assert parsed.reason == (
+        "build()'s parameter 'workers' has no default; the model runs the flow with its "
+        "defaults, so every parameter needs one"
+    )
+    # Nothing can draw it either: build() cannot be called without a value for it.
+    assert parsed.graph is None
+
+
+def test_a_default_that_is_not_a_literal_is_code_only() -> None:
+    parsed = parse_source(COMPUTED, "computed")
+    assert isinstance(parsed, CodeOnly)
+    assert parsed.reason == (
+        "the default of build()'s parameter 'workers' is `len(TEXT)`, which is not a literal"
+    )
+
+
+def test_a_second_positional_parameter_is_still_code_only() -> None:
+    parsed = parse_source(POSITIONAL, "positional")
+    assert isinstance(parsed, CodeOnly)
+    assert "positional parameters" in parsed.reason
+    assert "build(source=None, *, name=default, ...)" in parsed.reason
+
+
+def test_the_parameters_are_in_the_json_and_an_older_model_has_none() -> None:
+    model = parse_source(PARAMETERS, "parameters")
+    assert isinstance(model, FlowModel)
+    data = json.loads(json.dumps(model.to_dict()))
+    assert data["params"] == [
+        {"name": "workers", "default": "2", "annotation": "int"},
+        {"name": "label", "default": '"doubling"', "annotation": None},
+    ]
+    assert to_python(FlowModel.from_dict(data)) == to_python(model)
+    older = {key: value for key, value in data.items() if key != "params"}
+    revived = FlowModel.from_dict(older)
+    assert revived.params == []
+    assert "def build(source=None):" in to_python(revived)
+
+
+def test_a_build_with_star_args_or_kwargs_is_code_only() -> None:
+    for signature in ("source=None, *args, workers: int = 2", "source=None, **extra"):
+        text = PARAMETERS.replace('source=None, *, workers: int = 2, label="doubling"', signature)
+        parsed = parse_source(text, "loose")
+        assert isinstance(parsed, CodeOnly)
+        assert parsed.reason == (
+            "build() takes the sample source and keyword-only parameters, nothing else"
+        )
+
+
+def test_a_build_with_parameters_and_no_source_gets_one_back() -> None:
+    text = (
+        PARAMETERS.replace('source=None, *, workers: int = 2, label="doubling"', "*, workers=2")
+        .replace("    start = numbers if source is None else tq.from_iterable(source)\n", "")
+        .replace("return start >>", "return numbers >>")
+        .replace("tq.farm(double, workers, name=label)", "tq.farm(double, workers)")
+    )
+    model = parse_source(text, "no_source")
+    assert isinstance(model, FlowModel), getattr(model, "reason", "")
+    assert [p.name for p in model.params] == ["workers"]
+    assert "def build(source=None, *, workers=2):" in to_python(model)

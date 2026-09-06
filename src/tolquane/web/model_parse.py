@@ -163,6 +163,7 @@ class _Flow:
     start: str | None = None
     notes: list[str] = field(default_factory=list)
     main: str | None = None
+    params: list[dict[str, Any]] = field(default_factory=list)
 
 
 class _Reader:
@@ -247,6 +248,7 @@ class _Reader:
             "nodes": nodes,
             "flow": flow.tree,
             "start": flow.start,
+            "params": flow.params,
             "main": flow.main,
             "epilogue": epilogue,
             "build_notes": flow.notes,
@@ -350,12 +352,18 @@ class _Reader:
         if isinstance(fn, ast.AsyncFunctionDef):
             return ParseFailure("build() is a coroutine; the model composes the graph directly")
         args = fn.args
-        if args.vararg or args.kwarg or args.posonlyargs or args.kwonlyargs:
-            return ParseFailure("build() takes at most one parameter, the sample source")
+        if args.vararg or args.kwarg or args.posonlyargs:
+            return ParseFailure(
+                "build() takes the sample source and keyword-only parameters, nothing else"
+            )
         if len(args.args) > 1:
             return ParseFailure(
-                f"build() takes {len(args.args)} parameters; the house style is build(source=None)"
+                f"build() takes {len(args.args)} positional parameters; the house style is "
+                "build(source=None, *, name=default, ...)"
             )
+        params = self._read_params(args)
+        if isinstance(params, ParseFailure):
+            return params
         source_param = args.args[0].arg if args.args else None
         body = list(fn.body)
         notes = self._comments_in(fn)
@@ -384,7 +392,38 @@ class _Reader:
                 f"build() uses {source_param!r} outside the start line, so the model cannot "
                 "wire a sample on its own"
             )
-        return _Flow(tree, start, notes)
+        return _Flow(tree, start, notes, params=params)
+
+    def _read_params(self, args: ast.arguments) -> list[dict[str, Any]] | ParseFailure:
+        """``build``'s keyword-only parameters: a name, a literal default, an annotation.
+
+        The default is kept as the source the author wrote, so a round trip gives back the
+        same bytes, and it has to be a literal: the model calls ``build()`` with no
+        arguments to check itself, and a run gives the parameters it was asked for and
+        nothing else.
+        """
+        out: list[dict[str, Any]] = []
+        for arg, default in zip(args.kwonlyargs, args.kw_defaults, strict=True):
+            if default is None:
+                return ParseFailure(
+                    f"build()'s parameter {arg.arg!r} has no default; the model runs the flow "
+                    "with its defaults, so every parameter needs one"
+                )
+            try:
+                ast.literal_eval(default)
+            except (ValueError, TypeError, SyntaxError, MemoryError, RecursionError):
+                return ParseFailure(
+                    f"the default of build()'s parameter {arg.arg!r} is "
+                    f"`{self.segment(default)}`, which is not a literal"
+                )
+            out.append(
+                {
+                    "name": arg.arg,
+                    "default": self.segment(default),
+                    "annotation": self.segment(arg.annotation) if arg.annotation else None,
+                }
+            )
+        return out
 
     def _used_names(self, returned: ast.expr) -> set[str]:
         used = _names_in(returned)

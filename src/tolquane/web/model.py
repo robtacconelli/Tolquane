@@ -83,6 +83,33 @@ class NodeDef:
 
 
 @dataclass
+class ParamDef:
+    """One keyword-only parameter of ``build()``, as the author wrote it.
+
+    ``default`` and ``annotation`` are Python source (``"0.5"``, ``'"data.csv"'``,
+    ``"float"``), not values: the file is the truth, and a round trip has to give back the
+    same bytes. The default is always a literal, so a caller can read it with
+    ``ast.literal_eval`` without running anything.
+    """
+
+    name: str
+    default: str = "None"
+    annotation: str | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        return {"name": self.name, "default": self.default, "annotation": self.annotation}
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> ParamDef:
+        annotation = data.get("annotation")
+        return cls(
+            name=str(data["name"]),
+            default=str(data.get("default", "None")),
+            annotation=str(annotation) if annotation else None,
+        )
+
+
+@dataclass
 class FlowModel:
     """A flow file as data: its prose, its nodes and the tree that composes them."""
 
@@ -92,6 +119,7 @@ class FlowModel:
     nodes: list[NodeDef] = field(default_factory=list)
     flow: dict[str, Any] = field(default_factory=dict)
     start: str | None = None
+    params: list[ParamDef] = field(default_factory=list)
     main: str | None = None
     epilogue: list[str] = field(default_factory=list)
     build_notes: list[str] = field(default_factory=list)
@@ -107,6 +135,7 @@ class FlowModel:
             "nodes": [n.to_dict() for n in self.nodes],
             "flow": self.flow,
             "start": self.start,
+            "params": [p.to_dict() for p in self.params],
             "main": self.main,
             "epilogue": list(self.epilogue),
             "build_notes": list(self.build_notes),
@@ -122,6 +151,8 @@ class FlowModel:
             nodes=[NodeDef.from_dict(n) for n in data.get("nodes") or []],
             flow=dict(data.get("flow") or {}),
             start=data.get("start"),
+            # A model written before build() could take parameters simply has none.
+            params=[ParamDef.from_dict(p) for p in data.get("params") or []],
             main=data.get("main"),
             epilogue=[str(s) for s in data.get("epilogue") or []],
             build_notes=[str(s) for s in data.get("build_notes") or []],

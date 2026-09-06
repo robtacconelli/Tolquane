@@ -184,6 +184,24 @@ def _start_lines(start: str) -> list[str]:
     ]
 
 
+def _signature(params: Sequence[Mapping[str, Any]]) -> list[str]:
+    """``def build(...)``: the sample source, then the keyword-only parameters."""
+    parts = ["source=None"]
+    if params:
+        parts.append("*")
+        parts.extend(_parameter(p) for p in params)
+    flat = f"def build({', '.join(parts)}):"
+    if len(flat) <= WIDTH:
+        return [flat]
+    return ["def build(", *(f"{INDENT}{part}," for part in parts), "):"]
+
+
+def _parameter(param: Mapping[str, Any]) -> str:
+    name, default = str(param["name"]), str(param["default"])
+    annotation = param.get("annotation")
+    return f"{name}: {annotation} = {default}" if annotation else f"{name}={default}"
+
+
 def _docstring(doc: str) -> str:
     if '"""' in doc or doc.endswith('"') or doc.endswith("\\"):
         return json.dumps(doc)
@@ -284,7 +302,8 @@ def render(model: Mapping[str, Any]) -> str:
 
 
 def _build(model: Mapping[str, Any]) -> str:
-    lines = ["def build(source=None):"]
+    params: Sequence[Mapping[str, Any]] = model.get("params") or []
+    lines = _signature(params)
     for note in model.get("build_notes") or []:
         lines.extend(INDENT + line if line else "" for line in str(note).split("\n"))
     start = model.get("start")
