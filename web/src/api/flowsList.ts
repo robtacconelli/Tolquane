@@ -1,22 +1,24 @@
 /**
  * `GET /api/flows`, the list only. The editor's own client (`api/flows.ts`) owns the
  * routes that read and write a flow; the schedules page needs nothing but the names.
+ *
+ * The types come from the server's OpenAPI (`client.ts`, `Schemas`); the one thing added
+ * here is the shape of `last_run`, which the server passes through as a plain object.
  */
-import { api } from './client';
+import { type Complete, type Schemas, api } from './client';
 import type { RunStatus } from './schedules';
 
-export interface FlowSummary {
-  path: string;
-  name: string;
-  modified: string;
-  size: number;
-  has_layout: boolean;
-  last_run: { id: number; status: RunStatus; ended: string | null } | null;
+/** How a flow last ran, as the list route summarises it. */
+export interface LastRun {
+  id: number;
+  status: RunStatus;
+  ended: string | null;
 }
 
-export interface FlowList {
-  workspace: string;
-  flows: FlowSummary[];
-}
+export type FlowSummary = Omit<Complete<Schemas['FlowSummary']>, 'last_run'> & {
+  last_run: LastRun | null;
+};
+
+export type FlowList = Omit<Complete<Schemas['FlowList']>, 'flows'> & { flows: FlowSummary[] };
 
 export const listFlows = () => api.get<FlowList>('/flows');

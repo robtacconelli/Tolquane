@@ -1,51 +1,37 @@
 /**
  * The run routes of docs/web-interfaces.md, S4, and the event lines of S2.
  *
- * Written by hand against the contract like the other clients here, and just as thin:
- * one line per route over `request()`, plus the two things a run needs that a REST call
- * cannot give -- the WebSocket URL its events arrive on, and the trace download link.
- * The event types are the wire format itself, so the store and the hook can switch on
- * `event` without re-describing it.
+ * `Run` and `StartRunRequest` come from the server's OpenAPI through `client.ts`'s
+ * `Schemas`, narrowed where the server's model says `str` and the UI knows the three
+ * runtimes and the five statuses. The report and the events are written out below
+ * because the schema does not have them: the report is a plain dict on the wire, and
+ * the events never travel over HTTP at all -- they are the JSON lines of `tolquane run
+ * --events`, relayed down a WebSocket. So the store and the hook can switch on `event`
+ * without re-describing it.
+ *
+ * Everything else is one line over `request()`, plus the two things a run needs that a
+ * REST call cannot give: the WebSocket URL its events arrive on, and the trace link.
  */
 
 import type { GraphView } from '../model/types';
-import { API_BASE, api } from './client';
+import { API_BASE, type Complete, type Optional, type Schemas, api } from './client';
 import type { Runtime } from './schedules';
 
 /** How a run ended, as S2's `done` event and S3's `Run.status` spell it. */
 export type RunPhase = 'running' | 'done' | 'failed' | 'cancelled' | 'deadlock';
 
 /** A row of the `runs` table (S3), as `GET /api/runs/{id}` answers it. */
-export interface Run {
-  id: number;
-  flow: string;
+export type Run = Omit<Complete<Schemas['RunModel']>, 'runtime' | 'status' | 'report'> & {
   runtime: Runtime;
-  sample: string | null;
-  /** `manual`, `api`, or `schedule:<id>`. */
-  trigger: string;
-  started: string;
-  ended: string | null;
   status: RunPhase;
   report: RunReport | null;
-  /** The last 64 KB of output; the list route leaves it empty. */
-  log: string;
-  trace_path: string | null;
-  error: string | null;
-  /** True while the supervisor still owns the child process. */
-  live: boolean;
-}
+};
 
-export interface StartRunRequest {
-  path: string;
-  runtime?: Runtime;
-  /** The name of a sample in the flow's layout sidecar, or `null` for the flow's own source. */
-  sample?: string | null;
-  batch?: number;
-  /** How many items per edge to keep for the Taps tab; `0` is off. */
-  tap?: number;
-  trace?: boolean;
-  optimize?: boolean;
-}
+/** `POST /api/runs`; `tap`, `trace` and `optimize` have server-side defaults. */
+export type StartRunRequest = Omit<
+  Optional<Schemas['StartRun'], 'tap' | 'trace' | 'optimize'>,
+  'runtime'
+> & { runtime?: Runtime | null };
 
 /* ------------------------------------------------------------------ the report */
 
@@ -174,10 +160,13 @@ export function parseRunEvent(data: unknown): RunEvent | null {
 
 /* ------------------------------------------------------------------ the routes */
 
+/** `GET /api/runs`; every row carries an empty `log`, which can be 64 KB each. */
+export type RunList = Omit<Complete<Schemas['RunList']>, 'runs'> & { runs: Run[] };
+
 export const startRun = (body: StartRunRequest) => api.post<Run>('/runs', body);
 
 export const listRuns = (options: { flow?: string; limit?: number } = {}) =>
-  api.get<{ runs: Run[] }>('/runs', {
+  api.get<RunList>('/runs', {
     query: { flow: options.flow, limit: options.limit ?? 50 },
   });
 

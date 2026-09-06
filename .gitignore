@@ -33,4 +33,6 @@ web/dist/
 web/test-results/
 web/playwright-report/
 web/e2e/screenshots/
+# The workspace a Playwright run seeds and throws away.
+web/e2e/.workspace/
 .claude/worktrees/

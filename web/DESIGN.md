@@ -44,6 +44,17 @@ is the accent teal because a running flow is the app doing its job; `waiting` is
 `failed` is the danger red. Use `<StatusDot state=… />` rather than painting them
 yourself, so `running` gets its pulse and every dot gets the same halo.
 
+The five are named once, in `components/nodeState.ts` (`NodeState`, `NODE_STATES`,
+`NODE_STATE_LABEL`); import from there rather than writing the strings again. They are
+the only palette for "how is it going", so the _run_ statuses of S3 — which are five
+different words — are mapped onto them by `runStatusLook` in
+`components/scheduleFormat.ts`: `deadlock` wears `failed`, `cancelled` wears `new`, and
+a schedule that has never fired wears `new` too. A page showing a run's outcome calls
+that rather than inventing a sixth colour, so the canvas, the runs list and the
+schedules list agree at a glance. `--tq-success` and `--tq-danger` stay for _the app's_
+own messages (a save worked, a delete is about to happen); a flow's state always uses
+the `--tq-node-*` pair.
+
 ### Spacing
 
 `--tq-space-0` … `--tq-space-12`: `0, 2, 4, 8, 12, 16, 20, 24, 32, 40, 48, 64, 96` px.
@@ -96,7 +107,13 @@ Z-index: `--tq-z-canvas` 0, `-sticky` 10, `-drawer` 20, `-overlay` 40, `-modal` 
   36px (`lg`). Icons are 14-15px inside `sm` controls, 16px normally, 17-18px in the top
   bar.
 - **Icons** come from `components/Icon.tsx`: one stroked 24×24 set, `currentColor`,
-  `stroke-width` 1.7, `aria-hidden`. Add to that file rather than inlining an SVG.
+  `stroke-width` 1.7, `aria-hidden`. Add to that file rather than inlining an SVG, and
+  give the glyph the name of the thing rather than the shape. The set is small on
+  purpose — an icon nobody can name is a label — and covers navigation (`flows`, `runs`,
+  `schedules`, `settings`, `folder`), direction (`chevronLeft/Right/Up/Down`,
+  `panelLeft/Right/Bottom`), actions (`plus`, `play`, `check`, `close`, `search`,
+  `refresh`, `trash`, `pencil`, `command`), state (`alert`, `offline`, `clock`) and the
+  editor's own (`code`, `canvas`, `map`, `sparkle`, `sun`, `moon`).
 - **Illustrations** live in `components/Illustrations.tsx` and are inline SVG referring
   to theme tokens, so they follow the theme and cost no request.
 - **Empty states are content, not apologies.** `EmptyState` takes art, a title, a
@@ -155,6 +172,61 @@ this component so the palette, the canvas and any preview agree.
 - **Run overlay** (F4) tints the card by state: keep the border, add
   `box-shadow: 0 0 0 3px var(--tq-node-<state>-soft)` and set the status dot. Do not
   change the card's background: the text has to stay readable in both themes.
+
+### The sizes the canvas lays out with
+
+Every number the editor measures and places with is a constant in
+`src/editor/geometry.ts`, so the layout, the drop targets and the mini-map cannot drift
+apart. `measure` says how big a sub-tree is and `buildGraph` puts it somewhere; both
+walk the tree the same way, from these:
+
+| Constant                     | px       | What it is                                                     |
+| ---------------------------- | -------- | -------------------------------------------------------------- |
+| `CARD_W` / `CARD_H`          | 208 / 64 | The block card above, with a title and a one-line subtitle     |
+| `COMB_H`                     | 92       | A comb: one card showing the two nodes it fuses                |
+| `END_W` / `END_H`            | 124 / 48 | A farm's emitter and collector, the small end cards inside     |
+| `GAP_X`                      | 56       | Between top-level stages, where an edge has room to be seen    |
+| `GAP_IN`                     | 28       | Inside a container, where the eye knows what belongs together  |
+| `GAP_Y`                      | 20       | Between stacked cards (a heterogeneous farm, an all-to-all)    |
+| `GROUP_HEADER` / `GROUP_PAD` | 42 / 16  | A container's header row, then the padding around its children |
+| `LOOP_SPACE`                 | 44       | Room under a feedback loop for the edge that goes back         |
+| `MAX_REPS`                   | 3        | Worker cards an all-to-all draws per side before "and N more"  |
+
+A new container kind adds its constants there and nowhere else. Nothing on the canvas
+hard-codes a pixel, for the same reason nothing hard-codes a colour.
+
+## Forms
+
+`src/components/form/` is the blessed set of primitives, and a screen that needs an
+input reaches for these before writing its own. They are deliberately thin — they
+compose, they do not configure.
+
+- **`Field`** is the wrapper every control goes in: a label row (with an optional
+  `aside` for a badge or a small inline action), the control, and one line underneath
+  that is _either_ the hint _or_ the error, never both, so a field never changes height
+  when it goes wrong. Pass `htmlFor` and give the control the same `id`.
+- **`TextInput`** (`mono` for paths, cron and code; `invalid` for the error state, which
+  also sets `aria-invalid`) and **`NumberInput`**, which is a text input by design: the
+  spinner buttons are noise and the rules are ours anyway.
+- **`Select`** is a native `<select>` in our own frame with a drawn caret, so the
+  keyboard and the platform's own list behaviour are free.
+- **`Toggle`** is a `role="switch"` button with no text of its own; `label` is its
+  accessible name and its tooltip. Use it for something that takes effect at once (a
+  schedule being enabled). For a choice that is saved with the rest of a form, use
+  **`CheckLine`**, a checkbox with its label on one line.
+- **`Badge`** carries the five tones (`neutral`, `accent`, `success`, `warning`,
+  `danger`) for a word beside a title. A run's state is not one of these: that is
+  `StatusDot` and the `--tq-node-*` colours.
+- **`Dialog`** is the modal shape the command palette established — scrim, raised panel,
+  header, scrolling body, footer of actions. Escape and the scrim close it, Tab stays
+  inside it, and the control marked `data-autofocus` takes the focus. `width` defaults
+  to 640. **`ConfirmDialog`** (440 wide, a `danger` button, a `busy` state) is the one
+  question worth a modal: something is about to be destroyed. Do not build a second
+  confirmation shape.
+
+A form's own layout (two columns, a row of actions) belongs to the page; the controls
+belong here. If a screen needs a control this file does not have, add it here rather
+than beside the screen.
 
 ## The app shell
 
@@ -225,16 +297,41 @@ that fetched it, and the shell already shares the health poll through
 
 `src/api/client.ts` is the transport, and it is hand-written on purpose: `request()`,
 the `api.get/post/put/delete` shorthands, `ApiError` (`status`, `code`, `detail`, `url`,
-`isOffline`) and the abort/timeout handling. Errors are normalised there, so nothing else
-in the app touches `fetch` or has to know the server's error envelope.
+`isOffline`) and the abort/timeout handling. Errors are normalised there, so nothing
+else in the app touches `fetch` or has to know the server's error envelope.
 
-The _typed route surface_ is not hand-written for long. Once S4's server exists, its
-OpenAPI document (`/api/openapi.json`) is the contract: generate the types from it into
-`src/api/schema.d.ts` and give each route a one-line wrapper that calls `request<T>` with
-the generated types. So:
+The _typed route surface_ is generated. The server's OpenAPI document is the contract:
 
-- keep every call in `src/api/`, never in a component;
-- keep the shape of a wrapper trivial (`export const getFlow = (path: string) =>
-api.get<Flow>(\`/flows/${encodeURIComponent(path)}\`)`), because the generator will
-  rewrite exactly those lines;
-- `health()` is the pattern to copy, and the only route the shell needs today.
+```
+tolquane web --openapi > web/openapi.json    # from the repository root
+npm run api:types                            # regenerates src/api/schema.d.ts
+```
+
+`openapi.json` and `schema.d.ts` are both checked in, because the frontend build has no
+Python in it. Two tests keep them honest: `tests/web/test_openapi.py` fails when the
+document no longer matches the live app, and `src/api/schema.test.ts` fails when the
+types no longer match the document. Both say those two commands.
+
+The rules that follow from it:
+
+- **Every call lives in `src/api/`**, never in a component or a store. A component that
+  wants data calls a wrapper.
+- **A wrapper is one line over `request()`**: `export const getFlow = (path: string) =>
+api.get<FlowDetail>(at(path));`. Names and behaviour are ours and stable; only the
+  types underneath them change when the server does.
+- **No server shape is written by hand.** `client.ts` exports `Schemas`
+  (`components['schemas']` of the generated file) and every other file in `src/api/`
+  takes its request and response types from it. Two helpers make the generated types
+  read the way the wire actually behaves: `Complete<T>` for a response (FastAPI
+  serialises every field of a response model, defaults included, so a field the schema
+  marks optional is still always there) and `Optional<T, K>` for a request body (the
+  fields the server fills in for itself may be left out).
+- **What the UI adds is written down, and only that.** Three kinds of thing:
+  a `str` the server will only ever answer with one of a few words (`Runtime`,
+  `RunStatus`/`RunPhase`, `AiProvider`), given its union; a `dict` FastAPI passes
+  through untyped, given its real S1 type (`FlowModel`, `GraphView`, `Layout`,
+  `CodeOnly`, the run report, `last_run`); and the things that never cross HTTP at all —
+  the run events of S2, which arrive on a WebSocket, and the AI chat's server-sent
+  events. Everything else is a re-export of the generated type.
+- **Where the UI and the schema disagree, the schema wins.** A narrowing is fine, a
+  contradiction is a bug in one of them.

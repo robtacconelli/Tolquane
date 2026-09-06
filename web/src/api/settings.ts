@@ -1,40 +1,34 @@
 /**
  * The settings routes of docs/web-interfaces.md, S4.
  *
- * `GET` never returns a key: the server reports only whether one is set. `PUT` accepts
- * any subset of the settings, plus the two write-only key fields, which the server
- * writes to its own configuration file (mode 600) and never echoes back.
+ * The answer comes from the server's OpenAPI through `client.ts`'s `Schemas`, narrowed
+ * where its models say `str` and the UI knows the three runtimes and the two providers.
+ * `SettingsUpdate` is the one shape written out here: `PUT /api/settings` takes any
+ * subset of the settings, so the schema has nothing but "an object", and the two
+ * write-only key fields exist in no answer at all. `GET` never returns a key: the server
+ * reports only whether one is set, and writes what it is given to its own configuration
+ * file (mode 600).
  */
-import { api } from './client';
+import { type Complete, type Schemas, api } from './client';
 import type { Runtime } from './schedules';
 
 export type AiProvider = 'anthropic' | 'openai';
 
-export interface AiSettings {
+export type AiSettings = Omit<Complete<Schemas['AiSettings']>, 'provider'> & {
   provider: AiProvider;
-  model: string | null;
-  has_anthropic_key: boolean;
-  has_openai_key: boolean;
-}
+};
 
 /** Start-up options: `tolquane web --host --port --token`. Read-only over the API. */
-export interface ServerSettings {
-  host: string;
-  port: number;
-  token_set: boolean;
-}
+export type ServerSettings = Complete<Schemas['ServerSettings']>;
 
-export interface Settings {
-  workspace: string;
+export type Settings = Omit<
+  Complete<Schemas['SettingsModel']>,
+  'default_runtime' | 'ai' | 'server'
+> & {
   default_runtime: Runtime;
-  default_batch: number;
-  exec_timeout: number;
-  max_concurrent_runs: number;
-  cancel_grace: number;
-  theme: string;
   ai: AiSettings;
   server: ServerSettings;
-}
+};
 
 export interface AiSettingsUpdate {
   provider?: AiProvider;
@@ -50,7 +44,9 @@ export interface SettingsUpdate {
   default_batch?: number;
   exec_timeout?: number;
   max_concurrent_runs?: number;
+  max_source_bytes?: number;
   cancel_grace?: number;
+  keep_traces_days?: number;
   theme?: string;
   ai?: AiSettingsUpdate;
 }

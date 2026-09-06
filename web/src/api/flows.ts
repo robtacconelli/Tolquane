@@ -1,75 +1,70 @@
 /**
  * The flow routes of `docs/web-interfaces.md`, S4.
  *
- * Hand-typed from the contract for now and regenerated from the server's OpenAPI later,
- * so every wrapper here stays one line over `request()`: the generator will rewrite
- * exactly these lines, and nothing else in the app touches `fetch`.
+ * Every type here comes from the server's own OpenAPI document through
+ * `client.ts`'s `Schemas`; what is written out is only what the schema cannot say. The
+ * server passes the S1 model, the expanded graph and the layout sidecar through as
+ * plain objects (they are not FastAPI models), so those four fields get their real
+ * types back here from `model/types.ts`.
+ *
+ * Every wrapper stays one line over `request()`: nothing else in the app touches
+ * `fetch`, and regenerating the types must never mean rewriting behaviour.
  */
 
-import type { FlowModel, FlowResponse, GraphView, Layout } from '../model/types';
-import { api } from './client';
+import type { CodeOnly, FlowModel, GraphView, Layout } from '../model/types';
+import { type Complete, type Schemas, api } from './client';
 
 const at = (path: string): string => `/flows/${encodeURIComponent(path)}`;
 
-export interface FlowSummary {
-  path: string;
-  name: string;
-  modified: string;
-  size: number;
-  has_layout: boolean;
-  last_run: { id: number; status: string; ended: string } | null;
-}
-
-export interface FlowList {
-  workspace: string;
-  flows: FlowSummary[];
-}
-
-export interface SaveFlowRequest {
-  source: string;
-  /** The `modified` that came with the flow; a newer one on disk answers 409. */
-  modified: string;
-}
-
-export interface ParseResult {
+/** The four objects the server hands through untyped, with their S1 types. */
+interface FlowShapes {
   model: FlowModel | null;
-  code_only: { reason: string } | null;
+  code_only: CodeOnly | null;
   graph: GraphView | null;
+  layout: Layout | null;
 }
 
-export interface CheckResult {
-  ok: boolean;
-  nodes: number;
-  edges: number;
-}
+/** `GET /api/flows/{path}` and everything else that answers with a whole flow. */
+export type FlowDetail = Omit<Complete<Schemas['FlowDetail']>, keyof FlowShapes> & FlowShapes;
 
-export interface OptimizeResult {
-  source: string;
-  notes: string[];
-  graph: GraphView;
-}
+/** What `POST /api/flows/parse` says about source that is not saved yet. */
+export type ParseResult = Omit<Complete<Schemas['ParseResult']>, keyof FlowShapes> &
+  Omit<FlowShapes, 'layout'>;
 
-export const listFlows = () => api.get<FlowList>('/flows');
+/** `POST /api/flows/{path}/optimize`: `source` is null until the rewrite has a Python form. */
+export type OptimizeResult = Omit<Complete<Schemas['OptimizeResult']>, 'graph'> & {
+  graph: GraphView | null;
+};
 
-export const getFlow = (path: string) => api.get<FlowResponse>(at(path));
+export type CheckResult = Complete<Schemas['CheckResult']>;
+export type SaveFlowRequest = Schemas['SaveFlow'];
+
+export type { FlowList, FlowSummary } from './flowsList';
+
+export { listFlows } from './flowsList';
+
+export const getFlow = (path: string) => api.get<FlowDetail>(at(path));
 
 export const saveFlow = (path: string, body: SaveFlowRequest) =>
-  api.put<FlowResponse>(at(path), body);
+  api.put<FlowDetail>(at(path), body);
 
 export const saveLayout = (path: string, layout: Layout) =>
-  api.put<{ ok: true }>(`${at(path)}/layout`, layout);
+  api.put<Schemas['Ok']>(`${at(path)}/layout`, layout);
 
 export const parseSource = (source: string, name = 'flow') =>
-  api.post<ParseResult>('/flows/parse', { source, name });
+  api.post<ParseResult>('/flows/parse', { source, name } satisfies Schemas['ParseRequest']);
 
 export const generateSource = (model: FlowModel) =>
-  api.post<{ source: string }>('/flows/generate', { model });
+  api.post<Schemas['GenerateResult']>('/flows/generate', { model });
 
 export const checkFlow = (path: string) => api.post<CheckResult>(`${at(path)}/check`);
 
-export const explainFlow = (path: string) => api.post<{ text: string }>(`${at(path)}/explain`);
+export const explainFlow = (path: string) =>
+  api.post<Schemas['ExplainResult']>(`${at(path)}/explain`);
 
-export const drawFlow = (path: string) => api.post<{ mermaid: string }>(`${at(path)}/draw`);
+export const drawFlow = (path: string) => api.post<Schemas['DrawResult']>(`${at(path)}/draw`);
 
 export const optimizeFlow = (path: string, all2all = false) =>
-  api.post<OptimizeResult>(`${at(path)}/optimize`, { all2all });
+  api.post<OptimizeResult>(`${at(path)}/optimize`, {
+    all2all,
+  } satisfies Schemas['OptimizeRequest']);

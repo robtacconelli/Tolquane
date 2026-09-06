@@ -6,7 +6,35 @@
  * itself, so the base path is the same in both.
  */
 
+import type { components } from './schema';
+
 export const API_BASE = '/api';
+
+/* --------------------------------------------------------------- the generated types */
+
+/**
+ * Every shape the server publishes, by name: `Schemas['RunModel']`.
+ *
+ * `schema.d.ts` is generated from `web/openapi.json`, which is
+ * `tolquane web --openapi`; `npm run api:types` makes it again. Nothing in `src/api/`
+ * writes a server shape by hand -- the wrappers below and beside this file take theirs
+ * from here, and add only what the server cannot say: a `str` the UI knows is one of
+ * three words, a `dict` that is really an S1 flow model, an event that never travels
+ * over HTTP at all.
+ */
+export type Schemas = components['schemas'];
+
+/**
+ * A response body as it actually arrives.
+ *
+ * FastAPI serialises every field of a response model, defaults included, so a field its
+ * schema leaves optional (`log`, `next_run`, `sample`) is still always in the JSON.
+ * Responses are therefore read through this; request bodies are not.
+ */
+export type Complete<T> = { [K in keyof T]-?: T[K] };
+
+/** A request body with the fields the server fills in for itself left out. */
+export type Optional<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>;
 
 /** Every failure the client raises, transport and HTTP alike, is one of these. */
 export class ApiError extends Error {
@@ -177,18 +205,8 @@ export const api = {
     request<T>(path, { ...options, method: 'DELETE' }),
 };
 
-/**
- * `GET /api/health`, the only route the shell needs before wave 1 lands. The shape is
- * the one in docs/web-interfaces.md, S4; everything but `ok` is optional here so an
- * older or half-started server still reads as online.
- */
-export interface Health {
-  ok: boolean;
-  version?: string;
-  workspace?: string;
-  runs_live?: number;
-  scheduler?: boolean;
-}
+/** `GET /api/health`: the version, the live workspace, and whether the parts are up. */
+export type Health = Complete<Schemas['Health']>;
 
 export function health(options?: { signal?: AbortSignal; timeoutMs?: number }): Promise<Health> {
   return api.get<Health>('/health', { timeoutMs: 4000, ...options });

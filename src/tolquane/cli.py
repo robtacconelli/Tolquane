@@ -190,18 +190,22 @@ def cmd_launch(args: argparse.Namespace) -> int:
     )
 
 
+WEB_MISSING = "tolquane web needs FastAPI and uvicorn ({name}): pip install 'tolquane[web]'"
+
+
 def cmd_web(args: argparse.Namespace) -> int:
     """Start Tolquane Web: the server, and a browser looking at it."""
+    if args.version:
+        return _web_version()
+    if args.openapi:
+        return _web_openapi()
     try:
         import uvicorn
 
         from .web.server import create_app
         from .web.settings import startup_settings
     except ImportError as exc:
-        print(
-            f"tolquane web needs FastAPI and uvicorn ({exc.name}): pip install 'tolquane[web]'",
-            file=sys.stderr,
-        )
+        print(WEB_MISSING.format(name=exc.name), file=sys.stderr)
         return 1
     settings = startup_settings(
         workspace=args.workspace, host=args.host, port=args.port, token=args.token
@@ -221,8 +225,11 @@ def cmd_web(args: argparse.Namespace) -> int:
         return 1
     if args.check:
         return _web_check(uvicorn, app, settings)
+    if _port_taken(settings.host, settings.port):
+        print(_port_in_use(settings.host, settings.port), file=sys.stderr)
+        return 1
     url = f"http://{_url_host(settings.host)}:{settings.port}/"
-    print(f"Tolquane Web: {url}  (workspace {settings.workspace})")
+    print(f"Tolquane Web: {url}  workspace {settings.workspace}  (Ctrl-C to stop)", flush=True)
     if not any(importlib.util.find_spec(name) for name in ("websockets", "wsproto")):
         # uvicorn speaks HTTP on its own but needs one of these to answer an upgrade.
         print(
@@ -232,8 +239,93 @@ def cmd_web(args: argparse.Namespace) -> int:
     if not args.no_browser:
         # After a moment, so the page is served rather than refused.
         threading.Timer(1.0, webbrowser.open, args=(url,)).start()
-    uvicorn.run(app, host=settings.host, port=settings.port, log_level="info")
+    try:
+        uvicorn.run(app, host=settings.host, port=settings.port, log_level="info")
+    except OSError as exc:  # something took the port between the check and the bind
+        print(f"{_port_in_use(settings.host, settings.port)} ({exc})", file=sys.stderr)
+        return 1
     return 0
+
+
+def _web_version() -> int:
+    """What `tolquane web` would start: the version, the GUI assets, the server libraries."""
+    from importlib.metadata import PackageNotFoundError
+    from importlib.metadata import version as installed
+
+    import tolquane
+
+    print(f"tolquane {tolquane.__version__}")
+    static = Path(__file__).parent / "web" / "static"
+    if (static / "index.html").exists():
+        print(f"frontend: {static}")
+    else:
+        print("frontend: not built (install a wheel, or run npm run build in web/)")
+    parts = []
+    for name in ("fastapi", "uvicorn"):
+        try:
+            parts.append(f"{name} {installed(name)}")
+        except PackageNotFoundError:
+            parts.append(f"{name} missing")
+    print(f"server: {', '.join(parts)}")
+    return 0
+
+
+def _web_openapi() -> int:
+    """Print the server's OpenAPI document. The frontend's types are generated from it.
+
+    Nothing is started and nothing of the user's is touched: the app is built against a
+    throwaway workspace and database, because the schema is the same whatever it serves.
+    """
+    import tempfile
+
+    try:
+        from .web.server import create_app
+        from .web.settings import AppSettings
+    except ImportError as exc:
+        print(WEB_MISSING.format(name=exc.name), file=sys.stderr)
+        return 1
+    with tempfile.TemporaryDirectory(prefix="tolquane-openapi-") as tmp:
+        root = Path(tmp)
+        app = create_app(
+            AppSettings(
+                workspace=root,
+                db_path=root / "web.db",
+                config_path=root / "web.toml",
+                start_scheduler=False,
+            )
+        )
+        try:
+            json.dump(app.openapi(), sys.stdout, indent=2)
+            sys.stdout.write("\n")
+        finally:
+            # The lifespan never ran, so close by hand what create_app opened.
+            app.state.supervisor.shutdown()
+            app.state.store.close()
+    return 0
+
+
+def _port_taken(host: str, port: int) -> bool:
+    """Is something already listening there? Asked before uvicorn, to say so plainly."""
+    import socket
+
+    try:
+        addresses = socket.getaddrinfo(host, port, type=socket.SOCK_STREAM)
+    except socket.gaierror:
+        return False  # a name we cannot resolve is uvicorn's error to report, not ours
+    for family, kind, proto, _canonical, address in addresses:
+        try:
+            with socket.socket(family, kind, proto) as probe:
+                probe.bind(address)
+        except OSError:
+            return True
+    return False
+
+
+def _port_in_use(host: str, port: int) -> str:
+    return (
+        f"port {port} on {host} is already in use: another Tolquane Web, or another "
+        f"program. Stop it, or start this one with --port {port + 1}."
+    )
 
 
 def _url_host(host: str) -> str:
@@ -423,6 +515,15 @@ def main(argv: list[str] | None = None) -> int:
     web_p.add_argument("--token", default=None, help="require this bearer token on every request")
     web_p.add_argument("--no-browser", action="store_true", help="do not open a browser")
     web_p.add_argument("--check", action="store_true", help="start, ask /api/health, stop")
+    web_p.add_argument(
+        "--openapi",
+        action="store_true",
+        help="print the server's OpenAPI document and stop (the frontend's types come "
+        "from it: tolquane web --openapi > web/openapi.json)",
+    )
+    web_p.add_argument(
+        "--version", action="store_true", help="print the version, the GUI assets and the server"
+    )
     web_p.set_defaults(func=cmd_web)
 
     args = parser.parse_args(argv)

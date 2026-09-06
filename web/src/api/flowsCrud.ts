@@ -2,10 +2,15 @@
  * Making, renaming and removing flows: the three flow routes the Flows page needs and
  * the editor's own client (`api/flows.ts`, which reads and writes one open file) does
  * not have. The list lives in `api/flowsList.ts`.
+ *
+ * The request and response types come from the server's OpenAPI (`client.ts`,
+ * `Schemas`); `FlowTemplate` narrows the `str | object` the schema allows to the two
+ * templates the server has and the one object it takes.
  */
 
-import type { FlowModel, FlowResponse } from '../model/types';
-import { api } from './client';
+import type { FlowModel } from '../model/types';
+import { type Schemas, api } from './client';
+import type { FlowDetail } from './flows';
 
 const at = (path: string): string => `/flows/${encodeURIComponent(path)}`;
 
@@ -13,12 +18,12 @@ const at = (path: string): string => `/flows/${encodeURIComponent(path)}`;
 export type FlowTemplate = 'empty' | 'hello' | { model: FlowModel };
 
 export const createFlow = (path: string, template: FlowTemplate = 'empty') =>
-  api.post<FlowResponse>('/flows', { path, template });
+  api.post<FlowDetail>('/flows', { path, template });
 
 export const renameFlow = (path: string, to: string) =>
-  api.post<FlowResponse>(`${at(path)}/rename`, { path: to });
+  api.post<FlowDetail>(`${at(path)}/rename`, { path: to } satisfies Schemas['RenameFlow']);
 
-export const deleteFlow = (path: string) => api.delete<{ ok: true }>(at(path));
+export const deleteFlow = (path: string) => api.delete<Schemas['Ok']>(at(path));
 
 /**
  * A file name from what the user typed: `Word count` becomes `word_count.py`, a path

@@ -11,23 +11,17 @@
  */
 
 import type { CodeOnly, FlowModel, GraphView } from '../model/types';
-import { API_BASE, ApiError } from './client';
+import { API_BASE, ApiError, type Schemas } from './client';
 
 export type ChatRole = 'user' | 'assistant';
 
-export interface ChatMessage {
-  role: ChatRole;
-  content: string;
-}
+/** The server's `ChatMessage` with the two roles a conversation actually has. */
+export type ChatMessage = Omit<Schemas['ChatMessage'], 'role'> & { role: ChatRole };
 
-export interface ChatRequest {
-  /** The flow the user has open; the server seeds the builder with its source. */
-  path: string | null;
+/** The request body, from the OpenAPI; only `messages` is required. */
+export type ChatRequest = Omit<Schemas['ChatRequest'], 'messages'> & {
   messages: ChatMessage[];
-  provider?: string | null;
-  model?: string | null;
-  sample?: string | null;
-}
+};
 
 /** The four tools the builder has (docs/builder.md, `tolquane.ai.tools`). */
 export const TOOL_NAMES = ['write_flow', 'check_flow', 'run_flow', 'read_docs'] as const;
