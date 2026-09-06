@@ -1,0 +1,408 @@
+/* The panel fills the editor's right column: a fixed head, a scrolling conversation and
+ * a composer pinned to the bottom, so the thing you type into never moves. */
+.panel {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--tq-surface);
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: var(--tq-space-3);
+  padding: var(--tq-space-3) var(--tq-space-4);
+  border-bottom: 1px solid var(--tq-border-subtle);
+  flex: none;
+}
+
+.headActions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: var(--tq-space-2);
+}
+
+/* --------------------------------------------------------- provider and key */
+.provider {
+  display: flex;
+  align-items: center;
+  gap: var(--tq-space-3);
+  padding: var(--tq-space-2) var(--tq-space-5);
+  border-bottom: 1px solid var(--tq-border-subtle);
+  background: var(--tq-surface-sunken);
+  font-size: var(--tq-text-xs);
+  color: var(--tq-text-subtle);
+  flex: none;
+}
+
+.provider svg {
+  color: var(--tq-accent);
+  flex: none;
+}
+
+.providerName {
+  color: var(--tq-text-muted);
+  font-weight: var(--tq-weight-medium);
+}
+
+.providerModel {
+  font-family: var(--tq-font-mono);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.settingsLink,
+.keyLink {
+  margin-left: auto;
+  flex: none;
+  color: var(--tq-accent);
+  text-decoration: none;
+  font-weight: var(--tq-weight-medium);
+}
+
+.settingsLink:hover,
+.keyLink:hover {
+  text-decoration: underline;
+}
+
+.keyWarning {
+  display: flex;
+  align-items: center;
+  gap: var(--tq-space-3);
+  padding: var(--tq-space-3) var(--tq-space-5);
+  border-bottom: 1px solid var(--tq-border-subtle);
+  background: var(--tq-warning-soft);
+  color: var(--tq-text-muted);
+  font-size: var(--tq-text-sm);
+  line-height: var(--tq-leading-normal);
+  flex: none;
+}
+
+.keyWarning svg {
+  color: var(--tq-warning);
+  flex: none;
+}
+
+/* ---------------------------------------------------------- the conversation */
+.thread {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: var(--tq-space-6);
+  padding: var(--tq-space-5);
+}
+
+/* No smooth scrolling here: the panel follows a stream, so every jump is a correction
+ * rather than a journey, and a reader who has asked for less motion means it. */
+
+.userTurn {
+  align-self: flex-end;
+  max-width: 92%;
+  padding: var(--tq-space-3) var(--tq-space-4);
+  border-radius: var(--tq-radius-lg) var(--tq-radius-lg) var(--tq-radius-xs) var(--tq-radius-lg);
+  background: var(--tq-accent-soft);
+  border: 1px solid var(--tq-accent-line);
+  color: var(--tq-text);
+  font-size: var(--tq-text-base);
+  line-height: var(--tq-leading-relaxed);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.turn {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tq-space-4);
+  min-width: 0;
+}
+
+.waiting {
+  display: flex;
+  align-items: center;
+  gap: var(--tq-space-3);
+  margin: 0;
+  color: var(--tq-text-subtle);
+  font-size: var(--tq-text-sm);
+}
+
+.pulse {
+  width: 7px;
+  height: 7px;
+  border-radius: var(--tq-radius-pill);
+  background: var(--tq-accent);
+  animation: breathe 1.4s var(--tq-ease) infinite;
+}
+
+@keyframes breathe {
+  0%,
+  100% {
+    opacity: 0.25;
+    transform: scale(0.8);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1.15);
+  }
+}
+
+.error {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--tq-space-3);
+  padding: var(--tq-space-3) var(--tq-space-4);
+  border: 1px solid var(--tq-danger-soft);
+  border-left: 2px solid var(--tq-danger);
+  border-radius: var(--tq-radius-md);
+  background: var(--tq-danger-soft);
+  color: var(--tq-text-muted);
+  font-size: var(--tq-text-sm);
+  line-height: var(--tq-leading-relaxed);
+}
+
+.error svg {
+  color: var(--tq-danger);
+  flex: none;
+  margin-top: 2px;
+}
+
+.stopped,
+.warn {
+  margin: 0;
+  font-size: var(--tq-text-sm);
+  color: var(--tq-text-subtle);
+}
+
+.warn {
+  color: var(--tq-warning);
+}
+
+/* -------------------------------------------------------------- tool steps */
+.steps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tq-space-1);
+  margin: 0;
+  padding: var(--tq-space-3) var(--tq-space-4);
+  list-style: none;
+  border: 1px solid var(--tq-border-subtle);
+  border-radius: var(--tq-radius-md);
+  background: var(--tq-surface-sunken);
+}
+
+.step {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--tq-space-3);
+  padding: var(--tq-space-2) 0;
+}
+
+/* The rail: every step but the last one is joined to the one under it. */
+.step:not(:last-child)::before {
+  content: '';
+  position: absolute;
+  left: 9px;
+  top: 24px;
+  bottom: -2px;
+  width: 1px;
+  background: var(--tq-border);
+}
+
+.stepGlyph {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 19px;
+  height: 19px;
+  border-radius: var(--tq-radius-pill);
+  border: 1px solid var(--tq-border);
+  background: var(--tq-surface);
+  color: var(--tq-text-subtle);
+}
+
+.step[data-running] .stepGlyph {
+  border-color: var(--tq-accent-line);
+  background: var(--tq-accent-soft);
+  color: var(--tq-accent);
+  animation: breathe 1.6s var(--tq-ease) infinite;
+}
+
+.step[data-error] .stepGlyph {
+  border-color: var(--tq-danger);
+  background: var(--tq-danger-soft);
+  color: var(--tq-danger);
+}
+
+.stepText {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.stepLabel {
+  display: flex;
+  align-items: baseline;
+  gap: var(--tq-space-3);
+  font-size: var(--tq-text-sm);
+  color: var(--tq-text);
+}
+
+.stepArg {
+  font-family: var(--tq-font-mono);
+  font-size: var(--tq-text-xs);
+  color: var(--tq-text-subtle);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stepResult {
+  font-size: var(--tq-text-xs);
+  line-height: var(--tq-leading-normal);
+  color: var(--tq-text-subtle);
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow-wrap: anywhere;
+}
+
+.step[data-error] .stepResult {
+  color: var(--tq-danger);
+}
+
+/* ------------------------------------------------------------- empty thread */
+.intro {
+  margin: auto 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--tq-space-3);
+  padding: var(--tq-space-6) var(--tq-space-4);
+  text-align: center;
+}
+
+.introGlyph {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--tq-radius-lg);
+  border: 1px solid var(--tq-accent-line);
+  background: var(--tq-accent-soft);
+  color: var(--tq-accent);
+}
+
+.introTitle {
+  margin: 0;
+  font-size: var(--tq-text-md);
+  font-weight: var(--tq-weight-medium);
+  color: var(--tq-text);
+}
+
+.introBody {
+  margin: 0;
+  max-width: 34ch;
+  font-size: var(--tq-text-sm);
+  line-height: var(--tq-leading-relaxed);
+  color: var(--tq-text-subtle);
+}
+
+.introBody code {
+  font-family: var(--tq-font-mono);
+  font-size: 0.94em;
+  color: var(--tq-text-muted);
+}
+
+/* ------------------------------------------------------------ quick actions */
+.quick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--tq-space-2);
+  padding: var(--tq-space-3) var(--tq-space-5) 0;
+  flex: none;
+}
+
+.chip {
+  padding: var(--tq-space-2) var(--tq-space-4);
+  border: 1px solid var(--tq-border);
+  border-radius: var(--tq-radius-pill);
+  background: var(--tq-surface-sunken);
+  color: var(--tq-text-muted);
+  font-size: var(--tq-text-sm);
+  transition:
+    border-color var(--tq-duration-fast) var(--tq-ease),
+    color var(--tq-duration-fast) var(--tq-ease),
+    background-color var(--tq-duration-fast) var(--tq-ease);
+}
+
+.chip:hover {
+  border-color: var(--tq-accent-line);
+  background: var(--tq-accent-soft);
+  color: var(--tq-text);
+}
+
+/* ---------------------------------------------------------------- composer */
+.composer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tq-space-3);
+  padding: var(--tq-space-4) var(--tq-space-5) var(--tq-space-5);
+  flex: none;
+}
+
+.input {
+  width: 100%;
+  resize: none;
+  padding: var(--tq-space-3) var(--tq-space-4);
+  border: 1px solid var(--tq-border);
+  border-radius: var(--tq-radius-md);
+  background: var(--tq-surface-sunken);
+  color: var(--tq-text);
+  font-family: inherit;
+  font-size: var(--tq-text-base);
+  line-height: var(--tq-leading-relaxed);
+  transition: border-color var(--tq-duration-fast) var(--tq-ease);
+}
+
+.input::placeholder {
+  color: var(--tq-text-subtle);
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--tq-accent);
+}
+
+.composerFoot {
+  display: flex;
+  align-items: center;
+  gap: var(--tq-space-3);
+}
+
+.hint {
+  font-size: var(--tq-text-xs);
+  color: var(--tq-text-subtle);
+}
+
+.hint kbd {
+  padding: 0 4px;
+  border: 1px solid var(--tq-border);
+  border-radius: var(--tq-radius-xs);
+  background: var(--tq-surface-sunken);
+  font-family: var(--tq-font-mono);
+  font-size: 10px;
+}
+
+.composerFoot > *:last-child {
+  margin-left: auto;
+}

@@ -1,0 +1,517 @@
+/* The run drawer: the tab strip under the canvas and the four panes it switches
+ * between. Everything here is sized for a 208px drawer, so the chrome is thin and the
+ * content scrolls; nothing but the tab strip is ever fixed height. */
+
+.drawer {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+}
+
+/* ------------------------------------------------------------------ tab strip */
+.tabs {
+  display: flex;
+  align-items: stretch;
+  gap: var(--tq-space-2);
+  padding: 0 var(--tq-space-5);
+  border-bottom: 1px solid var(--tq-border-subtle);
+  flex: none;
+}
+
+.tab {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--tq-space-2);
+  height: 35px;
+  padding: 0 var(--tq-space-3);
+  border-bottom: 2px solid transparent;
+  color: var(--tq-text-subtle);
+  font-size: var(--tq-text-base);
+  font-weight: var(--tq-weight-medium);
+  transition: color var(--tq-duration-fast) var(--tq-ease);
+}
+
+.tab:hover {
+  color: var(--tq-text);
+}
+
+.tabActive,
+.tabActive:hover {
+  color: var(--tq-text);
+  border-bottom-color: var(--tq-accent);
+}
+
+.tabCount {
+  padding: 0 var(--tq-space-2);
+  border-radius: var(--tq-radius-pill);
+  background: var(--tq-surface-active);
+  font-size: var(--tq-text-xs);
+  color: var(--tq-text-subtle);
+  font-variant-numeric: tabular-nums;
+}
+
+.tabCountBad {
+  background: var(--tq-danger-soft);
+  color: var(--tq-danger);
+}
+
+.tabSpacer {
+  flex: 1;
+}
+
+/* The run's own line, at the far end of the strip: state, clock, items. */
+.summary {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--tq-space-3);
+  padding-right: var(--tq-space-1);
+  font-size: var(--tq-text-sm);
+  color: var(--tq-text-subtle);
+}
+
+.summaryState {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--tq-space-2);
+  color: var(--tq-text-muted);
+  font-weight: var(--tq-weight-medium);
+}
+
+.summaryFigure {
+  font-variant-numeric: tabular-nums;
+}
+
+.summaryDivider {
+  width: 1px;
+  height: 11px;
+  background: var(--tq-border);
+}
+
+/* ---------------------------------------------------------------------- panes */
+.pane {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--tq-surface-sunken);
+  position: relative;
+}
+
+.paneBar {
+  display: flex;
+  align-items: center;
+  gap: var(--tq-space-3);
+  flex: none;
+  padding: var(--tq-space-2) var(--tq-space-5);
+  background: var(--tq-surface);
+  border-bottom: 1px solid var(--tq-border-subtle);
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.paneLabel {
+  font-size: var(--tq-text-xs);
+  letter-spacing: var(--tq-tracking-wide);
+  text-transform: uppercase;
+  color: var(--tq-text-subtle);
+}
+
+.paneFact {
+  font-size: var(--tq-text-sm);
+  color: var(--tq-text-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* The name of the thing being shown, at the end of the bar: it is the one part long
+ * enough to need cutting, and the only one that can be read from its head alone. */
+.paneName {
+  min-width: 0;
+  font-family: var(--tq-font-mono);
+  font-size: var(--tq-text-xs);
+  color: var(--tq-text-subtle);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.paneSpacer {
+  flex: 1;
+}
+
+.link {
+  color: var(--tq-accent);
+  font-size: var(--tq-text-sm);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+}
+
+.link:hover {
+  border-bottom-color: var(--tq-accent-line);
+}
+
+.empty {
+  padding: var(--tq-space-6);
+  color: var(--tq-text-subtle);
+  font-size: var(--tq-text-sm);
+  line-height: var(--tq-leading-relaxed);
+  max-width: 62ch;
+}
+
+.empty strong {
+  color: var(--tq-text-muted);
+  font-weight: var(--tq-weight-medium);
+}
+
+/* -------------------------------------------------------------------- console */
+.log {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: var(--tq-space-3) 0 var(--tq-space-4);
+  font-family: var(--tq-font-mono);
+  font-size: var(--tq-text-sm);
+  line-height: var(--tq-leading-relaxed);
+  scrollbar-gutter: stable;
+}
+
+.line {
+  display: grid;
+  grid-template-columns: 46px minmax(0, 1fr);
+  gap: var(--tq-space-4);
+  padding-right: var(--tq-space-6);
+  border-left: 2px solid transparent;
+}
+
+.lineNo {
+  text-align: right;
+  color: var(--tq-text-subtle);
+  opacity: 0.55;
+  user-select: none;
+}
+
+.lineText {
+  color: var(--tq-text-muted);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.err {
+  border-left-color: var(--tq-danger);
+  background: var(--tq-danger-soft);
+}
+
+.err .lineText {
+  color: var(--tq-danger);
+}
+
+.dropped {
+  padding: 0 var(--tq-space-6) var(--tq-space-2) 62px;
+  color: var(--tq-text-subtle);
+  font-size: var(--tq-text-xs);
+}
+
+/* The pill that appears when the reader has scrolled away from the tail. */
+.follow {
+  position: absolute;
+  right: var(--tq-space-6);
+  bottom: var(--tq-space-4);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--tq-space-2);
+  padding: var(--tq-space-2) var(--tq-space-4);
+  border-radius: var(--tq-radius-pill);
+  border: 1px solid var(--tq-border);
+  background: var(--tq-surface-raised);
+  color: var(--tq-text);
+  font-size: var(--tq-text-sm);
+  box-shadow: 0 6px 20px rgb(0 0 0 / 22%);
+}
+
+.follow:hover {
+  border-color: var(--tq-accent-line);
+  color: var(--tq-accent);
+}
+
+/* ----------------------------------------------------------------------- taps */
+.split {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(180px, 280px) minmax(0, 1fr);
+}
+
+.edges {
+  overflow: auto;
+  border-right: 1px solid var(--tq-border-subtle);
+  padding: var(--tq-space-2) 0;
+}
+
+.edge {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--tq-space-3);
+  width: 100%;
+  padding: var(--tq-space-2) var(--tq-space-5);
+  text-align: left;
+  border-left: 2px solid transparent;
+}
+
+.edge:hover {
+  background: var(--tq-surface-hover);
+}
+
+.edgeActive,
+.edgeActive:hover {
+  background: var(--tq-accent-soft);
+  border-left-color: var(--tq-accent);
+}
+
+.edgeName {
+  min-width: 0;
+  font-family: var(--tq-font-mono);
+  font-size: var(--tq-text-xs);
+  color: var(--tq-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: left;
+}
+
+.edgeActive .edgeName {
+  color: var(--tq-text);
+}
+
+.arrow {
+  color: var(--tq-accent);
+}
+
+.queue {
+  flex: none;
+  min-width: 26px;
+  padding: 0 var(--tq-space-2);
+  border-radius: var(--tq-radius-pill);
+  background: var(--tq-surface-active);
+  color: var(--tq-text-subtle);
+  font-size: var(--tq-text-xs);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.queueFull {
+  background: var(--tq-node-waiting-soft);
+  color: var(--tq-node-waiting);
+}
+
+.items {
+  overflow: auto;
+  padding: var(--tq-space-3) 0;
+  font-family: var(--tq-font-mono);
+  font-size: var(--tq-text-sm);
+  line-height: var(--tq-leading-relaxed);
+}
+
+.item {
+  display: grid;
+  grid-template-columns: 46px minmax(0, 1fr);
+  gap: var(--tq-space-4);
+  padding-right: var(--tq-space-6);
+}
+
+.itemNo {
+  text-align: right;
+  color: var(--tq-text-subtle);
+  opacity: 0.55;
+  user-select: none;
+}
+
+.itemText {
+  color: var(--tq-text-muted);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* --------------------------------------------------------------------- report */
+.tableWrap {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--tq-text-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--tq-surface);
+  padding: var(--tq-space-2) var(--tq-space-4);
+  text-align: right;
+  font-size: var(--tq-text-xs);
+  font-weight: var(--tq-weight-medium);
+  letter-spacing: var(--tq-tracking-wide);
+  text-transform: uppercase;
+  color: var(--tq-text-subtle);
+  border-bottom: 1px solid var(--tq-border-subtle);
+  white-space: nowrap;
+}
+
+.table thead th:first-child,
+.table tbody td:first-child {
+  text-align: left;
+}
+
+.table tbody td {
+  padding: var(--tq-space-2) var(--tq-space-4);
+  text-align: right;
+  color: var(--tq-text-muted);
+  border-bottom: 1px solid var(--tq-border-subtle);
+  white-space: nowrap;
+}
+
+.table tbody tr:hover td {
+  background: var(--tq-surface-hover);
+}
+
+.nodeCell {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--tq-space-3);
+  font-family: var(--tq-font-mono);
+  font-size: var(--tq-text-xs);
+  color: var(--tq-text);
+}
+
+.busiest td {
+  background: var(--tq-accent-soft);
+}
+
+.busiest td:first-child {
+  box-shadow: inset 2px 0 0 var(--tq-accent);
+}
+
+.chip {
+  padding: 0 var(--tq-space-2);
+  border-radius: var(--tq-radius-pill);
+  background: var(--tq-accent-soft);
+  color: var(--tq-accent);
+  font-family: var(--tq-font-ui);
+  font-size: var(--tq-text-xs);
+}
+
+/* The busy share as a bar behind its own number, so the bottleneck is visible in a
+ * column of figures without reading any of them. */
+.bar {
+  position: relative;
+  display: inline-block;
+  min-width: 58px;
+  padding: 0 var(--tq-space-2);
+  border-radius: var(--tq-radius-xs);
+  overflow: hidden;
+  text-align: right;
+}
+
+.barFill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: var(--tq-node-running-soft);
+}
+
+.barValue {
+  position: relative;
+}
+
+/* ------------------------------------------------------------------- problems */
+.problems {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.problem {
+  width: 100%;
+  padding: var(--tq-space-3) var(--tq-space-6);
+  border-bottom: 1px solid var(--tq-border-subtle);
+  text-align: left;
+  color: var(--tq-text-muted);
+  font-size: var(--tq-text-sm);
+}
+
+/* A deadlock report is several lines, so the dot sits on the first one rather than in
+ * the middle of the paragraph. */
+.problemHead {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--tq-space-4);
+}
+
+.problemHead > span:first-child {
+  margin-top: 5px;
+}
+
+.problem:hover {
+  background: var(--tq-surface-hover);
+  color: var(--tq-text);
+}
+
+.problemActive {
+  background: var(--tq-accent-soft);
+  color: var(--tq-text);
+}
+
+.problemText {
+  flex: 1;
+  min-width: 0;
+  line-height: var(--tq-leading-normal);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.problemWhere {
+  flex: none;
+  font-family: var(--tq-font-mono);
+  font-size: var(--tq-text-xs);
+  color: var(--tq-text-subtle);
+}
+
+.traceback {
+  margin: var(--tq-space-3) 0 0 var(--tq-space-6);
+  padding: var(--tq-space-3) var(--tq-space-4);
+  border-radius: var(--tq-radius-sm);
+  background: var(--tq-bg);
+  border: 1px solid var(--tq-border-subtle);
+  font-family: var(--tq-font-mono);
+  font-size: var(--tq-text-xs);
+  line-height: var(--tq-leading-normal);
+  color: var(--tq-text-subtle);
+  white-space: pre;
+  overflow: auto;
+  max-height: 220px;
+}
+
+.disclose {
+  margin-left: var(--tq-space-6);
+  margin-top: var(--tq-space-2);
+  color: var(--tq-accent);
+  font-size: var(--tq-text-xs);
+}
+
+.disclose:hover {
+  text-decoration: underline;
+}
+
+.link:disabled {
+  color: var(--tq-text-subtle);
+  cursor: default;
+}
+
+.link:disabled:hover {
+  border-bottom-color: transparent;
+}

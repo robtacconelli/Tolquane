@@ -192,7 +192,11 @@ export function ToggleField({
   );
 }
 
-/** A node's body, as it is in the file. F3 replaces the button with the code editor. */
+/**
+ * A block of code the panel only shows: an expression the model keeps verbatim, a node
+ * that is not defined in this file, and the moment before the body editor's chunk lands.
+ * Anything editable is `editor/code/NodeBody` instead.
+ */
 export function CodeBlock({
   code,
   action,

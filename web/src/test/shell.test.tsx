@@ -44,8 +44,8 @@ describe('the app shell', () => {
 
   it('renders every route', () => {
     const cases: [string, string][] = [
-      ['/flows', 'No flows yet'],
-      ['/runs', 'Nothing has run yet'],
+      ['/flows', 'No workspace open'],
+      ['/runs', 'History'],
       ['/schedules', 'Scheduled flows'],
       ['/settings', 'Appearance'],
     ];

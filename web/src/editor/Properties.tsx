@@ -1,4 +1,4 @@
-import type { JSX, ReactNode } from 'react';
+import { lazy, Suspense, type JSX, type ReactNode } from 'react';
 import { Button } from '../components/Button';
 import { Icon } from '../components/Icon';
 import {
@@ -27,6 +27,10 @@ import {
 import { useFlowStore, useProblems } from '../store/flow';
 import { CodeBlock, NumberField, Section, SelectField, TextField, ToggleField } from './controls';
 import styles from './Properties.module.css';
+
+/* The body editor is CodeMirror, which is a lazy chunk: until it arrives the panel shows
+ * the same body as the read-only block it replaces, so nothing jumps. */
+const NodeBody = lazy(() => import('./code/NodeBody'));
 
 /* The right-hand panel: every option of the selected block, as a proper control, with
  * the problems that belong to it under the control that causes them. It reads and writes
@@ -261,6 +265,18 @@ function RefFields({
 }): JSX.Element {
   const replaceBlock = useFlowStore((state) => state.replaceBlock);
   const node = findNode(model, block.id);
+  const title = block.id;
+  const edit = (
+    <Button
+      size="sm"
+      variant="ghost"
+      onClick={() => onEditCode?.(block.id)}
+      disabled={!onEditCode || !node}
+    >
+      <Icon name="code" size={14} />
+      Edit code
+    </Button>
+  );
   return (
     <>
       <Section title="Node">
@@ -273,21 +289,13 @@ function RefFields({
         />
       </Section>
       <Section title="Body">
-        <CodeBlock
-          code={node?.source ?? `# ${block.id} is not defined in this file`}
-          title={`${block.id}.py`}
-          action={
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => onEditCode?.(block.id)}
-              disabled={!onEditCode || !node}
-            >
-              <Icon name="code" size={14} />
-              Edit code
-            </Button>
-          }
-        />
+        {node ? (
+          <Suspense fallback={<CodeBlock code={node.source} title={title} action={edit} />}>
+            <NodeBody key={node.id} id={node.id} source={node.source} title={title} action={edit} />
+          </Suspense>
+        ) : (
+          <CodeBlock code={`# ${block.id} is not defined in this file`} title={title} />
+        )}
       </Section>
     </>
   );

@@ -100,6 +100,21 @@ export interface FlowState {
   applyServerFlow: (response: FlowResponse) => void;
   /** After `POST /flows/generate`, or after the code view re-parses (F3). */
   setSource: (source: string) => void;
+  /**
+   * The code editor typed. The text is the artifact, so it goes in as it is and the model
+   * follows a moment later through `applyParse`; nothing here rewrites what was typed.
+   */
+  editSource: (source: string) => void;
+  /**
+   * The answer to `POST /flows/parse` for the text that is in `source` now. `positions`
+   * is the sidecar re-keyed for the tree that came back, when the caller could re-key it.
+   */
+  applyParse: (
+    result: { model: FlowModel | null; code_only: CodeOnly | null; graph: GraphView | null },
+    positions?: Record<string, Position>,
+  ) => void;
+  /** The property panel's body editor: this node's text is now that. */
+  setNodeSource: (id: string, source: string) => void;
   markSaved: (response: { source: string; modified: string }) => void;
   clear: () => void;
 
@@ -226,6 +241,50 @@ export const useFlowStore = create<FlowState>((set, get) => {
     },
 
     setSource: (source) => set({ source, sourceStale: false }),
+
+    editSource: (source) =>
+      set((state) => (state.source === source ? {} : { source, dirty: true, sourceStale: false })),
+
+    applyParse: (result, positions) => {
+      const model = result.model ? normalizeModel(result.model) : null;
+      set((state) => ({
+        model,
+        codeOnly: result.code_only,
+        graph: result.graph,
+        // A file that cannot be modelled has only its threads to show; one that can be
+        // modelled again goes back to the blocks the person was looking at before.
+        expanded: model === null ? true : state.codeOnly !== null ? false : state.expanded,
+        ...(positions && positions !== state.layout.positions
+          ? { layout: { ...state.layout, positions }, layoutDirty: true }
+          : {}),
+        selected:
+          model && state.selected !== null && hasPath(model.flow, state.selected)
+            ? state.selected
+            : null,
+        problems: model ? validateModel(model) : [],
+        serverProblems: [],
+      }));
+    },
+
+    setNodeSource: (id, source) => {
+      const model = get().model;
+      if (!model) return;
+      const index = model.nodes.findIndex((node) => node.id === id);
+      const current = model.nodes[index];
+      if (!current || current.source === source) return;
+      const nodes = [...model.nodes];
+      nodes[index] = { ...current, source };
+      const next: FlowModel = { ...model, nodes };
+      set({
+        past: pushHistory(),
+        future: [],
+        model: next,
+        dirty: true,
+        sourceStale: true,
+        problems: validateModel(next),
+        serverProblems: [],
+      });
+    },
 
     markSaved: (response) =>
       set({

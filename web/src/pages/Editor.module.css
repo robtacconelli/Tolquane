@@ -202,50 +202,6 @@
   line-height: var(--tq-leading-relaxed);
 }
 
-/* --------------------------------------------------------------- code view */
-.code {
-  display: flex;
-  min-height: 0;
-  flex-direction: column;
-  background: var(--tq-surface-sunken);
-}
-
-.codeHead {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--tq-space-4);
-  height: 32px;
-  padding: 0 var(--tq-space-6);
-  border-bottom: 1px solid var(--tq-border-subtle);
-  background: var(--tq-surface);
-}
-
-.codeTitle {
-  font-family: var(--tq-font-mono);
-  font-size: var(--tq-text-sm);
-  color: var(--tq-text-muted);
-}
-
-.readOnly {
-  font-size: var(--tq-text-xs);
-  color: var(--tq-text-subtle);
-}
-
-.codeBody {
-  flex: 1;
-  min-height: 0;
-  margin: 0;
-  padding: var(--tq-space-5) var(--tq-space-6);
-  overflow: auto;
-  font-family: var(--tq-font-mono);
-  font-size: var(--tq-text-sm);
-  line-height: var(--tq-leading-relaxed);
-  color: var(--tq-text-muted);
-  white-space: pre;
-  tab-size: 4;
-}
-
 /* --------------------------------------------------------- property panel */
 .properties {
   grid-column: 2;

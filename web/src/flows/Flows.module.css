@@ -1,0 +1,279 @@
+/* The workspace list. The row is a grid on the same template as the column header above
+ * it; the flow's name is a real link stretched over the whole row, so a click anywhere
+ * opens it while the buttons on the right still work. */
+.list {
+  display: flex;
+  flex-direction: column;
+}
+
+.row {
+  position: relative;
+  display: grid;
+  gap: var(--tq-space-5);
+  align-items: center;
+  padding: var(--tq-space-4) var(--tq-space-6);
+  transition: background-color var(--tq-duration-fast) var(--tq-ease);
+}
+
+.row + .row {
+  border-top: 1px solid var(--tq-border-subtle);
+}
+
+.row:hover {
+  background: var(--tq-surface-hover);
+}
+
+.row:focus-within {
+  background: var(--tq-surface-hover);
+}
+
+.cell {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tq-space-1);
+  min-width: 0;
+}
+
+.name {
+  position: static;
+  font-family: var(--tq-font-mono);
+  font-size: var(--tq-text-base);
+  font-weight: var(--tq-weight-medium);
+  color: var(--tq-text);
+  text-decoration: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The whole row is the click target for the flow's own link. */
+.name::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+}
+
+.row:hover .name {
+  color: var(--tq-accent);
+}
+
+.meta {
+  font-size: var(--tq-text-sm);
+  color: var(--tq-text-subtle);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.when {
+  font-size: var(--tq-text-base);
+  color: var(--tq-text);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--tq-space-3);
+  font-size: var(--tq-text-base);
+  color: var(--tq-text);
+  white-space: nowrap;
+}
+
+.size {
+  font-size: var(--tq-text-base);
+  color: var(--tq-text-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.badge {
+  align-self: flex-start;
+  padding: 0 var(--tq-space-2);
+  border-radius: var(--tq-radius-xs);
+  background: var(--tq-surface-active);
+  font-size: var(--tq-text-xs);
+  color: var(--tq-text-subtle);
+}
+
+/* The buttons have to sit above the row-wide link to stay clickable. */
+.actions {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--tq-space-2);
+  opacity: 0.55;
+  transition: opacity var(--tq-duration-fast) var(--tq-ease);
+}
+
+.row:hover .actions,
+.row:focus-within .actions {
+  opacity: 1;
+}
+
+.delete:hover:not(:disabled) {
+  color: var(--tq-danger);
+  background: var(--tq-danger-soft);
+}
+
+/* ------------------------------------------------------------------ strips */
+.notice,
+.failure {
+  display: flex;
+  align-items: center;
+  gap: var(--tq-space-3);
+  padding: var(--tq-space-3) var(--tq-space-6);
+  border-bottom: 1px solid var(--tq-border-subtle);
+  font-size: var(--tq-text-base);
+}
+
+.notice {
+  background: var(--tq-accent-soft);
+  color: var(--tq-accent);
+}
+
+.failure {
+  background: var(--tq-danger-soft);
+  color: var(--tq-danger);
+}
+
+.dismiss {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--tq-radius-sm);
+  color: inherit;
+  opacity: 0.75;
+}
+
+.dismiss:hover {
+  opacity: 1;
+  background: var(--tq-surface-hover);
+}
+
+.workspace {
+  display: block;
+  max-width: 38ch;
+  font-family: var(--tq-font-mono);
+  font-size: var(--tq-text-sm);
+  color: var(--tq-text-subtle);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nothing {
+  padding: var(--tq-space-8) var(--tq-space-6);
+  text-align: center;
+  color: var(--tq-text-subtle);
+  font-size: var(--tq-text-base);
+}
+
+/* ---------------------------------------------------------------- skeleton */
+.bar,
+.barSmall {
+  display: block;
+  height: 9px;
+  border-radius: var(--tq-radius-pill);
+  background: var(--tq-surface-active);
+}
+
+.barSmall {
+  height: 7px;
+  opacity: 0.6;
+}
+
+/* --------------------------------------------------------- the new dialog */
+.templates {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--tq-space-3);
+}
+
+.template {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--tq-space-2);
+  padding: var(--tq-space-4);
+  border: 1px solid var(--tq-border);
+  border-radius: var(--tq-radius-md);
+  background: var(--tq-surface-sunken);
+  text-align: left;
+  transition:
+    border-color var(--tq-duration-fast) var(--tq-ease),
+    background-color var(--tq-duration-fast) var(--tq-ease);
+}
+
+.template:hover {
+  border-color: var(--tq-border-strong);
+}
+
+.templateActive,
+.templateActive:hover {
+  border-color: var(--tq-accent);
+  background: var(--tq-accent-soft);
+}
+
+.templateGlyph {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--tq-radius-sm);
+  background: var(--tq-surface);
+  color: var(--tq-text-muted);
+}
+
+.templateActive .templateGlyph {
+  background: var(--tq-accent);
+  color: var(--tq-accent-contrast);
+}
+
+.templateName {
+  font-size: var(--tq-text-base);
+  font-weight: var(--tq-weight-medium);
+  color: var(--tq-text);
+}
+
+.templateBody {
+  font-size: var(--tq-text-sm);
+  line-height: var(--tq-leading-normal);
+  color: var(--tq-text-subtle);
+}
+
+.fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tq-space-5);
+}
+
+.describe {
+  width: 100%;
+  resize: vertical;
+  min-height: 84px;
+  padding: var(--tq-space-3) var(--tq-space-4);
+  border: 1px solid var(--tq-border);
+  border-radius: var(--tq-radius-md);
+  background: var(--tq-surface-sunken);
+  color: var(--tq-text);
+  font-family: inherit;
+  font-size: var(--tq-text-base);
+  line-height: var(--tq-leading-relaxed);
+}
+
+.describe:focus {
+  outline: none;
+  border-color: var(--tq-accent);
+}
+
+.path {
+  font-family: var(--tq-font-mono);
+  color: var(--tq-text-muted);
+}

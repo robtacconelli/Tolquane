@@ -1,14 +1,28 @@
-import { lazy, Suspense, useCallback, useEffect, useState, type JSX } from 'react';
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useState,
+  type CSSProperties,
+  type JSX,
+} from 'react';
 import { useParams } from 'react-router-dom';
+import { AiPanel } from '../ai/AiPanel';
 import { ApiError } from '../api/client';
 import { checkFlow, generateSource, getFlow, saveFlow, saveLayout } from '../api/flows';
 import { Button } from '../components/Button';
 import { Icon } from '../components/Icon';
 import { Segmented } from '../components/Page';
-import { StatusDot } from '../components/StatusDot';
 import { Palette } from '../editor/Palette';
 import { Properties } from '../editor/Properties';
+import { CodeDialogs, CodeStage } from '../editor/code';
+import { reportSaveFailure, useCodeSync } from '../editor/code/sync';
+import { useCodeSyncStore } from '../editor/code/syncStore';
 import { locateProblem, type Problem } from '../model';
+import { RunButton } from '../run/RunButton';
+import { RunDrawer, type DrawerTab } from '../run/RunDrawer';
+import { useAiStore } from '../store/ai';
 import { useFlowStore, useProblems } from '../store/flow';
 import { useRunStore } from '../store/run';
 import styles from './Editor.module.css';
@@ -29,8 +43,7 @@ const LAYERS = [
   { value: 'threads', label: 'Threads' },
 ] as const;
 
-const TABS = ['Console', 'Taps', 'Report', 'Problems'] as const;
-type Tab = (typeof TABS)[number];
+type Tab = DrawerTab;
 
 interface Notice {
   tone: 'info' | 'error' | 'success';
@@ -43,7 +56,6 @@ export function EditorPage(): JSX.Element {
 
   const flowPath = useFlowStore((state) => state.path);
   const model = useFlowStore((state) => state.model);
-  const source = useFlowStore((state) => state.source);
   const codeOnly = useFlowStore((state) => state.codeOnly);
   const dirty = useFlowStore((state) => state.dirty);
   const layoutDirty = useFlowStore((state) => state.layoutDirty);
@@ -65,6 +77,16 @@ export function EditorPage(): JSX.Element {
 
   const runNodes = useRunStore((state) => state.nodes);
   const runEdges = useRunStore((state) => state.edges);
+
+  // The AI panel takes the right column when it is open, and needs more of it than the
+  // properties do; the column is `--tq-panel-width` wide, so widening it is one variable.
+  const aiOpen = useAiStore((state) => state.open);
+  const setAiOpen = useAiStore((state) => state.setOpen);
+
+  /* The two-way sync between the file and the canvas: it is mounted on the page rather
+   * than in the code view because a canvas edit has to reach the file with the code view
+   * closed, and because nothing it imports pulls CodeMirror into this bundle. */
+  useCodeSync();
 
   const [tab, setTab] = useState<Tab>('Console');
   const [notice, setNotice] = useState<Notice | null>(null);
@@ -116,11 +138,9 @@ export function EditorPage(): JSX.Element {
       }
       setNotice({ tone: 'success', text: 'Saved' });
     } catch (error: unknown) {
-      if (error instanceof ApiError && error.status === 409) {
-        setNotice({
-          tone: 'error',
-          text: 'This file changed on disk since you opened it. Reload it to see the newer version before saving over it.',
-        });
+      if (reportSaveFailure(error)) {
+        // The dialog now has both versions and the question to ask about them.
+        setNotice(null);
       } else {
         setNotice({
           tone: 'error',
@@ -171,6 +191,10 @@ export function EditorPage(): JSX.Element {
       const mod = event.metaKey || event.ctrlKey;
       if (!mod) return;
       const key = event.key.toLowerCase();
+      // A code editor with the focus has its own undo stack, over its own text; only the
+      // canvas's undo belongs to the page.
+      const inEditor = (event.target as Element | null)?.closest?.('.cm-editor') != null;
+      if (inEditor && key !== 's') return;
       if (key === 's') {
         event.preventDefault();
         void save();
@@ -187,11 +211,13 @@ export function EditorPage(): JSX.Element {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [redo, save, undo]);
 
-  const errors = problems.filter((problem) => problem.severity === 'error');
   const opened = flowPath === path && (model !== null || codeOnly !== null);
 
   return (
-    <div className={styles.editor}>
+    <div
+      className={styles.editor}
+      style={aiOpen ? ({ '--tq-panel-width': '408px' } as CSSProperties) : undefined}
+    >
       <div className={styles.toolbar}>
         <div className={styles.file}>
           <span className={styles.fileName}>{path || 'untitled.py'}</span>
@@ -220,7 +246,12 @@ export function EditorPage(): JSX.Element {
         ) : null}
         <div className={styles.toolbarSpacer} />
         {import.meta.env.DEV ? <FixturePicker /> : null}
-        <Button variant="ghost" size="sm" disabled>
+        <Button
+          variant={aiOpen ? 'secondary' : 'ghost'}
+          size="sm"
+          aria-pressed={aiOpen}
+          onClick={() => setAiOpen(!aiOpen)}
+        >
           <Icon name="sparkle" size={15} />
           AI builder
         </Button>
@@ -242,10 +273,7 @@ export function EditorPage(): JSX.Element {
           <Icon name="folder" size={15} />
           {busy === 'saving' ? 'Saving…' : 'Save'}
         </Button>
-        <Button variant="primary" size="sm" disabled>
-          <Icon name="play" size={15} />
-          Run
-        </Button>
+        <RunButton path={path} ready={opened} onBeforeRun={save} />
       </div>
 
       <div className={styles.notices}>
@@ -264,7 +292,7 @@ export function EditorPage(): JSX.Element {
           </div>
         ) : null}
 
-        {codeOnly ? (
+        {codeOnly && view !== 'code' ? (
           <div className={styles.notice} data-tone="warning" role="status">
             <Icon name="alert" size={14} />
             <span>
@@ -282,13 +310,7 @@ export function EditorPage(): JSX.Element {
           </div>
         ) : null}
         {view === 'code' ? (
-          <div className={styles.code}>
-            <div className={styles.codeHead}>
-              <span className={styles.codeTitle}>{path}</span>
-              <span className={styles.readOnly}>read-only until the code editor lands</span>
-            </div>
-            <pre className={styles.codeBody}>{source || '# open a flow to see its code'}</pre>
-          </div>
+          <CodeStage />
         ) : loadError ? (
           <div className={styles.loadError}>
             <span className={styles.loadGlyph}>
@@ -309,73 +331,33 @@ export function EditorPage(): JSX.Element {
       </div>
 
       <aside className={styles.properties}>
-        <Properties onEditCode={() => setView('code')} />
+        {aiOpen ? (
+          <AiPanel
+            path={path}
+            onClose={() => setAiOpen(false)}
+            onShowCode={() => setView('code')}
+          />
+        ) : (
+          <Properties
+            onEditCode={(nodeId) => {
+              setView('code');
+              useCodeSyncStore.getState().revealNode(nodeId);
+            }}
+          />
+        )}
       </aside>
 
       <section className={styles.drawer}>
-        <div className={styles.tabs} role="tablist" aria-label="Run output">
-          {TABS.map((name) => (
-            <button
-              key={name}
-              type="button"
-              role="tab"
-              aria-selected={name === tab}
-              className={name === tab ? `${styles.tab} ${styles.tabActive}` : styles.tab}
-              onClick={() => setTab(name)}
-            >
-              {name}
-              {name === 'Problems' ? (
-                <span
-                  className={
-                    errors.length > 0 ? `${styles.tabCount} ${styles.tabCountBad}` : styles.tabCount
-                  }
-                >
-                  {problems.length}
-                </span>
-              ) : name === 'Console' ? null : (
-                <span className={styles.tabCount}>0</span>
-              )}
-            </button>
-          ))}
-        </div>
-        {tab === 'Problems' ? (
-          <div className={styles.problems}>
-            {problems.length === 0 ? (
-              <p className={styles.problemsEmpty}>
-                Nothing wrong with this flow. <strong>Check</strong> runs <code>tq.check</code> on
-                the server for the last word.
-              </p>
-            ) : (
-              problems.map((problem, index) => (
-                <button
-                  key={`${problem.message}-${String(index)}`}
-                  type="button"
-                  className={
-                    problem.path === selected
-                      ? `${styles.problem} ${styles.problemActive}`
-                      : styles.problem
-                  }
-                  onClick={() => problem.path !== null && select(problem.path)}
-                >
-                  <StatusDot state={problem.severity === 'error' ? 'failed' : 'waiting'} />
-                  <span className={styles.problemText}>{problem.message}</span>
-                  <span className={styles.problemWhere}>
-                    {problem.source === 'server' ? 'tq.check' : (problem.path ?? 'flow')}
-                  </span>
-                </button>
-              ))
-            )}
-          </div>
-        ) : (
-          <div className={styles.console}>
-            <span className={styles.prompt}>$</span> tolquane run {path || 'flow.py'} --events
-            <br />
-            {tab === 'Console'
-              ? 'the run panel arrives with F4; the canvas is already wired to its overlay.'
-              : `${tab.toLowerCase()} appear here once a run has something to show.`}
-          </div>
-        )}
+        <RunDrawer
+          tab={tab}
+          onTab={setTab}
+          problems={problems}
+          selected={selected}
+          onSelectProblem={select}
+        />
       </section>
+
+      <CodeDialogs />
     </div>
   );
 }

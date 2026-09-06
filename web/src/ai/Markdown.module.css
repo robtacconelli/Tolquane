@@ -1,0 +1,132 @@
+.prose {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tq-space-4);
+  min-width: 0;
+  font-size: var(--tq-text-base);
+  line-height: var(--tq-leading-relaxed);
+  color: var(--tq-text);
+}
+
+.prose > *:first-child {
+  margin-top: 0;
+}
+
+.paragraph {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.heading {
+  margin: 0;
+  font-weight: var(--tq-weight-semibold);
+  letter-spacing: var(--tq-tracking-tight);
+  color: var(--tq-text);
+}
+
+.heading[data-level='1'],
+.heading[data-level='2'] {
+  font-size: var(--tq-text-md);
+}
+
+.list {
+  margin: 0;
+  padding-left: var(--tq-space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--tq-space-2);
+}
+
+.list li {
+  overflow-wrap: anywhere;
+}
+
+.list li::marker {
+  color: var(--tq-text-subtle);
+}
+
+.code {
+  padding: 1px 4px;
+  border-radius: var(--tq-radius-xs);
+  background: var(--tq-surface-active);
+  font-family: var(--tq-font-mono);
+  font-size: 0.92em;
+  color: var(--tq-accent);
+  overflow-wrap: anywhere;
+}
+
+/* ------------------------------------------------------------- fenced code */
+.block {
+  border: 1px solid var(--tq-border-subtle);
+  border-radius: var(--tq-radius-md);
+  background: var(--tq-surface-sunken);
+  overflow: hidden;
+}
+
+.blockHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--tq-space-3);
+  padding: var(--tq-space-2) var(--tq-space-3);
+  border-bottom: 1px solid var(--tq-border-subtle);
+  background: var(--tq-surface);
+}
+
+.lang {
+  font-family: var(--tq-font-mono);
+  font-size: var(--tq-text-xs);
+  letter-spacing: var(--tq-tracking-wide);
+  text-transform: uppercase;
+  color: var(--tq-text-subtle);
+}
+
+.copy {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--tq-space-2);
+  padding: 2px var(--tq-space-2);
+  border-radius: var(--tq-radius-sm);
+  color: var(--tq-text-subtle);
+  font-size: var(--tq-text-xs);
+}
+
+.copy:hover {
+  background: var(--tq-surface-hover);
+  color: var(--tq-text);
+}
+
+.pre {
+  margin: 0;
+  padding: var(--tq-space-3) var(--tq-space-4);
+  overflow-x: auto;
+  font-family: var(--tq-font-mono);
+  font-size: var(--tq-text-sm);
+  line-height: var(--tq-leading-normal);
+  color: var(--tq-text-muted);
+  tab-size: 4;
+}
+
+/* The caret that follows the words in while a turn streams. */
+.caret {
+  display: inline-block;
+  width: 7px;
+  height: 13px;
+  margin-left: 3px;
+  vertical-align: -2px;
+  border-radius: 1px;
+  background: var(--tq-accent);
+  animation: blink 1s steps(2, start) infinite;
+}
+
+@keyframes blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.12;
+  }
+}

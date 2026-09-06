@@ -1,5 +1,7 @@
 import { useEffect, useRef, type JSX } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { MOD_KEY } from '../platform';
+import { useAiStore } from '../store/ai';
 import { Icon, type IconName } from './Icon';
 import styles from './CommandPalette.module.css';
 
@@ -8,6 +10,8 @@ interface Command {
   icon: IconName;
   label: string;
   hint?: string;
+  /** Wired commands run; the rest are still the frame. */
+  id?: 'ai-builder';
 }
 
 /* The frame only. Wave 2 wires these to the server; the list is here so the shape of
@@ -15,7 +19,7 @@ interface Command {
 const COMMANDS: readonly Command[] = [
   { group: 'Flows', icon: 'plus', label: 'New flow…', hint: 'N' },
   { group: 'Flows', icon: 'search', label: 'Open flow…', hint: 'O' },
-  { group: 'Flows', icon: 'sparkle', label: 'Build a flow with the AI builder…' },
+  { group: 'Flows', icon: 'sparkle', label: 'Build a flow with the AI builder…', id: 'ai-builder' },
   { group: 'Run', icon: 'play', label: 'Run the open flow', hint: `${MOD_KEY} ↵` },
   { group: 'Run', icon: 'check', label: 'Check the open flow' },
   { group: 'Run', icon: 'clock', label: 'Schedule the open flow…' },
@@ -32,10 +36,23 @@ const GROUPS = COMMANDS.reduce<{ name: string; commands: Command[] }[]>((groups,
 
 export function CommandPalette({ onClose }: { onClose: () => void }): JSX.Element {
   const inputRef = useRef<HTMLInputElement>(null);
+  const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     inputRef.current?.focus();
   }, []);
+
+  /* With a flow open the builder works on it, so the panel is all that is needed; from
+   * anywhere else there is nothing to build on yet, and the Flows page asks what to make. */
+  function buildWithAi(): void {
+    onClose();
+    const ai = useAiStore.getState();
+    ai.setOpen(true);
+    if (location.pathname.startsWith('/flows/')) return;
+    ai.requestNewFlow();
+    void navigate('/flows');
+  }
 
   return (
     <div
@@ -59,19 +76,32 @@ export function CommandPalette({ onClose }: { onClose: () => void }): JSX.Elemen
           {GROUPS.map((group) => (
             <div key={group.name}>
               <div className={styles.group}>{group.name}</div>
-              {group.commands.map((command) => (
-                <div
-                  key={command.label}
-                  className={
-                    command === COMMANDS[0] ? `${styles.row} ${styles.rowActive}` : styles.row
-                  }
-                  aria-disabled="true"
-                >
-                  <Icon name={command.icon} />
-                  <span className={styles.rowText}>{command.label}</span>
-                  {command.hint ? <span className={styles.rowHint}>{command.hint}</span> : null}
-                </div>
-              ))}
+              {group.commands.map((command) => {
+                const className =
+                  command === COMMANDS[0] ? `${styles.row} ${styles.rowActive}` : styles.row;
+                const content = (
+                  <>
+                    <Icon name={command.icon} />
+                    <span className={styles.rowText}>{command.label}</span>
+                    {command.hint ? <span className={styles.rowHint}>{command.hint}</span> : null}
+                  </>
+                );
+                return command.id === 'ai-builder' ? (
+                  <button
+                    key={command.label}
+                    type="button"
+                    className={className}
+                    style={{ cursor: 'pointer' }}
+                    onClick={buildWithAi}
+                  >
+                    {content}
+                  </button>
+                ) : (
+                  <div key={command.label} className={className} aria-disabled="true">
+                    {content}
+                  </div>
+                );
+              })}
             </div>
           ))}
         </div>

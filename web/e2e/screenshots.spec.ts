@@ -6,7 +6,7 @@ const OUT = 'e2e/screenshots';
 const ROUTES = [
   { name: 'flows', path: '/flows', marker: 'No flows yet' },
   { name: 'editor', path: '/flows/reports/word_count.py', marker: 'Properties' },
-  { name: 'runs', path: '/runs', marker: 'Nothing has run yet' },
+  { name: 'runs', path: '/runs', marker: 'History' },
   { name: 'schedules', path: '/schedules', marker: 'Scheduled flows' },
   { name: 'settings', path: '/settings', marker: 'Appearance' },
 ] as const;

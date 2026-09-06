@@ -1,0 +1,158 @@
+/* The run history: one row per run, on the same grid as the column header above it. */
+
+.list {
+  display: flex;
+  flex-direction: column;
+}
+
+.row {
+  display: grid;
+  gap: var(--tq-space-5);
+  align-items: center;
+  padding: var(--tq-space-4) var(--tq-space-6);
+  transition: background-color var(--tq-duration-fast) var(--tq-ease);
+}
+
+.row + .row {
+  border-top: 1px solid var(--tq-border-subtle);
+}
+
+.row:hover {
+  background: var(--tq-surface-hover);
+}
+
+.cell {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tq-space-1);
+  min-width: 0;
+}
+
+.open {
+  display: block;
+  min-width: 0;
+  text-align: left;
+  font-family: var(--tq-font-mono);
+  font-size: var(--tq-text-sm);
+  font-weight: var(--tq-weight-medium);
+  color: var(--tq-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.open:hover {
+  color: var(--tq-accent);
+}
+
+/* The second line of a cell: how the run was started. It wraps rather than being cut,
+ * because a sample's name is the part a reader is looking for. */
+.meta {
+  color: var(--tq-text-subtle);
+  font-size: var(--tq-text-sm);
+  line-height: var(--tq-leading-normal);
+  overflow-wrap: anywhere;
+}
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--tq-space-3);
+  color: var(--tq-text);
+  font-size: var(--tq-text-base);
+  white-space: nowrap;
+}
+
+/* A run still going says so, and keeps saying it: the dot pulses with the state colour. */
+.live {
+  padding: 0 var(--tq-space-2);
+  border-radius: var(--tq-radius-pill);
+  background: var(--tq-node-running-soft);
+  color: var(--tq-node-running);
+  font-size: var(--tq-text-xs);
+  letter-spacing: var(--tq-tracking-wide);
+  text-transform: uppercase;
+}
+
+.when {
+  color: var(--tq-text);
+  font-size: var(--tq-text-base);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.figure {
+  color: var(--tq-text);
+  font-size: var(--tq-text-base);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.busiest {
+  font-family: var(--tq-font-mono);
+  font-size: var(--tq-text-sm);
+  color: var(--tq-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.none {
+  color: var(--tq-text-subtle);
+  font-size: var(--tq-text-base);
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--tq-space-2);
+}
+
+.filters {
+  display: flex;
+  align-items: center;
+  gap: var(--tq-space-3);
+}
+
+.select {
+  min-width: 170px;
+}
+
+/* ------------------------------------------------------------------- notices */
+.notice,
+.failure {
+  display: flex;
+  align-items: center;
+  gap: var(--tq-space-3);
+  padding: var(--tq-space-3) var(--tq-space-6);
+  font-size: var(--tq-text-sm);
+  border-bottom: 1px solid var(--tq-border-subtle);
+}
+
+.notice {
+  background: var(--tq-success-soft);
+  color: var(--tq-success);
+}
+
+.failure {
+  background: var(--tq-danger-soft);
+  color: var(--tq-danger);
+}
+
+.dismiss {
+  margin-left: auto;
+  color: inherit;
+  opacity: 0.7;
+}
+
+.dismiss:hover {
+  opacity: 1;
+}
+
+.loading {
+  padding: var(--tq-space-8) var(--tq-space-6);
+  text-align: center;
+  color: var(--tq-text-subtle);
+  font-size: var(--tq-text-sm);
+}

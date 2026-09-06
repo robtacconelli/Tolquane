@@ -1,0 +1,75 @@
+/* One past run in a modal: a line of facts under the title, then the report, the log or
+ * the failure, whichever is asked for. */
+
+.facts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--tq-space-2) var(--tq-space-4);
+}
+
+.fact {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--tq-space-2);
+  font-size: var(--tq-text-sm);
+  color: var(--tq-text-muted);
+}
+
+.fact + .fact::before {
+  content: '·';
+  color: var(--tq-text-subtle);
+  margin-right: var(--tq-space-2);
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tq-space-4);
+  min-height: 260px;
+}
+
+.views {
+  align-self: flex-start;
+}
+
+.scroll {
+  overflow: auto;
+  max-height: 340px;
+  border: 1px solid var(--tq-border-subtle);
+  border-radius: var(--tq-radius-sm);
+}
+
+.log {
+  margin: 0;
+  padding: var(--tq-space-4);
+  max-height: 340px;
+  overflow: auto;
+  border-radius: var(--tq-radius-sm);
+  border: 1px solid var(--tq-border-subtle);
+  background: var(--tq-surface-sunken);
+  font-family: var(--tq-font-mono);
+  font-size: var(--tq-text-sm);
+  line-height: var(--tq-leading-relaxed);
+  color: var(--tq-text-muted);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.empty {
+  padding: var(--tq-space-6) 0;
+  color: var(--tq-text-subtle);
+  font-size: var(--tq-text-sm);
+  line-height: var(--tq-leading-relaxed);
+}
+
+.trace {
+  margin-right: auto;
+  color: var(--tq-accent);
+  font-size: var(--tq-text-sm);
+  text-decoration: none;
+}
+
+.trace:hover {
+  text-decoration: underline;
+}
