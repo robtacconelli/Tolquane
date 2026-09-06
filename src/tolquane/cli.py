@@ -26,18 +26,50 @@ def _load_flow(path: str) -> Any:
     module = importlib.util.module_from_spec(spec)
     sys.path.insert(0, str(file.parent))
     spec.loader.exec_module(module)
-    if not hasattr(module, "build"):
+    if not hasattr(module, "build") and not hasattr(module, "main"):
         raise SystemExit(f"{path}: define build(source=None) returning the graph")
     return module
 
 
+class _Captured(Exception):
+    """Carries the block a flow's main() handed to tq.run, so the command can run it."""
+
+    def __init__(self, block: Any) -> None:
+        self.block = block
+
+
+def _capture_from_main(module: Any, path: str) -> Any:
+    """The graph of a flow that has no build(): the one tq.run(...) call in its main()."""
+    import tolquane
+
+    def grab(block: Any, *args: Any, **kwargs: Any) -> Any:
+        raise _Captured(block)
+
+    original = tolquane.run
+    tolquane.run = grab
+    try:
+        module.main()
+    except _Captured as found:
+        return found.block
+    finally:
+        tolquane.run = original
+    raise SystemExit(
+        f"{path}: define build(source=None) returning the graph, or a main() that calls "
+        "tq.run(...) once"
+    )
+
+
 def _graph(args: argparse.Namespace) -> Any:
     module = _load_flow(args.flow)
-    if getattr(args, "sample", None):
-        items = _read_sample(Path(args.sample))
-        graph = module.build(source=items)
+    sample = getattr(args, "sample", None)
+    if hasattr(module, "build"):
+        graph = module.build(source=_read_sample(Path(sample))) if sample else module.build()
+    elif sample:
+        raise SystemExit(
+            f"{args.flow}: --sample needs build(source=None); this flow only has main()"
+        )
     else:
-        graph = module.build()
+        graph = _capture_from_main(module, args.flow)
     if getattr(args, "optimize", False):
         graph = optimize(graph, verbose=True)
     return graph
