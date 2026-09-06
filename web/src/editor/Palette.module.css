@@ -1,25 +1,73 @@
-/* The palette is the editor's left column: always there, never over a card. */
+/* The palette is the editor's left column: always there, never over a card. Folded, it
+ * is a rail of icon tiles, so the canvas gets 128px back without losing the blocks. */
 .palette {
   position: relative;
   z-index: var(--tq-z-sticky);
   display: flex;
   flex-direction: column;
-  gap: 1px;
   width: 100%;
   height: 100%;
-  padding: var(--tq-space-3);
-  overflow: auto;
+  min-height: 0;
   background: var(--tq-surface);
   border-right: 1px solid var(--tq-border-subtle);
 }
 
+.head {
+  display: flex;
+  align-items: center;
+  gap: var(--tq-space-2);
+  height: 36px;
+  flex: none;
+  padding: 0 var(--tq-space-2) 0 var(--tq-space-5);
+  border-bottom: 1px solid var(--tq-border-subtle);
+}
+
+.palette[data-open='false'] .head {
+  padding: 0;
+  justify-content: center;
+}
+
 .title {
-  padding: var(--tq-space-2) var(--tq-space-3) var(--tq-space-3);
+  flex: 1;
+  min-width: 0;
   font-size: var(--tq-text-xs);
   font-weight: var(--tq-weight-semibold);
   letter-spacing: var(--tq-tracking-wide);
   text-transform: uppercase;
   color: var(--tq-text-subtle);
+}
+
+.fold {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--tq-radius-sm);
+  color: var(--tq-text-subtle);
+  transition:
+    background-color var(--tq-duration-fast) var(--tq-ease),
+    color var(--tq-duration-fast) var(--tq-ease);
+}
+
+.fold:hover {
+  background: var(--tq-surface-hover);
+  color: var(--tq-text);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-height: 0;
+  overflow: auto;
+  padding: var(--tq-space-3);
+}
+
+.palette[data-open='false'] .list {
+  align-items: center;
+  padding: var(--tq-space-3) var(--tq-space-2);
+  gap: var(--tq-space-1);
 }
 
 .row {

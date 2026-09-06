@@ -84,12 +84,24 @@
   color: var(--tq-text-muted);
   font-size: var(--tq-text-base);
   text-align: left;
-  cursor: default;
+  cursor: pointer;
 }
 
 .rowActive {
   background: var(--tq-accent-soft);
   color: var(--tq-accent);
+}
+
+.rowActive .rowHint {
+  color: var(--tq-accent);
+  opacity: 0.8;
+}
+
+.nothing {
+  padding: var(--tq-space-6) var(--tq-space-4);
+  text-align: center;
+  color: var(--tq-text-subtle);
+  font-size: var(--tq-text-base);
 }
 
 .rowText {
@@ -107,22 +119,31 @@
 .foot {
   display: flex;
   align-items: center;
-  gap: var(--tq-space-5);
-  padding: var(--tq-space-3) var(--tq-space-6);
+  gap: var(--tq-space-4);
+  padding: var(--tq-space-3) var(--tq-space-5);
   border-top: 1px solid var(--tq-border-subtle);
   background: var(--tq-surface);
   color: var(--tq-text-subtle);
   font-size: var(--tq-text-xs);
 }
 
+/* Two rows of key hints in one strip: they never wrap, because a hint that breaks
+ * between the key and what it does is not a hint. */
 .footItem {
   display: flex;
   align-items: center;
   gap: var(--tq-space-2);
+  white-space: nowrap;
 }
 
-.footNote {
+/* The app's own keys, at the far end: learnt while looking for the command they replace. */
+.footKeys {
+  display: flex;
+  align-items: center;
+  gap: var(--tq-space-4);
   margin-left: auto;
+  padding-left: var(--tq-space-4);
+  border-left: 1px solid var(--tq-border-subtle);
 }
 
 @keyframes fade {

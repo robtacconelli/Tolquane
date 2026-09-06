@@ -1,0 +1,3 @@
+# The workspace `npm run e2e` writes for itself: flows, layouts, samples and the
+# server database, thrown away and written again on every run.
+e2e/.workspace/

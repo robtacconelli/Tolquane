@@ -6,6 +6,7 @@ import { Button } from '../components/Button';
 import { EmptyState } from '../components/EmptyState';
 import { Icon } from '../components/Icon';
 import { EmptyRunsArt } from '../components/Illustrations';
+import { Notice } from '../components/Notice';
 import { ListColumns, Page, PageHeader, Panel, PanelHeader, Segmented } from '../components/Page';
 import { Select } from '../components/form/Controls';
 import { StatusDot } from '../components/StatusDot';
@@ -171,12 +172,6 @@ export function RunsPage(): JSX.Element {
       <PageHeader
         title="Runs"
         description="Every run is a child process streaming its progress back here: node states, item counts, queue depths, output and the final report."
-        actions={
-          <Button variant="secondary" onClick={reload}>
-            <Icon name="runs" />
-            Refresh
-          </Button>
-        }
       />
 
       <Panel>
@@ -206,47 +201,39 @@ export function RunsPage(): JSX.Element {
                 value={filter}
                 onChange={setFilter}
               />
+              <Button size="sm" variant="ghost" onClick={reload}>
+                <Icon name="refresh" size={14} />
+                Refresh
+              </Button>
             </div>
           }
         />
 
         {notice ? (
-          <div className={styles.notice} role="status">
-            <Icon name="check" size={14} />
-            <span>{notice}</span>
-            <button
-              type="button"
-              className={styles.dismiss}
-              onClick={() => {
-                setNotice(null);
-              }}
-              aria-label="Dismiss"
-            >
-              <Icon name="close" size={13} />
-            </button>
-          </div>
+          <Notice
+            tone="success"
+            onDismiss={() => {
+              setNotice(null);
+            }}
+          >
+            {notice}
+          </Notice>
         ) : null}
 
         {actionError ? (
-          <div className={styles.failure} role="alert">
-            <Icon name="alert" size={14} />
-            <span>{actionError}</span>
-            <button
-              type="button"
-              className={styles.dismiss}
-              onClick={() => {
-                setActionError(null);
-              }}
-              aria-label="Dismiss"
-            >
-              <Icon name="close" size={13} />
-            </button>
-          </div>
+          <Notice
+            tone="error"
+            onDismiss={() => {
+              setActionError(null);
+            }}
+          >
+            {actionError}
+          </Notice>
         ) : null}
 
         <ListColumns columns={COLUMNS} template={TEMPLATE} />
 
-        {runs === null && !loadError ? <p className={styles.loading}>Reading the runs…</p> : null}
+        {runs === null && !loadError ? <RunListSkeleton /> : null}
 
         {loadError ? (
           <EmptyState
@@ -409,5 +396,38 @@ export function RunsPage(): JSX.Element {
         />
       ) : null}
     </Page>
+  );
+}
+
+/** The list's own shape while the first request is in flight, as on the other pages. */
+function RunListSkeleton(): JSX.Element {
+  return (
+    <div className={styles.list} aria-hidden="true">
+      {[0, 1, 2, 3].map((index) => (
+        <div key={index} className={styles.row} style={{ gridTemplateColumns: TEMPLATE }}>
+          <div className={styles.cell}>
+            <span className={styles.bar} style={{ width: '62%' }} />
+            <span className={styles.barSmall} style={{ width: '38%' }} />
+          </div>
+          <div className={styles.cell}>
+            <span className={styles.bar} style={{ width: '58%' }} />
+          </div>
+          <div className={styles.cell}>
+            <span className={styles.bar} style={{ width: '70%' }} />
+            <span className={styles.barSmall} style={{ width: '52%' }} />
+          </div>
+          <div className={styles.cell}>
+            <span className={styles.bar} style={{ width: '48%' }} />
+          </div>
+          <div className={styles.cell}>
+            <span className={styles.bar} style={{ width: '56%' }} />
+          </div>
+          <div className={styles.cell}>
+            <span className={styles.bar} style={{ width: '60%' }} />
+          </div>
+          <div className={styles.cell} />
+        </div>
+      ))}
+    </div>
   );
 }

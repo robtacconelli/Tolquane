@@ -18,6 +18,7 @@ import {
   useEffect,
   useMemo,
   useRef,
+  useState,
   type DragEvent,
   type JSX,
   type KeyboardEvent as ReactKeyboardEvent,
@@ -30,6 +31,7 @@ import { autoLayoutStages } from './autoLayout';
 import { buildGraph, type CanvasEdge, type CanvasNode, type CanvasNodeData } from './buildGraph';
 import { CanvasContext, type CanvasContextValue } from './CanvasContext';
 import { BLOCK_DRAG_TYPE } from './dragTypes';
+import { useEditorLayout } from './layout';
 import { FlowEdge, LoopEdge } from './edges';
 import { buildExpandedGraph } from './expandedGraph';
 import { BlockCardNode, BlockGroupNode, CombCardNode, EndCardNode } from './nodes';
@@ -49,11 +51,17 @@ const nodeTypes = {
 
 const edgeTypes = { flowEdge: FlowEdge, loopEdge: LoopEdge };
 
-/* Opening a flow never zooms so far out that the cards stop being readable: one wider
- * than the canvas starts at its head, to be panned through. Asking to fit, on the other
- * hand, means fit -- however small that turns out to be. */
-const FIT = { padding: '32px', minZoom: 0.55, maxZoom: 1 } as const;
-const FIT_ALL = { padding: '32px', minZoom: 0.15, maxZoom: 1 } as const;
+/* Opening a flow never zooms so far out that the cards stop being readable: a card's
+ * subtitle is 12px, so below about three quarters it is a grey smear, and a flow wider
+ * than the canvas starts at its head instead, to be read left to right by panning.
+ * Asking to fit, on the other hand, means fit -- however small that turns out to be.
+ * Either way the flow keeps a margin: cards against the edge read as cut off. */
+const MARGIN = 44;
+/* The bottom margin is larger because the controls float over that corner: a fit that
+ * leaves the last card under the zoom buttons has not really fitted anything. */
+const PADDING = { top: '44px', right: '44px', bottom: '68px', left: '44px' } as const;
+const FIT = { padding: PADDING, minZoom: 0.72, maxZoom: 1 } as const;
+const FIT_ALL = { padding: PADDING, minZoom: 0.12, maxZoom: 1 } as const;
 
 const MARKERS = {
   flow: { type: MarkerType.ArrowClosed, color: 'var(--tq-border-strong)', width: 13, height: 13 },
@@ -87,7 +95,9 @@ function miniMapColor(node: CanvasNode): string {
   if (kind === 'source') return 'var(--tq-node-done)';
   if (kind === 'sink') return 'var(--tq-node-failed)';
   if (node.data.variant === 'group') return 'var(--tq-accent-line)';
-  return 'var(--tq-border-strong)';
+  // Not a border colour: at this size a block is four pixels, and it has to be one that
+  // can be told from the ground it sits on in both themes.
+  return 'var(--tq-text-subtle)';
 }
 
 function withMarkers(edges: CanvasEdge[]): CanvasEdge[] {
@@ -123,9 +133,16 @@ function CanvasInner({ nodeStatus, edgeStatus }: CanvasProps): JSX.Element {
     getViewport,
     setViewport: moveTo,
   } = useReactFlow();
-  const zoom = useViewport().zoom;
+  const canvasView = useViewport();
+  const zoom = canvasView.zoom;
   const wrapper = useRef<HTMLDivElement>(null);
   const dropped = useRef<Position | null>(null);
+  /* The canvas's own size, as state rather than a ref read: whether the overview is
+   * worth drawing depends on it, and folding the palette away changes it. */
+  const [size, setSize] = useState({ width: 0, height: 0 });
+  // The overview floats over the flow, so it is the reader's to dismiss; remembered.
+  const wanted = useEditorLayout((state) => state.minimap);
+  const toggleMinimap = useEditorLayout((state) => state.toggleMinimap);
 
   /*
    * Fit, then, when the flow is wider than the canvas even at the smallest readable
@@ -139,15 +156,28 @@ function CanvasInner({ nodeStatus, edgeStatus }: CanvasProps): JSX.Element {
         const bounds = getNodesBounds(getNodes());
         const view = getViewport();
         const width = wrapper.current?.clientWidth ?? 0;
-        if (bounds.width * view.zoom <= width - 64) return;
+        if (bounds.width * view.zoom <= width - MARGIN * 2) return;
         void moveTo(
-          { x: 32 - bounds.x * view.zoom, y: view.y, zoom: view.zoom },
+          { x: MARGIN - bounds.x * view.zoom, y: view.y, zoom: view.zoom },
           duration > 0 ? { duration } : undefined,
         );
       });
     },
     [fitView, getNodes, getViewport, moveTo],
   );
+
+  useEffect(() => {
+    const box = wrapper.current;
+    if (!box || typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver((entries) => {
+      const rect = entries[0]?.contentRect;
+      if (rect) setSize({ width: rect.width, height: rect.height });
+    });
+    observer.observe(box);
+    return () => {
+      observer.disconnect();
+    };
+  }, []);
 
   const readOnly = codeOnly !== null || expanded;
   const showThreads = expanded || model === null;
@@ -286,6 +316,19 @@ function CanvasInner({ nodeStatus, edgeStatus }: CanvasProps): JSX.Element {
 
   const empty = !showThreads && built.nodes.length === 0;
 
+  /* The overview is only drawn when there is something off screen to overview. A flow
+   * that fits in the canvas needs no map of itself, and a map over the corner of a flow
+   * you can already see whole is just a card you cannot read. `viewport` changes on
+   * every pan and zoom, so this is recomputed whenever the answer could have changed. */
+  const overview = useMemo(() => {
+    if (!wanted || nodes.length === 0 || size.width === 0) return false;
+    const bounds = getNodesBounds(nodes);
+    return (
+      bounds.width * canvasView.zoom > size.width - MARGIN ||
+      bounds.height * canvasView.zoom > size.height - MARGIN
+    );
+  }, [wanted, nodes, canvasView, size]);
+
   return (
     <div
       className={styles.canvas}
@@ -330,17 +373,19 @@ function CanvasInner({ nodeStatus, edgeStatus }: CanvasProps): JSX.Element {
             color="var(--tq-border)"
             bgColor="var(--tq-surface-sunken)"
           />
-          <MiniMap
-            className={styles.minimap}
-            pannable
-            zoomable
-            ariaLabel="Flow overview"
-            maskColor="color-mix(in srgb, var(--tq-surface-sunken) 76%, transparent)"
-            bgColor="var(--tq-surface)"
-            nodeColor={miniMapColor}
-            nodeStrokeWidth={0}
-            nodeBorderRadius={3}
-          />
+          {overview ? (
+            <MiniMap
+              className={styles.minimap}
+              pannable
+              zoomable
+              ariaLabel="Flow overview"
+              maskColor="color-mix(in srgb, var(--tq-surface-sunken) 76%, transparent)"
+              bgColor="var(--tq-surface)"
+              nodeColor={miniMapColor}
+              nodeStrokeWidth={0}
+              nodeBorderRadius={3}
+            />
+          ) : null}
         </ReactFlow>
 
         {empty ? (
@@ -388,6 +433,17 @@ function CanvasInner({ nodeStatus, edgeStatus }: CanvasProps): JSX.Element {
             title="Fit the whole flow in the view"
           >
             Fit
+          </button>
+          <span className={styles.controlDivider} />
+          <button
+            type="button"
+            className={styles.control}
+            onClick={toggleMinimap}
+            aria-pressed={overview}
+            aria-label={overview ? 'Hide the overview' : 'Show the overview'}
+            title={overview ? 'Hide the overview' : 'Show the overview'}
+          >
+            <Icon name="map" size={15} />
           </button>
         </div>
       </CanvasContext>

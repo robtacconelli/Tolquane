@@ -1,114 +1,103 @@
-import { mkdir } from 'node:fs/promises';
-import { expect, test, type Page, type Route } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
+import { WS_DIR } from './harness';
+import { shoot, THEMES, useTheme } from './helpers';
 
-/* The settings page against the contract of S4, answered by hand until the server lands. */
-
-const OUT = 'e2e/screenshots';
-const THEMES = ['dark', 'light'] as const;
+/*
+ * Settings, against the real server: every value on the page is one the server holds,
+ * and saving really writes it. The workspace field is read but never saved -- moving it
+ * would take the rest of the suite's flows away -- and the numbers this file changes are
+ * put back before it ends.
+ */
 
 test.use({ timezoneId: 'UTC' });
 
-const SETTINGS = {
-  workspace: '/home/me/flows',
-  default_runtime: 'threads',
-  default_batch: 32,
-  exec_timeout: 30,
-  max_concurrent_runs: 4,
-  cancel_grace: 10,
-  theme: 'dark',
-  ai: {
-    provider: 'anthropic',
-    model: 'claude-sonnet-4-5',
-    has_anthropic_key: true,
-    has_openai_key: false,
-  },
-  server: { host: '127.0.0.1', port: 8765, token_set: false },
-};
+test.beforeEach(async ({ page }) => {
+  await useTheme(page, 'dark');
+});
 
-function json(route: Route, body: unknown, status = 200): Promise<void> {
-  return route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
+async function openSettings(page: Page): Promise<void> {
+  await page.goto('/settings');
+  await expect(page.getByLabel('Workspace directory')).toHaveValue(WS_DIR);
 }
 
-async function server(page: Page): Promise<void> {
-  await page.route('**/api/**', async (route) => {
-    const path = new URL(route.request().url()).pathname;
-    if (path === '/api/health') {
-      return json(route, {
-        ok: true,
-        version: '0.1.0',
-        workspace: '/home/me/flows',
-        runs_live: 0,
-        scheduler: true,
-      });
-    }
-    if (path === '/api/settings') {
-      if (route.request().method() === 'PUT') {
-        const patch = route.request().postDataJSON() as Record<string, unknown>;
-        return json(route, { ...SETTINGS, ...patch, ai: SETTINGS.ai });
-      }
-      return json(route, SETTINGS);
-    }
-    return json(route, { ok: true });
-  });
+/** The section footer's Save, found by a label the section carries. */
+function sectionSave(page: Page, contains: string) {
+  return page
+    .locator('section')
+    .filter({ hasText: contains })
+    .getByRole('button', { name: 'Save' });
 }
 
-async function useTheme(page: Page, theme: (typeof THEMES)[number]): Promise<void> {
-  await page.addInitScript(([key, value]) => window.localStorage.setItem(key, value), [
-    'tolquane.theme',
-    theme,
-  ] as const);
-}
+test('shows what the server holds, section by section', async ({ page }) => {
+  await openSettings(page);
+  await expect(page.getByLabel('Default runtime')).toHaveValue('threads');
+  await expect(page.getByLabel('Default batch')).toHaveValue('32');
+  // The server section is what it was started with, and is read-only.
+  await expect(page.getByText('127.0.0.1:')).toBeVisible();
+  await expect(page.getByText('Not required')).toBeVisible();
+});
 
-test.beforeAll(async () => {
-  await mkdir(OUT, { recursive: true });
+test('an edit in flight, and a number that is not one', async ({ page }) => {
+  await openSettings(page);
+  await page.getByLabel('Concurrent runs').fill('99');
+  await expect(page.getByText('Between 1 and 64.')).toBeVisible();
+  await expect(sectionSave(page, 'Default runtime')).toBeDisabled();
+  await shoot(page, 'settings-editing');
+
+  await page.getByLabel('Concurrent runs').fill('4');
+  await expect(page.getByText('Between 1 and 64.')).toBeHidden();
+});
+
+test('saves a section and says so, then puts it back', async ({ page }) => {
+  await openSettings(page);
+  await page.getByLabel('Default batch').fill('64');
+  await sectionSave(page, 'Default runtime').click();
+  await expect(page.getByText('Saved')).toBeVisible();
+  await shoot(page, 'settings-saved');
+
+  // It is on the server, not only on screen.
+  await page.reload();
+  await expect(page.getByLabel('Default batch')).toHaveValue('64');
+
+  await page.getByLabel('Default batch').fill('32');
+  await sectionSave(page, 'Default runtime').click();
+  await expect(page.getByText('Saved')).toBeVisible();
+});
+
+test('discards an edit rather than saving it', async ({ page }) => {
+  await openSettings(page);
+  await page.getByLabel('Default batch').fill('7');
+  await expect(page.getByText('Unsaved changes')).toBeVisible();
+  await page
+    .locator('section')
+    .filter({ hasText: 'Default runtime' })
+    .getByRole('button', { name: 'Discard' })
+    .click();
+  await expect(page.getByLabel('Default batch')).toHaveValue('32');
+});
+
+test('keeps a server token in this browser, and clears it again', async ({ page }) => {
+  await openSettings(page);
+  const field = page.getByLabel('Your token');
+  await field.fill('a-token');
+  await page.getByRole('button', { name: 'Use it' }).click();
+  expect(await page.evaluate(() => window.localStorage.getItem('tolquane.token'))).toBe('a-token');
+  await expect(page.getByText('Stored in this browser.')).toBeVisible();
+
+  await page.getByRole('button', { name: 'Clear' }).click();
+  expect(await page.evaluate(() => window.localStorage.getItem('tolquane.token'))).toBeNull();
 });
 
 for (const theme of THEMES) {
   test.describe(`${theme} theme`, () => {
-    test.beforeEach(async ({ page }) => {
+    // The scrolling element is the shell's main, not the document, so `fullPage` would
+    // only ever show the first screen: the whole page needs a viewport its own size.
+    test.use({ viewport: { width: 1280, height: 2200 } });
+
+    test('every section at full height', async ({ page }) => {
       await useTheme(page, theme);
-      await server(page);
-    });
-
-    /* The scrolling element is the shell's main, not the document, so `fullPage` would
-     * only ever show the first screen: the whole page needs a viewport its own size. */
-    test.describe('at full height', () => {
-      test.use({ viewport: { width: 1280, height: 2100 } });
-
-      test('every section, as the server left it', async ({ page }) => {
-        await page.goto('/settings');
-        await expect(page.getByLabel('Workspace directory')).toHaveValue('/home/me/flows');
-        await page.screenshot({ path: `${OUT}/${theme}-settings.png`, animations: 'disabled' });
-      });
-
-      test('an edit in flight and a number that is not one', async ({ page }) => {
-        await page.goto('/settings');
-        await page.getByLabel('Workspace directory').fill('/home/me/pipelines');
-        await page.getByLabel('Concurrent runs').fill('99');
-        await expect(page.getByText('Between 1 and 64.')).toBeVisible();
-        await page.screenshot({
-          path: `${OUT}/${theme}-settings-editing.png`,
-          animations: 'disabled',
-        });
-      });
-    });
-
-    test('the top of the page at the viewport size', async ({ page }) => {
-      await page.goto('/settings');
-      await expect(page.getByLabel('Workspace directory')).toHaveValue('/home/me/flows');
-      await page.screenshot({ path: `${OUT}/${theme}-settings-top.png`, animations: 'disabled' });
-    });
-
-    test('a section saved', async ({ page }) => {
-      await page.goto('/settings');
-      await page.getByLabel('Default batch').fill('64');
-      await page
-        .locator('section')
-        .filter({ hasText: 'Default runtime' })
-        .getByRole('button', { name: 'Save' })
-        .click();
-      await expect(page.getByText('Saved')).toBeVisible();
-      await page.screenshot({ path: `${OUT}/${theme}-settings-saved.png`, animations: 'disabled' });
+      await openSettings(page);
+      await shoot(page, `settings-${theme}`);
     });
   });
 }

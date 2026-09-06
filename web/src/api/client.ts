@@ -7,6 +7,7 @@
  */
 
 import type { components } from './schema';
+import { authHeaders, reportUnauthorized } from './token';
 
 export const API_BASE = '/api';
 
@@ -148,6 +149,9 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
       headers: {
         Accept: 'application/json',
         ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
+        // A server started with `--token` wants it on everything; a caller that passes
+        // its own Authorization (the token prompt, trying one out) still wins.
+        ...authHeaders(),
         ...headers,
       },
       ...(rawBody !== undefined
@@ -183,6 +187,9 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
 
   const payload = await readBody(response);
   if (!response.ok) {
+    // The server wants a token and this browser has none, or the wrong one. The shell
+    // watches for this and asks for one rather than showing four failed panels.
+    if (response.status === 401) reportUnauthorized();
     throw new ApiError({
       message: messageFromBody(payload, response.status, response.statusText),
       status: response.status,
@@ -208,6 +215,11 @@ export const api = {
 /** `GET /api/health`: the version, the live workspace, and whether the parts are up. */
 export type Health = Complete<Schemas['Health']>;
 
-export function health(options?: { signal?: AbortSignal; timeoutMs?: number }): Promise<Health> {
+export function health(options?: {
+  signal?: AbortSignal;
+  timeoutMs?: number;
+  /** Trying a token before it is kept: the prompt sends its own Authorization. */
+  headers?: Record<string, string>;
+}): Promise<Health> {
   return api.get<Health>('/health', { timeoutMs: 4000, ...options });
 }

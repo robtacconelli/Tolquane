@@ -7,10 +7,17 @@
  * like a measurement.
  */
 
-/** Seconds as a person reads them: `0.42 s`, `3.1 s`, `2 m 05 s`. */
+/**
+ * Seconds as a person reads them: `4 ms`, `420 ms`, `3.1 s`, `2 m 05 s`.
+ *
+ * Under a second the unit changes rather than the decimals: most flows in an editor
+ * finish in a few milliseconds, and `0.00 s` says nothing at all about which few.
+ */
 export function formatDuration(seconds: number | null | undefined): string {
   if (seconds === null || seconds === undefined || !Number.isFinite(seconds)) return '—';
-  if (seconds < 1) return `${seconds.toFixed(2)} s`;
+  if (seconds <= 0) return '0 ms';
+  if (seconds < 0.001) return '<1 ms';
+  if (seconds < 1) return `${String(Math.round(seconds * 1000))} ms`;
   if (seconds < 60) return `${seconds.toFixed(1)} s`;
   const minutes = Math.floor(seconds / 60);
   const rest = Math.floor(seconds % 60);

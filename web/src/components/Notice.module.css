@@ -1,0 +1,70 @@
+/* One strip, four tones. It sits inside whatever contains it -- under the editor's
+ * toolbar, under a panel header -- and takes the full width, so it reads as part of the
+ * thing it is about rather than as something floating over the page. */
+.notice {
+  display: flex;
+  align-items: center;
+  gap: var(--tq-space-3);
+  padding: var(--tq-space-3) var(--tq-space-5);
+  border-bottom: 1px solid var(--tq-border-subtle);
+  background: var(--tq-info-soft);
+  color: var(--tq-text-muted);
+  font-size: var(--tq-text-sm);
+  line-height: var(--tq-leading-normal);
+}
+
+.notice svg {
+  flex: none;
+  color: var(--tq-info);
+}
+
+.notice[data-tone='success'] {
+  background: var(--tq-success-soft);
+}
+
+.notice[data-tone='success'] svg {
+  color: var(--tq-success);
+}
+
+.notice[data-tone='warning'] {
+  background: var(--tq-warning-soft);
+}
+
+.notice[data-tone='warning'] svg {
+  color: var(--tq-warning);
+}
+
+.notice[data-tone='error'] {
+  background: var(--tq-danger-soft);
+}
+
+.notice[data-tone='error'] svg {
+  color: var(--tq-danger);
+}
+
+.text {
+  min-width: 0;
+  flex: 1;
+}
+
+.dismiss {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--tq-radius-sm);
+  color: var(--tq-text-subtle);
+  transition:
+    background-color var(--tq-duration-fast) var(--tq-ease),
+    color var(--tq-duration-fast) var(--tq-ease);
+}
+
+.dismiss:hover {
+  background: var(--tq-surface-hover);
+  color: var(--tq-text);
+}
+
+.dismiss svg {
+  color: currentcolor;
+}

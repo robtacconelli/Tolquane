@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useId, useState, type JSX, type ReactNode } from 'react';
 import { ApiError } from '../api/client';
+import { apiToken, setApiToken } from '../api/token';
 import { RUNTIMES, type Runtime } from '../api/schedules';
 import {
   getSettings,
@@ -208,6 +209,55 @@ function NumberSetting({
   );
 }
 
+/**
+ * The token this browser sends, which is not a server setting at all: it is the string
+ * `tolquane web --token …` was given, kept here so the app can talk to that server. It
+ * never travels to the server as a value -- only as the header on every request.
+ */
+function ServerTokenRow({ id }: { id: string }): JSX.Element {
+  const held = apiToken();
+  const [value, setValue] = useState('');
+
+  return (
+    <SettingsRow
+      label="Your token"
+      aside={<SettingsKeyBadge isSet={held !== null} />}
+      help="Sent as an Authorization header on every request, and in the query string of the run socket and trace downloads. Kept in this browser only, never on the server."
+    >
+      <span className={styles.tokenRow}>
+        <TextInput
+          id={id}
+          type="password"
+          mono
+          aria-label="Your token"
+          autoComplete="off"
+          spellCheck={false}
+          placeholder={
+            held ? 'Replace the token this browser sends' : 'Paste the server\u2019s token'
+          }
+          value={value}
+          onChange={(event) => setValue(event.target.value)}
+        />
+        <Button
+          size="sm"
+          onClick={() => {
+            setApiToken(value.trim() || null);
+            setValue('');
+          }}
+          disabled={!value.trim() && held === null}
+        >
+          {value.trim() ? 'Use it' : 'Clear'}
+        </Button>
+      </span>
+      <span className={styles.tokenHint}>
+        {held
+          ? 'Stored in this browser. Clear it to stop sending one.'
+          : 'Not stored. A server on loopback does not ask for one.'}
+      </span>
+    </SettingsRow>
+  );
+}
+
 export function SettingsPage(): JSX.Element {
   const uid = useId();
   const field = (name: string): string => `${uid}-${name}`;
@@ -347,7 +397,9 @@ export function SettingsPage(): JSX.Element {
             note="Flows are files: moving the workspace changes which ones this server can see."
             {...sectionProps('workspace')}
           >
-            <SettingsRow
+            {/* An absolute path is longer than the right-hand column: it gets the width
+                of the panel, so the whole of it can be read and edited. */}
+            <SettingsStack
               label="Workspace directory"
               htmlFor={field('workspace')}
               help="Where flows are read from and written to. Runs use it as their working directory, and a flow outside it cannot be opened."
@@ -357,10 +409,11 @@ export function SettingsPage(): JSX.Element {
                 mono
                 spellCheck={false}
                 autoComplete="off"
+                aria-label="Workspace directory"
                 value={draft.workspace}
                 onChange={(event) => edit('workspace', event.target.value)}
               />
-            </SettingsRow>
+            </SettingsStack>
           </SettingsSection>
 
           <SettingsSection
@@ -527,6 +580,7 @@ export function SettingsPage(): JSX.Element {
                 {settings.server.token_set ? 'Required on every request' : 'Not required'}
               </span>
             </SettingsRow>
+            <ServerTokenRow id={field('server-token')} />
           </SettingsSection>
         </>
       ) : null}

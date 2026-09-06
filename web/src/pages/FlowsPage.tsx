@@ -7,6 +7,7 @@ import { Button } from '../components/Button';
 import { EmptyState } from '../components/EmptyState';
 import { Icon } from '../components/Icon';
 import { EmptyFlowsArt } from '../components/Illustrations';
+import { Notice } from '../components/Notice';
 import { ListColumns, Page, PageHeader, Panel, PanelHeader } from '../components/Page';
 import { ConfirmDialog } from '../components/form/Dialog';
 import pageStyles from '../components/Page.module.css';
@@ -20,6 +21,7 @@ import {
 } from '../flows/NewFlowDialog';
 import styles from '../flows/Flows.module.css';
 import { useAiStore } from '../store/ai';
+import { takeIntent, useCommandsStore } from '../store/commands';
 
 /*
  * The workspace: every flow file, what it last did, and the four things you do to one --
@@ -50,9 +52,10 @@ export function FlowsPage(): JSX.Element {
   /* The command palette's "Build a flow with the AI builder…" asks for this dialog: it
    * sets the flag and comes here, so the page may be opening for it (read once, below)
    * or already on screen (the subscription further down). */
-  const [creating, setCreating] = useState<NewFlowMode | null>(() =>
-    useAiStore.getState().wantsNewFlow ? 'describe' : null,
-  );
+  const [creating, setCreating] = useState<NewFlowMode | null>(() => {
+    if (takeIntent('new-flow')) return 'empty';
+    return useAiStore.getState().wantsNewFlow ? 'describe' : null;
+  });
   const [renaming, setRenaming] = useState<FlowSummary | null>(null);
   const [confirming, setConfirming] = useState<FlowSummary | null>(null);
   const [busy, setBusy] = useState(false);
@@ -80,6 +83,17 @@ export function FlowsPage(): JSX.Element {
       cancelled = true;
     };
   }, [tick]);
+
+  /* "New flow…" in the command palette, when this page was already the one on screen. */
+  useEffect(
+    () =>
+      useCommandsStore.subscribe((state) => {
+        if (!takeIntent('new-flow', state.intent)) return;
+        setDialogError(null);
+        setCreating('empty');
+      }),
+    [],
+  );
 
   useEffect(() => {
     const ai = useAiStore.getState();
@@ -236,18 +250,9 @@ export function FlowsPage(): JSX.Element {
         />
 
         {notice ? (
-          <div className={styles.notice} role="status">
-            <Icon name="check" size={14} />
-            <span>{notice}</span>
-            <button
-              type="button"
-              className={styles.dismiss}
-              onClick={() => setNotice(null)}
-              aria-label="Dismiss"
-            >
-              <Icon name="close" size={13} />
-            </button>
-          </div>
+          <Notice tone="success" onDismiss={() => setNotice(null)}>
+            {notice}
+          </Notice>
         ) : null}
 
         <ListColumns columns={COLUMNS} template={TEMPLATE} />
@@ -296,7 +301,7 @@ export function FlowsPage(): JSX.Element {
         ) : null}
 
         {shown.length > 0 ? (
-          <div className={styles.list}>
+          <div className={styles.list} role="list">
             {shown.map((flow) => (
               <FlowRow
                 key={flow.path}

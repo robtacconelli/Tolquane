@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { ApiError, health, type Health } from '../api/client';
+import { useTokenGeneration } from './useToken';
 
 export type ServerStatus = 'checking' | 'online' | 'offline';
 
@@ -12,8 +13,9 @@ export interface HealthState {
 }
 
 /**
- * Polls `/api/health`. Until the server of wave 1 exists this always ends in `offline`,
- * which is exactly the state the shell has to look calm in.
+ * Polls `/api/health`. A server that is not there is a normal state, not an error, so
+ * this reports it calmly and keeps trying. A token arriving restarts the poll at once:
+ * the answer to a 401 is a different request, not a later one.
  */
 export function useHealth(intervalMs = 5000): HealthState {
   const [state, setState] = useState<HealthState>({
@@ -23,6 +25,7 @@ export function useHealth(intervalMs = 5000): HealthState {
     failures: 0,
   });
   const failures = useRef(0);
+  const generation = useTokenGeneration();
 
   useEffect(() => {
     let cancelled = false;
@@ -58,7 +61,7 @@ export function useHealth(intervalMs = 5000): HealthState {
       clearInterval(timer);
       for (const controller of controllers) controller.abort('caller');
     };
-  }, [intervalMs]);
+  }, [intervalMs, generation]);
 
   return state;
 }

@@ -35,18 +35,21 @@
   margin: var(--tq-space-5);
 }
 
-.flow :global(.react-flow__panel.bottom.right) {
-  margin-bottom: 52px;
+/* The overview keeps the bottom-right corner to itself; the controls have the left one,
+ * so neither is ever under the other and only one corner of the flow is covered. */
+.minimap {
+  width: 134px;
+  height: 84px;
+  border: 1px solid var(--tq-border-strong);
+  border-radius: var(--tq-radius-md);
+  box-shadow: var(--tq-shadow-md);
+  overflow: hidden;
+  opacity: 0.94;
+  transition: opacity var(--tq-duration-fast) var(--tq-ease);
 }
 
-.minimap {
-  width: 148px;
-  height: 92px;
-  opacity: 0.9;
-  border: 1px solid var(--tq-border-subtle);
-  border-radius: var(--tq-radius-md);
-  box-shadow: var(--tq-shadow-sm);
-  overflow: hidden;
+.minimap:hover {
+  opacity: 1;
 }
 
 .minimap :global(.react-flow__minimap-mask) {
@@ -57,7 +60,7 @@
 /* ---------------------------------------------------------------- the controls */
 .controls {
   position: absolute;
-  right: var(--tq-space-5);
+  left: var(--tq-space-5);
   bottom: var(--tq-space-5);
   z-index: var(--tq-z-sticky);
   display: flex;

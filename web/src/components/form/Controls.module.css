@@ -39,7 +39,9 @@
   color: var(--tq-danger);
 }
 
-/* ------------------------------------------------------------------ inputs */
+/* ------------------------------------------------------------------ inputs
+ * The focus ring is the one in base.css and nothing here turns it off; the accent
+ * border is what a control adds to it, not what it uses instead (DESIGN.md). */
 .input {
   width: 100%;
   height: 30px;
@@ -49,7 +51,6 @@
   background: var(--tq-surface-sunken);
   color: var(--tq-text);
   font-size: var(--tq-text-base);
-  outline: none;
   transition:
     border-color var(--tq-duration-fast) var(--tq-ease),
     background-color var(--tq-duration-fast) var(--tq-ease);

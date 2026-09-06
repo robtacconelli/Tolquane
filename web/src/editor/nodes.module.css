@@ -44,52 +44,72 @@
   display: none;
 }
 
-/* ----------------------------------------------------- run overlay and problems */
+/* ------------------------------------------- run overlay, problems and selection
+ *
+ * Three things can be true of one card at once: a run has given it a state, `check` has
+ * found a problem on it, and it is the card being edited. They are drawn as two separate
+ * rings that compose rather than three rules that overwrite each other, so selecting a
+ * failed card while the run is still going shows both:
+ *
+ *   --card-edge  a hard line right at the card: accent when selected, danger or warning
+ *                when there is a problem, which outranks it because it is news
+ *   --card-halo  a soft glow further out, only ever the run state's colour
+ *
+ * Nothing here touches the card's background: the text has to stay readable in both
+ * themes (DESIGN.md, "The block card").
+ */
+.wrap,
+.group,
+.comb,
+.end {
+  box-shadow:
+    var(--card-lift, 0 0 #0000),
+    0 0 0 1.5px var(--card-edge, transparent),
+    0 0 0 5px var(--card-halo, transparent);
+  transition: box-shadow var(--tq-duration-fast) var(--tq-ease);
+}
+
 .wrap[data-state],
 .group[data-state] {
-  box-shadow: 0 0 0 3px var(--tq-node-new-soft);
+  --card-halo: var(--tq-node-new-ring);
 }
 
 .wrap[data-state='running'],
 .group[data-state='running'] {
-  box-shadow: 0 0 0 3px var(--tq-node-running-soft);
+  --card-halo: var(--tq-node-running-ring);
 }
 
 .wrap[data-state='waiting'],
 .group[data-state='waiting'] {
-  box-shadow: 0 0 0 3px var(--tq-node-waiting-soft);
+  --card-halo: var(--tq-node-waiting-ring);
 }
 
 .wrap[data-state='done'],
 .group[data-state='done'] {
-  box-shadow: 0 0 0 3px var(--tq-node-done-soft);
+  --card-halo: var(--tq-node-done-ring);
 }
 
 .wrap[data-state='failed'],
 .group[data-state='failed'] {
-  box-shadow: 0 0 0 3px var(--tq-node-failed-soft);
+  --card-halo: var(--tq-node-failed-ring);
 }
 
 /* A problem draws its own line just outside the card, rather than reaching in to
  * recolour the card's border: the ports are children too, and they are not the problem. */
+.wrap[data-severity='warning'],
+.group[data-severity='warning'] {
+  --card-edge: var(--tq-warning);
+}
+
 .wrap[data-severity='error'],
 .group[data-severity='error'] {
-  box-shadow:
-    0 0 0 1px var(--tq-danger),
-    0 0 0 4px var(--tq-danger-soft);
+  --card-edge: var(--tq-danger);
 }
 
 .end[data-severity='error'],
 .comb[data-severity='error'],
 .group[data-severity='error'] {
   border-color: var(--tq-danger);
-}
-
-.wrap[data-severity='warning'],
-.group[data-severity='warning'] {
-  box-shadow:
-    0 0 0 1px var(--tq-warning),
-    0 0 0 4px var(--tq-warning-soft);
 }
 
 .end[data-severity='warning'],
@@ -149,11 +169,12 @@
 
 /* ------------------------------------------------------------------ a container */
 .group {
+  --card-lift: var(--tq-shadow-sm);
+
   display: block;
   background: var(--tq-surface);
   border: 1px solid var(--tq-border);
   border-radius: var(--tq-radius-lg);
-  box-shadow: var(--tq-shadow-sm);
 }
 
 .group::before {
@@ -249,12 +270,13 @@
 
 /* -------------------------------------------------------------------- the comb */
 .comb {
+  --card-lift: var(--tq-shadow-sm);
+
   display: flex;
   flex-direction: column;
   background: var(--tq-surface-raised);
   border: 1px solid var(--tq-border);
   border-radius: var(--tq-radius-lg);
-  box-shadow: var(--tq-shadow-sm);
   overflow: hidden;
 }
 
@@ -294,9 +316,18 @@
 
 /* ------------------------------------------------------------------- selection */
 .selectedWrap {
-  box-shadow:
-    var(--tq-shadow-md),
-    0 0 0 3px var(--tq-accent-soft);
+  --card-edge: var(--tq-accent);
+  --card-lift: var(--tq-shadow-md);
+}
+
+/* A problem is news; the selection is where you already are. When a card has both, the
+ * hard line stays the problem's and the selection is the lift and the accent border. */
+.selectedWrap[data-severity='error'] {
+  --card-edge: var(--tq-danger);
+}
+
+.selectedWrap[data-severity='warning'] {
+  --card-edge: var(--tq-warning);
 }
 
 .group.selectedWrap {

@@ -1,4 +1,5 @@
 import { useState, type JSX } from 'react';
+import { Icon } from '../components/Icon';
 import { StatusDot } from '../components/StatusDot';
 import type { Problem } from '../model';
 import { useFlowStore } from '../store/flow';
@@ -70,6 +71,8 @@ export function ProblemsPane({
         const isOpen = open === problem.id;
         return (
           <div key={`run-${String(problem.id)}`}>
+            {/* The row is the disclosure: a chevron on a row that has a traceback, and
+                clicking it both selects the card that raised it and opens the trace. */}
             <button
               type="button"
               className={
@@ -77,6 +80,7 @@ export function ProblemsPane({
                   ? `${styles.problem} ${styles.problemActive}`
                   : styles.problem
               }
+              {...(problem.traceback ? { 'aria-expanded': isOpen } : {})}
               onClick={() => {
                 if (path !== null) onSelect(path);
                 setOpen(isOpen ? null : problem.id);
@@ -86,20 +90,15 @@ export function ProblemsPane({
                 <StatusDot state="failed" />
                 <span className={styles.problemText}>{problem.message}</span>
                 <span className={styles.problemWhere}>{problem.node ?? problem.type}</span>
+                {problem.traceback ? (
+                  <span className={styles.discloseMark} data-open={isOpen}>
+                    <Icon name="chevronRight" size={13} />
+                  </span>
+                ) : null}
               </span>
             </button>
             {isOpen && problem.traceback ? (
               <pre className={styles.traceback}>{problem.traceback}</pre>
-            ) : isOpen ? null : problem.traceback ? (
-              <button
-                type="button"
-                className={styles.disclose}
-                onClick={() => {
-                  setOpen(problem.id);
-                }}
-              >
-                Show the traceback
-              </button>
             ) : null}
           </div>
         );

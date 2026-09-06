@@ -65,3 +65,22 @@
   font-size: var(--tq-text-sm);
   color: var(--tq-text-muted);
 }
+
+/* The token this browser sends: a field and the one button that takes or drops it. */
+.tokenRow {
+  display: flex;
+  align-items: center;
+  gap: var(--tq-space-3);
+}
+
+.tokenRow input {
+  flex: 1;
+  min-width: 0;
+}
+
+.tokenHint {
+  display: block;
+  margin-top: var(--tq-space-2);
+  font-size: var(--tq-text-sm);
+  color: var(--tq-text-subtle);
+}

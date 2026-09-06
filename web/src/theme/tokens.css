@@ -102,7 +102,9 @@
 
   --tq-text: #e4ecef;
   --tq-text-muted: #94a5ae;
-  --tq-text-subtle: #66777f;
+  /* Hints, placeholders and section labels: still quiet, but 5.9:1 on the canvas ground
+   * rather than the 4.2:1 it was, which was under AA at 11px. */
+  --tq-text-subtle: #7d9099;
   --tq-text-inverse: #0b1013;
 
   --tq-accent: #2dd4bf;
@@ -122,17 +124,24 @@
   --tq-info: #57b6f5;
   --tq-info-soft: rgb(87 182 245 / 14%);
 
-  /* The five run states the canvas overlay paints on every card. */
+  /* The five run states the canvas overlay paints on every card. `-soft` is a background
+   * tint under text; `-ring` is the halo the canvas draws around a card, which floats on
+   * the canvas ground with nothing behind it and so has to carry on its own. */
   --tq-node-new: #7d8c96;
   --tq-node-new-soft: rgb(125 140 150 / 14%);
+  --tq-node-new-ring: rgb(125 140 150 / 22%);
   --tq-node-running: #2dd4bf;
   --tq-node-running-soft: rgb(45 212 191 / 16%);
+  --tq-node-running-ring: rgb(45 212 191 / 34%);
   --tq-node-waiting: #e3a33a;
   --tq-node-waiting-soft: rgb(227 163 58 / 16%);
+  --tq-node-waiting-ring: rgb(227 163 58 / 36%);
   --tq-node-done: #46c07a;
   --tq-node-done-soft: rgb(70 192 122 / 16%);
+  --tq-node-done-ring: rgb(70 192 122 / 32%);
   --tq-node-failed: #f2564d;
   --tq-node-failed-soft: rgb(242 86 77 / 16%);
+  --tq-node-failed-ring: rgb(242 86 77 / 36%);
 
   --tq-overlay: rgb(4 8 10 / 62%);
   --tq-focus-ring: rgb(45 212 191 / 55%);
@@ -160,7 +169,8 @@
 
   --tq-text: #14232a;
   --tq-text-muted: #55676f;
-  --tq-text-subtle: #7b8c94;
+  /* Light needed the opposite move: 3.4:1 on white was the worst contrast in the app. */
+  --tq-text-subtle: #5f7078;
   --tq-text-inverse: #ffffff;
 
   --tq-accent: #00897b;
@@ -182,14 +192,19 @@
 
   --tq-node-new: #7b8c94;
   --tq-node-new-soft: rgb(123 140 148 / 14%);
+  --tq-node-new-ring: rgb(123 140 148 / 24%);
   --tq-node-running: #00897b;
   --tq-node-running-soft: rgb(0 137 123 / 14%);
+  --tq-node-running-ring: rgb(0 137 123 / 26%);
   --tq-node-waiting: #a4670a;
   --tq-node-waiting-soft: rgb(164 103 10 / 14%);
+  --tq-node-waiting-ring: rgb(164 103 10 / 28%);
   --tq-node-done: #12854c;
   --tq-node-done-soft: rgb(18 133 76 / 14%);
+  --tq-node-done-ring: rgb(18 133 76 / 26%);
   --tq-node-failed: #c62f26;
   --tq-node-failed-soft: rgb(198 47 38 / 12%);
+  --tq-node-failed-ring: rgb(198 47 38 / 26%);
 
   --tq-overlay: rgb(20 35 42 / 34%);
   --tq-focus-ring: rgb(0 137 123 / 45%);

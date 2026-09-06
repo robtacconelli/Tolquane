@@ -16,6 +16,7 @@
 import type { GraphView } from '../model/types';
 import { API_BASE, type Complete, type Optional, type Schemas, api } from './client';
 import type { Runtime } from './schedules';
+import { apiToken } from './token';
 
 /** How a run ended, as S2's `done` event and S3's `Run.status` spell it. */
 export type RunPhase = 'running' | 'done' | 'failed' | 'cancelled' | 'deadlock';
@@ -177,18 +178,13 @@ export const cancelRun = (id: number) => api.post<Run>(`/runs/${String(id)}/canc
 /** `text/plain`: what the flow printed, live while it runs and from the store after. */
 export const getRunLog = (id: number) => api.get<string>(`/runs/${String(id)}/log`);
 
-/**
+/*
  * A server started with `--token` wants it on every request, and neither a WebSocket nor
- * a download link can set a header, so those two carry it in the query string. The token
- * is whatever the shell was told to use; without one this is a no-op.
+ * a download link can set a header, so those two carry it in the query string instead of
+ * the `Authorization` header `client.ts` puts on every other call. `api/token.ts` holds
+ * it; without one this is a no-op.
  */
-export function apiToken(): string | null {
-  try {
-    return window.localStorage.getItem('tolquane.token');
-  } catch {
-    return null; // a browser with site data blocked: treat it as no token
-  }
-}
+export { apiToken } from './token';
 
 function withToken(url: URL): URL {
   const token = apiToken();

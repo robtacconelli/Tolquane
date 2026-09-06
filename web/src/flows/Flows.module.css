@@ -105,7 +105,9 @@
   align-items: center;
   justify-content: flex-end;
   gap: var(--tq-space-2);
-  opacity: 0.55;
+  /* Recessive until the row is under the pointer, but never so faint that a reader has
+   * to hover every row to find out what can be done to one. */
+  opacity: 0.78;
   transition: opacity var(--tq-duration-fast) var(--tq-ease);
 }
 
@@ -117,44 +119,6 @@
 .delete:hover:not(:disabled) {
   color: var(--tq-danger);
   background: var(--tq-danger-soft);
-}
-
-/* ------------------------------------------------------------------ strips */
-.notice,
-.failure {
-  display: flex;
-  align-items: center;
-  gap: var(--tq-space-3);
-  padding: var(--tq-space-3) var(--tq-space-6);
-  border-bottom: 1px solid var(--tq-border-subtle);
-  font-size: var(--tq-text-base);
-}
-
-.notice {
-  background: var(--tq-accent-soft);
-  color: var(--tq-accent);
-}
-
-.failure {
-  background: var(--tq-danger-soft);
-  color: var(--tq-danger);
-}
-
-.dismiss {
-  margin-left: auto;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  border-radius: var(--tq-radius-sm);
-  color: inherit;
-  opacity: 0.75;
-}
-
-.dismiss:hover {
-  opacity: 1;
-  background: var(--tq-surface-hover);
 }
 
 .workspace {

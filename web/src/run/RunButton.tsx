@@ -7,6 +7,7 @@ import { Field, Select, Toggle } from '../components/form/Controls';
 import { Icon } from '../components/Icon';
 import { useRunEvents } from '../hooks/useRunEvents';
 import { MOD_KEY } from '../platform';
+import { useCommand } from '../store/commands';
 import { useFlowStore } from '../store/flow';
 import { useRunStore } from '../store/run';
 import { formatDuration } from './format';
@@ -143,6 +144,16 @@ export function RunButton({
       setBusy(false);
     }
   }, []);
+
+  // The same two actions, for the command palette.
+  const runCommand = useCallback((): void => {
+    void begin();
+  }, [begin]);
+  const cancelCommand = useCallback((): void => {
+    void stop();
+  }, [stop]);
+  useCommand('run', ready ? runCommand : null);
+  useCommand('cancel', cancelCommand);
 
   // Cmd/Ctrl+Enter runs, wherever the focus is, as long as it is not in a text field.
   useEffect(() => {

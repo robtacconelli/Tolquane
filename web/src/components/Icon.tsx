@@ -50,10 +50,49 @@ const PATHS = {
   ),
   chevronRight: <path d="m9 5 7 7-7 7" />,
   chevronDown: <path d="m5 9 7 7 7-7" />,
+  chevronLeft: <path d="M15 5 8 12l7 7" />,
+  chevronUp: <path d="m5 15 7-7 7 7" />,
   panelLeft: (
     <>
       <rect x="3" y="4" width="18" height="16" rx="2.4" />
       <path d="M9.5 4v16" />
+    </>
+  ),
+  panelRight: (
+    <>
+      <rect x="3" y="4" width="18" height="16" rx="2.4" />
+      <path d="M14.5 4v16" />
+    </>
+  ),
+  panelBottom: (
+    <>
+      <rect x="3" y="4" width="18" height="16" rx="2.4" />
+      <path d="M3 14.5h18" />
+    </>
+  ),
+  map: (
+    <>
+      <path d="M3 6.6 9 4.4l6 2.2 6-2.2v13L15 19.6l-6-2.2-6 2.2v-13Z" />
+      <path d="M9 4.4v13M15 6.6v13" />
+    </>
+  ),
+  refresh: (
+    <>
+      <path d="M20 12a8 8 0 1 1-2.6-5.9" />
+      <path d="M20 4.4V10h-5.6" />
+    </>
+  ),
+  trash: (
+    <>
+      <path d="M4.5 7h15" />
+      <path d="M9.5 7V5.2A1.2 1.2 0 0 1 10.7 4h2.6a1.2 1.2 0 0 1 1.2 1.2V7" />
+      <path d="M6.8 7.4 7.6 19a1.4 1.4 0 0 0 1.4 1.3h6a1.4 1.4 0 0 0 1.4-1.3l.8-11.6" />
+    </>
+  ),
+  pencil: (
+    <>
+      <path d="M4 20h4l10-10a2.4 2.4 0 0 0-3.4-3.4L4.6 16.6 4 20Z" />
+      <path d="m13.6 7.4 3.4 3.4" />
     </>
   ),
   alert: (

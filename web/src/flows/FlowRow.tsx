@@ -26,7 +26,12 @@ export function FlowRow({
   const folder = folderOf(flow.path);
 
   return (
-    <div className={styles.row} style={{ gridTemplateColumns: template }}>
+    <div
+      className={styles.row}
+      style={{ gridTemplateColumns: template }}
+      role="listitem"
+      aria-label={flow.path}
+    >
       <div className={styles.cell}>
         <Link className={styles.name} to={`/flows/${flow.path}`}>
           {flow.name}
@@ -74,7 +79,7 @@ export function FlowRow({
           aria-label={`Delete ${flow.path}`}
           title="Delete"
         >
-          <Icon name="close" size={14} />
+          <Icon name="trash" size={14} />
         </Button>
       </div>
     </div>

@@ -72,19 +72,24 @@ export function BlockCard({
   );
 }
 
-/** The palette row wave 2 will make draggable. */
-export function BlockChip({ kind }: { kind: BlockKind }): JSX.Element {
+/** The draggable palette row; `compact` is the same tile without its label, for the rail. */
+export function BlockChip({
+  kind,
+  compact = false,
+}: {
+  kind: BlockKind;
+  compact?: boolean;
+}): JSX.Element {
   const info = BLOCK_KINDS[kind];
   return (
     <div
-      className={styles.chip}
+      className={compact ? `${styles.chip} ${styles.chipCompact}` : styles.chip}
       style={{ ['--card-accent' as string]: info.accent }}
-      title={info.hint}
     >
       <span className={styles.chipGlyph}>
         <Glyph kind={kind} size={15} />
       </span>
-      {info.label}
+      {compact ? null : info.label}
     </div>
   );
 }

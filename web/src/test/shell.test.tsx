@@ -58,9 +58,9 @@ describe('the app shell', () => {
 
   it('opens a flow path in the editor frame', () => {
     renderAt('/flows/reports/word_count.py');
-    expect(
-      screen.getByRole('heading', { level: 1, name: 'reports/word_count.py' }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: 'word_count.py' })).toBeInTheDocument();
+    // Every folder of the path is its own crumb, so a nested flow reads as a path.
+    expect(screen.getByText('reports')).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: /Console/ })).toBeInTheDocument();
     expect(screen.getByText('Properties')).toBeInTheDocument();
   });

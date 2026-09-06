@@ -138,3 +138,23 @@
   background: var(--tq-surface-sunken);
   color: var(--card-accent, var(--tq-text-subtle));
 }
+
+/* Folded to the rail: the glyph tile alone, on a square target the same height. The
+ * tile takes a border there, because on the rail it has no label beside it to say it is
+ * a control and the sunken fill alone is almost invisible in the dark theme. */
+.chipCompact {
+  width: 30px;
+  justify-content: center;
+  padding: 0;
+}
+
+.chipCompact .chipGlyph {
+  width: 24px;
+  height: 24px;
+  border: 1px solid var(--tq-border-subtle);
+  background: var(--tq-surface-hover);
+}
+
+.chipCompact:hover .chipGlyph {
+  border-color: var(--tq-border);
+}

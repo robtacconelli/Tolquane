@@ -16,6 +16,12 @@ if (!window.matchMedia) {
   });
 }
 
+// jsdom implements no scrolling at all, and the command palette keeps its highlighted
+// row in view. A no-op is the honest stand-in: there is nothing to scroll.
+if (!Element.prototype.scrollIntoView) {
+  Element.prototype.scrollIntoView = () => {};
+}
+
 beforeEach(() => {
   localStorage.clear();
   document.documentElement.removeAttribute('data-theme');

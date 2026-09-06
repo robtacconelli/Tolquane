@@ -10,6 +10,12 @@
   background: var(--tq-bg);
 }
 
+/* The right-hand column folds away entirely: on a 1280-wide screen its 320px are a
+ * quarter of the canvas, and a person reading a long flow does not need it open. */
+.editor[data-panel='off'] {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 /* ------------------------------------------------------------------ toolbar */
 .toolbar {
   grid-column: 1 / -1;
@@ -80,65 +86,10 @@
   flex-direction: column;
 }
 
-.notice {
-  display: flex;
-  align-items: center;
-  gap: var(--tq-space-3);
-  padding: var(--tq-space-3) var(--tq-space-5);
-  border-bottom: 1px solid var(--tq-border-subtle);
-  background: var(--tq-info-soft);
-  color: var(--tq-text-muted);
-  font-size: var(--tq-text-sm);
-}
-
-.notice svg {
-  flex: none;
-  color: var(--tq-info);
-}
-
-.notice[data-tone='success'] {
-  background: var(--tq-success-soft);
-}
-
-.notice[data-tone='success'] svg {
-  color: var(--tq-success);
-}
-
-.notice[data-tone='warning'] {
-  background: var(--tq-warning-soft);
-}
-
-.notice[data-tone='warning'] svg {
-  color: var(--tq-warning);
-}
-
-.notice[data-tone='error'] {
-  background: var(--tq-danger-soft);
-}
-
-.notice[data-tone='error'] svg {
-  color: var(--tq-danger);
-}
-
 .reason {
   font-family: var(--tq-font-mono);
   font-size: var(--tq-text-xs);
   color: var(--tq-text-subtle);
-}
-
-.noticeClose {
-  margin-left: auto;
-  display: grid;
-  place-items: center;
-  width: 20px;
-  height: 20px;
-  border-radius: var(--tq-radius-sm);
-  color: var(--tq-text-subtle);
-}
-
-.noticeClose:hover {
-  background: var(--tq-surface-hover);
-  color: var(--tq-text);
 }
 
 /* ------------------------------------------------------------------- stage */
@@ -163,8 +114,9 @@
 .paletteColumn {
   grid-column: 1;
   grid-row: 1;
-  width: 176px;
+  width: var(--tq-palette-width, 176px);
   min-height: 0;
+  transition: width var(--tq-duration-base) var(--tq-ease);
 }
 
 .loading,
@@ -215,6 +167,7 @@
 
 /* ------------------------------------------------------------------ drawer */
 .drawer {
+  position: relative;
   grid-column: 1;
   grid-row: 4;
   display: flex;
@@ -224,115 +177,33 @@
   border-top: 1px solid var(--tq-border-subtle);
 }
 
-.tabs {
-  display: flex;
-  align-items: stretch;
-  gap: var(--tq-space-2);
-  padding: 0 var(--tq-space-5);
-  border-bottom: 1px solid var(--tq-border-subtle);
-  flex: none;
+/* The seam between the canvas and the drawer, which is also the handle that moves it.
+ * It sits over the border rather than taking a row of its own, so nothing shifts. */
+.grip {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -3px;
+  height: 7px;
+  z-index: var(--tq-z-drawer);
+  cursor: row-resize;
+  touch-action: none;
 }
 
-.tab {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--tq-space-2);
-  height: 35px;
-  padding: 0 var(--tq-space-3);
-  border-bottom: 2px solid transparent;
-  color: var(--tq-text-subtle);
-  font-size: var(--tq-text-base);
-  font-weight: var(--tq-weight-medium);
-  transition: color var(--tq-duration-fast) var(--tq-ease);
+.grip::after {
+  content: '';
+  position: absolute;
+  inset: 3px 0 3px;
+  background: var(--tq-accent);
+  opacity: 0;
+  transition: opacity var(--tq-duration-fast) var(--tq-ease);
 }
 
-.tab:hover {
-  color: var(--tq-text);
+.grip:hover::after,
+.grip:focus-visible::after {
+  opacity: 0.75;
 }
 
-.tabActive,
-.tabActive:hover {
-  color: var(--tq-text);
-  border-bottom-color: var(--tq-accent);
-}
-
-.tabCount {
-  padding: 0 var(--tq-space-2);
-  border-radius: var(--tq-radius-pill);
-  background: var(--tq-surface-active);
-  font-size: var(--tq-text-xs);
-  color: var(--tq-text-subtle);
-  font-variant-numeric: tabular-nums;
-}
-
-.tabCountBad {
-  background: var(--tq-danger-soft);
-  color: var(--tq-danger);
-}
-
-.console {
-  flex: 1;
-  min-height: 0;
-  overflow: auto;
-  padding: var(--tq-space-5) var(--tq-space-6);
-  background: var(--tq-surface-sunken);
-  font-family: var(--tq-font-mono);
-  font-size: var(--tq-text-sm);
-  color: var(--tq-text-subtle);
-  line-height: var(--tq-leading-relaxed);
-}
-
-.prompt {
-  color: var(--tq-accent);
-  user-select: none;
-}
-
-/* ---------------------------------------------------------------- problems */
-.problems {
-  flex: 1;
-  min-height: 0;
-  overflow: auto;
-  background: var(--tq-surface-sunken);
-}
-
-.problemsEmpty {
-  padding: var(--tq-space-5) var(--tq-space-6);
-  color: var(--tq-text-subtle);
-  font-size: var(--tq-text-sm);
-  line-height: var(--tq-leading-relaxed);
-}
-
-.problem {
-  display: flex;
-  align-items: center;
-  gap: var(--tq-space-4);
-  width: 100%;
-  padding: var(--tq-space-3) var(--tq-space-6);
-  border-bottom: 1px solid var(--tq-border-subtle);
-  text-align: left;
-  color: var(--tq-text-muted);
-  font-size: var(--tq-text-sm);
-}
-
-.problem:hover {
-  background: var(--tq-surface-hover);
-  color: var(--tq-text);
-}
-
-.problemActive {
-  background: var(--tq-accent-soft);
-  color: var(--tq-text);
-}
-
-.problemText {
-  flex: 1;
-  min-width: 0;
-  line-height: var(--tq-leading-normal);
-}
-
-.problemWhere {
-  flex: none;
-  font-family: var(--tq-font-mono);
-  font-size: var(--tq-text-xs);
-  color: var(--tq-text-subtle);
+.grip:focus-visible {
+  outline: none;
 }

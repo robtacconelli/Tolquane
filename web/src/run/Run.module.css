@@ -88,6 +88,28 @@
   background: var(--tq-border);
 }
 
+/* Folds the drawer to this strip, at the end of it, where the sidebar's own collapse
+ * button is: the same gesture in the same corner. */
+.fold {
+  align-self: center;
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 24px;
+  height: 24px;
+  margin-left: var(--tq-space-3);
+  border-radius: var(--tq-radius-sm);
+  color: var(--tq-text-subtle);
+  transition:
+    background-color var(--tq-duration-fast) var(--tq-ease),
+    color var(--tq-duration-fast) var(--tq-ease);
+}
+
+.fold:hover {
+  background: var(--tq-surface-hover);
+  color: var(--tq-text);
+}
+
 /* ---------------------------------------------------------------------- panes */
 .pane {
   flex: 1;
@@ -187,7 +209,7 @@
 .lineNo {
   text-align: right;
   color: var(--tq-text-subtle);
-  opacity: 0.55;
+  opacity: 0.75;
   user-select: none;
 }
 
@@ -496,15 +518,18 @@
   max-height: 220px;
 }
 
-.disclose {
-  margin-left: var(--tq-space-6);
-  margin-top: var(--tq-space-2);
-  color: var(--tq-accent);
-  font-size: var(--tq-text-xs);
+/* The chevron that says a row has a traceback under it, and turns when it is open. */
+.discloseMark {
+  flex: none;
+  display: grid;
+  place-items: center;
+  color: var(--tq-text-subtle);
+  transition: transform var(--tq-duration-fast) var(--tq-ease);
 }
 
-.disclose:hover {
-  text-decoration: underline;
+.discloseMark[data-open='true'] {
+  transform: rotate(90deg);
+  color: var(--tq-text);
 }
 
 .link:disabled {

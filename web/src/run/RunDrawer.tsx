@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState, type JSX } from 'react';
+import { Icon } from '../components/Icon';
 import { StatusDot } from '../components/StatusDot';
 import { runStatusLook } from '../components/scheduleFormat';
+import { useEditorLayout } from '../editor/layout';
 import type { Problem } from '../model';
 import { useRunStore } from '../store/run';
 import { ConsolePane } from './ConsolePane';
@@ -67,6 +69,9 @@ export function RunDrawer({
   const aliases = useRunStore((state) => state.aliases);
   const selectEdge = useRunStore((state) => state.selectEdge);
   const elapsed = useElapsed();
+  // The drawer folds to its tab strip; the counters and the run's state stay readable.
+  const open = useEditorLayout((state) => state.drawerOpen);
+  const setDrawerOpen = useEditorLayout((state) => state.setDrawerOpen);
 
   const look = runStatusLook(status === 'idle' ? null : status);
 
@@ -134,7 +139,9 @@ export function RunDrawer({
               aria-selected={name === tab}
               className={name === tab ? `${styles.tab} ${styles.tabActive}` : styles.tab}
               onClick={() => {
+                // Asking for a tab is asking to see it, whether or not it is folded away.
                 onTab(name);
+                setDrawerOpen(true);
               }}
             >
               {name}
@@ -161,9 +168,22 @@ export function RunDrawer({
             </>
           )}
         </span>
+
+        <button
+          type="button"
+          className={styles.fold}
+          aria-expanded={open}
+          aria-label={open ? 'Fold the run drawer' : 'Unfold the run drawer'}
+          title={open ? 'Fold the run drawer' : 'Unfold the run drawer'}
+          onClick={() => {
+            setDrawerOpen(!open);
+          }}
+        >
+          <Icon name={open ? 'chevronDown' : 'chevronUp'} size={15} />
+        </button>
       </div>
 
-      {tab === 'Console' ? (
+      {!open ? null : tab === 'Console' ? (
         <ConsolePane />
       ) : tab === 'Taps' ? (
         <TapsPane />

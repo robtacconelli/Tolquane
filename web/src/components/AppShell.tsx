@@ -3,6 +3,7 @@ import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useHealth } from '../hooks/useHealth';
 import { useCommandPaletteHotkey } from '../hooks/useHotkeys';
 import { useSystemTheme } from '../hooks/useSystemTheme';
+import { useTokenGeneration, useUnauthorized } from '../hooks/useToken';
 import { crumbsFor, NAV_ITEMS } from '../nav';
 import { MOD_KEY_K } from '../platform';
 import { useUiStore } from '../store/ui';
@@ -12,6 +13,7 @@ import { Button } from './Button';
 import { CommandPalette } from './CommandPalette';
 import { Icon } from './Icon';
 import { StatusDot } from './StatusDot';
+import { TokenDialog } from './TokenDialog';
 import styles from './AppShell.module.css';
 
 export function AppShell(): JSX.Element {
@@ -30,6 +32,12 @@ export function AppShell(): JSX.Element {
   useCommandPaletteHotkey(openPalette, closePalette);
 
   const server = useHealth();
+  /* A token that was missing and has just arrived is a retry of everything the page
+   * asked for and was refused: remounting the route runs its loads again. */
+  const generation = useTokenGeneration();
+  /* A server that answers 401 is reachable; it wants a token, and the prompt says so.
+   * Calling that "not reachable" would send the reader to restart a running server. */
+  const locked = useUnauthorized();
   const crumbs = crumbsFor(location.pathname);
   const last = crumbs[crumbs.length - 1];
 
@@ -63,7 +71,13 @@ export function AppShell(): JSX.Element {
         <div className={styles.sidebarFoot}>
           <div
             className={styles.serverRow}
-            title={server.status === 'online' ? 'Server online' : 'Server offline'}
+            title={
+              server.status === 'online'
+                ? 'Server online'
+                : locked
+                  ? 'The server wants a token'
+                  : 'Server offline'
+            }
           >
             <StatusDot
               state={
@@ -78,9 +92,11 @@ export function AppShell(): JSX.Element {
             <span className={styles.serverText}>
               {server.status === 'online'
                 ? `Server ${server.info?.version ?? 'online'}`
-                : server.status === 'checking'
-                  ? 'Connecting…'
-                  : 'Server offline'}
+                : locked
+                  ? 'Token needed'
+                  : server.status === 'checking'
+                    ? 'Connecting…'
+                    : 'Server offline'}
             </span>
           </div>
           <button
@@ -98,8 +114,8 @@ export function AppShell(): JSX.Element {
       <div className={styles.main}>
         <header className={styles.topbar}>
           <div className={styles.crumbs}>
-            {crumbs.slice(0, -1).map((crumb) => (
-              <Fragment key={crumb.label}>
+            {crumbs.slice(0, -1).map((crumb, depth) => (
+              <Fragment key={`${String(depth)}-${crumb.label}`}>
                 {crumb.to ? (
                   <Link className={styles.crumbLink} to={crumb.to}>
                     {crumb.label}
@@ -136,7 +152,7 @@ export function AppShell(): JSX.Element {
         </header>
 
         {/* Quiet, not alarming: the server is simply not there yet. */}
-        {server.status === 'offline' && server.failures > 0 ? (
+        {server.status === 'offline' && server.failures > 0 && !locked ? (
           <div className={styles.banner} role="status">
             <span className={styles.bannerIcon}>
               <Icon name="offline" size={15} />
@@ -150,12 +166,13 @@ export function AppShell(): JSX.Element {
 
         <main className={styles.content}>
           <AppShellContext value={{ server }}>
-            <Outlet />
+            <Outlet key={generation} />
           </AppShellContext>
         </main>
       </div>
 
       {paletteOpen ? <CommandPalette onClose={closePalette} /> : null}
+      <TokenDialog />
     </div>
   );
 }

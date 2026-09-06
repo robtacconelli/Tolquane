@@ -24,6 +24,7 @@ export interface ScheduleFormValues {
 export function ScheduleDialog({
   mode,
   initial,
+  initialFlow,
   flows,
   defaultRuntime = 'threads',
   debounceMs,
@@ -32,6 +33,8 @@ export function ScheduleDialog({
 }: {
   mode: 'create' | 'edit';
   initial?: Schedule | null;
+  /** Creating a schedule for a flow already in hand: the editor's "Schedule this flow…". */
+  initialFlow?: string;
   flows: readonly FlowSummary[];
   defaultRuntime?: Runtime;
   /** Only the tests need this; the editor debounces its preview by 350 ms otherwise. */
@@ -45,7 +48,11 @@ export function ScheduleDialog({
   const sampleId = useId();
   const enabledId = useId();
 
-  const [flow, setFlow] = useState(initial?.flow ?? flows[0]?.path ?? '');
+  /* The chosen flow, or nothing chosen yet: the workspace may still be arriving when the
+   * dialog opens -- it is when the command palette navigates here -- so the fallback is
+   * read at render time rather than frozen when the state was made. */
+  const [chosen, setChosen] = useState(initial?.flow ?? initialFlow ?? '');
+  const flow = chosen || flows[0]?.path || '';
   const [cron, setCron] = useState(initial?.cron ?? DEFAULT_CRON);
   const [runtime, setRuntime] = useState<Runtime>(initial?.runtime ?? defaultRuntime);
   const [sample, setSample] = useState(initial?.sample ?? '');
@@ -120,7 +127,7 @@ export function ScheduleDialog({
             data-autofocus
             value={flow}
             disabled={flows.length === 0}
-            onChange={(event) => setFlow(event.target.value)}
+            onChange={(event) => setChosen(event.target.value)}
           >
             {flows.length === 0 ? <option value="">No flows in the workspace</option> : null}
             {flows.map((candidate) => (

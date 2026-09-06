@@ -13,12 +13,13 @@ import { Button } from '../components/Button';
 import { EmptyState } from '../components/EmptyState';
 import { Icon } from '../components/Icon';
 import { EmptySchedulesArt } from '../components/Illustrations';
+import { Notice } from '../components/Notice';
 import { ListColumns, Page, PageHeader, Panel, PanelHeader } from '../components/Page';
 import { ScheduleDialog, type ScheduleFormValues } from '../components/ScheduleDialog';
 import { ScheduleList, ScheduleListSkeleton } from '../components/ScheduleList';
 import { ConfirmDialog } from '../components/form/Dialog';
 import { zoneLabel } from '../components/scheduleFormat';
-import styles from './Schedules.module.css';
+import { takeIntent, useCommandsStore } from '../store/commands';
 
 const COLUMNS = ['Flow', 'Schedule', 'Next run', 'Last result', 'Enabled', ''] as const;
 const TEMPLATE = 'minmax(0, 1.7fr) minmax(0, 1.9fr) 140px 118px 64px 176px';
@@ -27,7 +28,7 @@ function messageOf(caught: unknown): string {
   return caught instanceof Error ? caught.message : String(caught);
 }
 
-type DialogState = { mode: 'create' } | { mode: 'edit'; row: ScheduleRow } | null;
+type DialogState = { mode: 'create'; flow?: string } | { mode: 'edit'; row: ScheduleRow } | null;
 
 export function SchedulesPage(): JSX.Element {
   const [rows, setRows] = useState<ScheduleRow[] | null>(null);
@@ -36,7 +37,10 @@ export function SchedulesPage(): JSX.Element {
   const [actionError, setActionError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<number | null>(null);
-  const [dialog, setDialog] = useState<DialogState>(null);
+  const [dialog, setDialog] = useState<DialogState>(() => {
+    const asked = takeIntent('schedule');
+    return asked ? { mode: 'create', flow: asked.flow } : null;
+  });
   const [confirming, setConfirming] = useState<ScheduleRow | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -80,6 +84,16 @@ export function SchedulesPage(): JSX.Element {
       cancelled = true;
     };
   }, []);
+
+  /* "Schedule this flow…" in the command palette, with this page already on screen. */
+  useEffect(
+    () =>
+      useCommandsStore.subscribe((state) => {
+        const asked = takeIntent('schedule', state.intent);
+        if (asked) setDialog({ mode: 'create', flow: asked.flow });
+      }),
+    [],
+  );
 
   async function withRow(row: ScheduleRow, work: () => Promise<void>): Promise<void> {
     setBusyId(row.id);
@@ -163,39 +177,22 @@ export function SchedulesPage(): JSX.Element {
           hint={`Five-field cron, in ${zoneLabel()}`}
           actions={
             <Button size="sm" variant="ghost" onClick={reload}>
+              <Icon name="refresh" size={14} />
               Refresh
             </Button>
           }
         />
 
         {notice ? (
-          <div className={styles.notice} role="status">
-            <Icon name="check" size={14} />
-            <span>{notice}</span>
-            <button
-              type="button"
-              className={styles.dismiss}
-              onClick={() => setNotice(null)}
-              aria-label="Dismiss"
-            >
-              <Icon name="close" size={13} />
-            </button>
-          </div>
+          <Notice tone="success" onDismiss={() => setNotice(null)}>
+            {notice}
+          </Notice>
         ) : null}
 
         {actionError ? (
-          <div className={styles.failure} role="alert">
-            <Icon name="alert" size={14} />
-            <span>{actionError}</span>
-            <button
-              type="button"
-              className={styles.dismiss}
-              onClick={() => setActionError(null)}
-              aria-label="Dismiss"
-            >
-              <Icon name="close" size={13} />
-            </button>
-          </div>
+          <Notice tone="error" onDismiss={() => setActionError(null)}>
+            {actionError}
+          </Notice>
         ) : null}
 
         <ListColumns columns={COLUMNS} template={TEMPLATE} />
@@ -249,6 +246,7 @@ export function SchedulesPage(): JSX.Element {
         <ScheduleDialog
           mode={dialog.mode}
           initial={dialog.mode === 'edit' ? dialog.row : null}
+          {...(dialog.mode === 'create' && dialog.flow ? { initialFlow: dialog.flow } : {})}
           flows={flows}
           onSubmit={save}
           onClose={() => setDialog(null)}

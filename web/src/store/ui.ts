@@ -1,28 +1,11 @@
 import { create } from 'zustand';
+import { readStorage, writeStorage } from './storage';
 
 export type ThemeMode = 'system' | 'light' | 'dark';
 export type ResolvedTheme = 'light' | 'dark';
 
 export const THEME_KEY = 'tolquane.theme';
 export const SIDEBAR_KEY = 'tolquane.sidebar';
-
-/* localStorage throws in private windows and in some embedded webviews; a missing
- * preference is never worth breaking the app for, so every access is guarded. */
-function readStorage(key: string): string | null {
-  try {
-    return globalThis.localStorage?.getItem(key) ?? null;
-  } catch {
-    return null;
-  }
-}
-
-function writeStorage(key: string, value: string): void {
-  try {
-    globalThis.localStorage?.setItem(key, value);
-  } catch {
-    /* preference is lost for this session only */
-  }
-}
 
 export function prefersLight(): boolean {
   return globalThis.matchMedia?.('(prefers-color-scheme: light)').matches ?? false;

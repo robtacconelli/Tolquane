@@ -119,40 +119,16 @@
   min-width: 170px;
 }
 
-/* ------------------------------------------------------------------- notices */
-.notice,
-.failure {
-  display: flex;
-  align-items: center;
-  gap: var(--tq-space-3);
-  padding: var(--tq-space-3) var(--tq-space-6);
-  font-size: var(--tq-text-sm);
-  border-bottom: 1px solid var(--tq-border-subtle);
+/* ---------------------------------------------------------------- skeleton */
+.bar,
+.barSmall {
+  display: block;
+  height: 9px;
+  border-radius: var(--tq-radius-pill);
+  background: var(--tq-surface-active);
 }
 
-.notice {
-  background: var(--tq-success-soft);
-  color: var(--tq-success);
-}
-
-.failure {
-  background: var(--tq-danger-soft);
-  color: var(--tq-danger);
-}
-
-.dismiss {
-  margin-left: auto;
-  color: inherit;
-  opacity: 0.7;
-}
-
-.dismiss:hover {
-  opacity: 1;
-}
-
-.loading {
-  padding: var(--tq-space-8) var(--tq-space-6);
-  text-align: center;
-  color: var(--tq-text-subtle);
-  font-size: var(--tq-text-sm);
+.barSmall {
+  height: 7px;
+  opacity: 0.6;
 }

@@ -118,15 +118,19 @@ export function SettingsRow({
 export function SettingsStack({
   label,
   help,
+  htmlFor,
   children,
 }: {
   label: string;
   help?: ReactNode;
+  htmlFor?: string;
   children: ReactNode;
 }): JSX.Element {
   return (
     <div className={styles.stack}>
-      <div className={styles.label}>{label}</div>
+      <label className={styles.label} htmlFor={htmlFor}>
+        {label}
+      </label>
       {help ? <div className={styles.help}>{help}</div> : null}
       <div className={styles.stackBody}>{children}</div>
     </div>

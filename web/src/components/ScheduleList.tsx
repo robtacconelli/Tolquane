@@ -31,7 +31,7 @@ export function ScheduleList({
   onDelete: (row: ScheduleRow) => void;
 }): JSX.Element {
   return (
-    <div className={styles.list}>
+    <div className={styles.list} role="list">
       {rows.map((row) => {
         const next = splitWhen(row.next_run);
         const look = runStatusLook(row.last_status);
@@ -42,6 +42,8 @@ export function ScheduleList({
             className={styles.row}
             style={{ gridTemplateColumns: template }}
             data-paused={!row.enabled || undefined}
+            role="listitem"
+            aria-label={`Schedule for ${row.flow}`}
           >
             <div className={styles.cell}>
               <span className={styles.flow} title={row.flow}>
@@ -126,7 +128,7 @@ export function ScheduleList({
                 aria-label={`Delete the schedule for ${row.flow}`}
                 title="Delete"
               >
-                <Icon name="close" size={14} />
+                <Icon name="trash" size={14} />
               </Button>
             </div>
           </div>

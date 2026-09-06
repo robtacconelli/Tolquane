@@ -12,6 +12,7 @@
 
 import type { CodeOnly, FlowModel, GraphView } from '../model/types';
 import { API_BASE, ApiError, type Schemas } from './client';
+import { authHeaders, reportUnauthorized } from './token';
 
 export type ChatRole = 'user' | 'assistant';
 
@@ -203,7 +204,11 @@ export async function chat(
     response = await fetch(url, {
       method: 'POST',
       signal: signal ?? null,
-      headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'text/event-stream',
+        ...authHeaders(),
+      },
       body: JSON.stringify(request),
     });
   } catch (cause) {
@@ -217,7 +222,10 @@ export async function chat(
     });
   }
 
-  if (!response.ok) throw await failure(response, url);
+  if (!response.ok) {
+    if (response.status === 401) reportUnauthorized();
+    throw await failure(response, url);
+  }
 
   const parser = new EventStreamParser();
   const body = response.body;
