@@ -1,0 +1,311 @@
+.shell {
+  display: grid;
+  grid-template-columns: var(--tq-sidebar-width) minmax(0, 1fr);
+  height: 100%;
+  background: var(--tq-bg);
+  transition: grid-template-columns var(--tq-duration-base) var(--tq-ease);
+}
+
+.shell[data-collapsed='true'] {
+  grid-template-columns: var(--tq-sidebar-width-collapsed) minmax(0, 1fr);
+}
+
+/* ------------------------------------------------------------------ sidebar */
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: var(--tq-surface);
+  border-right: 1px solid var(--tq-border-subtle);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: var(--tq-space-4);
+  height: var(--tq-topbar-height);
+  padding: 0 var(--tq-space-5);
+  border-bottom: 1px solid var(--tq-border-subtle);
+  flex: none;
+}
+
+.brandMark {
+  flex: none;
+  color: var(--tq-accent);
+}
+
+.wordmark {
+  font-size: var(--tq-text-md);
+  font-weight: var(--tq-weight-semibold);
+  letter-spacing: var(--tq-tracking-tight);
+  color: var(--tq-text);
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.nav {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tq-space-1);
+  padding: var(--tq-space-5) var(--tq-space-4);
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.navLabel {
+  padding: 0 var(--tq-space-3) var(--tq-space-3);
+  font-size: var(--tq-text-xs);
+  font-weight: var(--tq-weight-semibold);
+  letter-spacing: var(--tq-tracking-wide);
+  text-transform: uppercase;
+  color: var(--tq-text-subtle);
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.navItem {
+  display: flex;
+  align-items: center;
+  gap: var(--tq-space-4);
+  height: 32px;
+  padding: 0 var(--tq-space-3);
+  border-radius: var(--tq-radius-md);
+  color: var(--tq-text-muted);
+  font-size: var(--tq-text-base);
+  font-weight: var(--tq-weight-medium);
+  text-decoration: none;
+  white-space: nowrap;
+  transition:
+    background-color var(--tq-duration-fast) var(--tq-ease),
+    color var(--tq-duration-fast) var(--tq-ease);
+}
+
+.navItem:hover {
+  background: var(--tq-surface-hover);
+  color: var(--tq-text);
+  text-decoration: none;
+}
+
+.navItem svg {
+  flex: none;
+}
+
+.navItemActive,
+.navItemActive:hover {
+  background: var(--tq-accent-soft);
+  color: var(--tq-accent);
+}
+
+.navText {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidebarFoot {
+  flex: none;
+  padding: var(--tq-space-4);
+  border-top: 1px solid var(--tq-border-subtle);
+  display: flex;
+  flex-direction: column;
+  gap: var(--tq-space-3);
+}
+
+.serverText {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.serverRow {
+  display: flex;
+  align-items: center;
+  gap: var(--tq-space-3);
+  padding: 0 var(--tq-space-3);
+  min-height: 22px;
+  font-size: var(--tq-text-sm);
+  color: var(--tq-text-subtle);
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.collapseButton {
+  display: flex;
+  align-items: center;
+  gap: var(--tq-space-4);
+  height: 28px;
+  padding: 0 var(--tq-space-3);
+  border-radius: var(--tq-radius-md);
+  color: var(--tq-text-subtle);
+  font-size: var(--tq-text-sm);
+  transition:
+    background-color var(--tq-duration-fast) var(--tq-ease),
+    color var(--tq-duration-fast) var(--tq-ease);
+}
+
+.collapseButton:hover {
+  background: var(--tq-surface-hover);
+  color: var(--tq-text);
+}
+
+/* Collapsed: icons only, centred, labels gone but still in the accessible name. */
+.shell[data-collapsed='true'] .brand {
+  justify-content: center;
+  padding: 0;
+}
+
+.shell[data-collapsed='true'] .wordmark,
+.shell[data-collapsed='true'] .navLabel,
+.shell[data-collapsed='true'] .navText,
+.shell[data-collapsed='true'] .serverText {
+  display: none;
+}
+
+.shell[data-collapsed='true'] .navItem,
+.shell[data-collapsed='true'] .collapseButton,
+.shell[data-collapsed='true'] .serverRow {
+  justify-content: center;
+  padding: 0;
+}
+
+/* --------------------------------------------------------------------- main */
+.main {
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  min-width: 0;
+  min-height: 0;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: var(--tq-space-5);
+  height: var(--tq-topbar-height);
+  padding: 0 var(--tq-space-6);
+  background: var(--tq-surface);
+  border-bottom: 1px solid var(--tq-border-subtle);
+}
+
+.crumbs {
+  display: flex;
+  align-items: center;
+  gap: var(--tq-space-2);
+  min-width: 0;
+  flex: 1;
+}
+
+.crumbLink {
+  color: var(--tq-text-muted);
+  font-size: var(--tq-text-md);
+  text-decoration: none;
+  border-radius: var(--tq-radius-sm);
+}
+
+.crumbLink:hover {
+  color: var(--tq-text);
+  text-decoration: none;
+}
+
+.crumbSep {
+  color: var(--tq-text-subtle);
+  display: flex;
+}
+
+.crumbCurrent {
+  font-size: var(--tq-text-md);
+  font-weight: var(--tq-weight-semibold);
+  letter-spacing: var(--tq-tracking-tight);
+  color: var(--tq-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.topbarActions {
+  display: flex;
+  align-items: center;
+  gap: var(--tq-space-3);
+  flex: none;
+}
+
+/* The omnibox is a button, not an input: it opens the palette, it never takes text. */
+.omnibox {
+  display: flex;
+  align-items: center;
+  gap: var(--tq-space-3);
+  width: 296px;
+  height: 30px;
+  padding: 0 var(--tq-space-3) 0 var(--tq-space-4);
+  border: 1px solid var(--tq-border);
+  border-radius: var(--tq-radius-md);
+  background: var(--tq-surface-sunken);
+  color: var(--tq-text-subtle);
+  font-size: var(--tq-text-base);
+  transition:
+    border-color var(--tq-duration-fast) var(--tq-ease),
+    background-color var(--tq-duration-fast) var(--tq-ease);
+}
+
+.omnibox:hover {
+  border-color: var(--tq-border-strong);
+  background: var(--tq-surface-hover);
+}
+
+.omniboxText {
+  flex: 1;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.kbd {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  height: 18px;
+  padding: 0 var(--tq-space-2);
+  border: 1px solid var(--tq-border);
+  border-bottom-width: 2px;
+  border-radius: var(--tq-radius-xs);
+  background: var(--tq-surface);
+  color: var(--tq-text-subtle);
+  font-family: var(--tq-font-ui);
+  font-size: var(--tq-text-xs);
+  font-weight: var(--tq-weight-medium);
+}
+
+/* ------------------------------------------------------------------- banner */
+.banner {
+  display: flex;
+  align-items: center;
+  gap: var(--tq-space-3);
+  padding: var(--tq-space-3) var(--tq-space-6);
+  background: var(--tq-warning-soft);
+  border-bottom: 1px solid var(--tq-border-subtle);
+  color: var(--tq-text-muted);
+  font-size: var(--tq-text-sm);
+}
+
+.bannerIcon {
+  color: var(--tq-warning);
+  flex: none;
+}
+
+/* The command to type reads as a chip, not as running text. */
+.banner code {
+  padding: 1px var(--tq-space-2);
+  border: 1px solid var(--tq-border);
+  border-radius: var(--tq-radius-xs);
+  background: var(--tq-surface);
+  color: var(--tq-text);
+}
+
+.bannerDetail {
+  color: var(--tq-text-subtle);
+}
+
+.content {
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+}

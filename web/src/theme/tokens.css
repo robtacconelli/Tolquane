@@ -1,0 +1,201 @@
+/*
+ * Tolquane design tokens.
+ *
+ * Dark is the default so the app matches the environment most of this tool is used in
+ * (a terminal next to an editor); light is a first-class alternative, not an afterthought.
+ * Only the colour tokens change between themes -- spacing, radii, type and motion are
+ * theme independent, so a component never has to branch on the theme.
+ *
+ * The accent is the same teal the documentation site uses (Material teal), so the GUI and
+ * the docs read as one product.
+ */
+
+:root {
+  /* ---------------------------------------------------------------- type */
+  --tq-font-ui:
+    system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', 'Noto Sans', Ubuntu, Cantarell,
+    'Liberation Sans', Arial, sans-serif;
+  --tq-font-mono:
+    ui-monospace, 'SFMono-Regular', 'SF Mono', Menlo, Consolas, 'DejaVu Sans Mono',
+    'Liberation Mono', 'Roboto Mono', monospace;
+
+  --tq-text-xs: 11px;
+  --tq-text-sm: 12px;
+  --tq-text-base: 13px;
+  --tq-text-md: 14px;
+  --tq-text-lg: 16px;
+  --tq-text-xl: 19px;
+  --tq-text-2xl: 24px;
+
+  --tq-leading-tight: 1.25;
+  --tq-leading-normal: 1.5;
+  --tq-leading-relaxed: 1.65;
+
+  --tq-weight-regular: 400;
+  --tq-weight-medium: 500;
+  --tq-weight-semibold: 600;
+
+  --tq-tracking-tight: -0.01em;
+  --tq-tracking-wide: 0.06em;
+
+  /* ------------------------------------------------------------- spacing */
+  --tq-space-0: 0;
+  --tq-space-1: 2px;
+  --tq-space-2: 4px;
+  --tq-space-3: 8px;
+  --tq-space-4: 12px;
+  --tq-space-5: 16px;
+  --tq-space-6: 20px;
+  --tq-space-7: 24px;
+  --tq-space-8: 32px;
+  --tq-space-9: 40px;
+  --tq-space-10: 48px;
+  --tq-space-11: 64px;
+  --tq-space-12: 96px;
+
+  /* --------------------------------------------------------------- radii */
+  --tq-radius-xs: 3px;
+  --tq-radius-sm: 5px;
+  --tq-radius-md: 7px;
+  --tq-radius-lg: 10px;
+  --tq-radius-xl: 14px;
+  --tq-radius-pill: 999px;
+
+  /* -------------------------------------------------------------- motion */
+  --tq-duration-fast: 110ms;
+  --tq-duration-base: 180ms;
+  --tq-duration-slow: 320ms;
+  --tq-ease: cubic-bezier(0.32, 0.72, 0, 1);
+
+  /* -------------------------------------------------------------- layout */
+  --tq-sidebar-width: 232px;
+  --tq-sidebar-width-collapsed: 60px;
+  --tq-topbar-height: 52px;
+  --tq-panel-width: 320px;
+  --tq-drawer-height: 208px;
+  --tq-content-max: 1080px;
+
+  /* ------------------------------------------------------------- z index */
+  --tq-z-canvas: 0;
+  --tq-z-sticky: 10;
+  --tq-z-drawer: 20;
+  --tq-z-overlay: 40;
+  --tq-z-modal: 50;
+  --tq-z-toast: 60;
+}
+
+/* ============================================================ dark (default) */
+:root,
+:root[data-theme='dark'] {
+  color-scheme: dark;
+
+  --tq-bg: #0b1013;
+  --tq-surface: #11181c;
+  --tq-surface-raised: #172127;
+  --tq-surface-sunken: #080c0e;
+  --tq-surface-hover: #1a2429;
+  --tq-surface-active: #202d33;
+
+  --tq-border-subtle: #1a242a;
+  --tq-border: #26333a;
+  --tq-border-strong: #38494f;
+
+  --tq-text: #e4ecef;
+  --tq-text-muted: #94a5ae;
+  --tq-text-subtle: #66777f;
+  --tq-text-inverse: #0b1013;
+
+  --tq-accent: #2dd4bf;
+  --tq-accent-hover: #5eead4;
+  --tq-accent-active: #14b8a6;
+  --tq-accent-soft: rgb(45 212 191 / 12%);
+  --tq-accent-soft-hover: rgb(45 212 191 / 18%);
+  --tq-accent-contrast: #04231f;
+  --tq-accent-line: rgb(45 212 191 / 40%);
+
+  --tq-success: #46c07a;
+  --tq-success-soft: rgb(70 192 122 / 14%);
+  --tq-warning: #e3a33a;
+  --tq-warning-soft: rgb(227 163 58 / 14%);
+  --tq-danger: #f2564d;
+  --tq-danger-soft: rgb(242 86 77 / 14%);
+  --tq-info: #57b6f5;
+  --tq-info-soft: rgb(87 182 245 / 14%);
+
+  /* The five run states the canvas overlay paints on every card. */
+  --tq-node-new: #7d8c96;
+  --tq-node-new-soft: rgb(125 140 150 / 14%);
+  --tq-node-running: #2dd4bf;
+  --tq-node-running-soft: rgb(45 212 191 / 16%);
+  --tq-node-waiting: #e3a33a;
+  --tq-node-waiting-soft: rgb(227 163 58 / 16%);
+  --tq-node-done: #46c07a;
+  --tq-node-done-soft: rgb(70 192 122 / 16%);
+  --tq-node-failed: #f2564d;
+  --tq-node-failed-soft: rgb(242 86 77 / 16%);
+
+  --tq-overlay: rgb(4 8 10 / 62%);
+  --tq-focus-ring: rgb(45 212 191 / 55%);
+  --tq-shadow-sm: 0 1px 2px rgb(0 0 0 / 40%);
+  --tq-shadow-md: 0 4px 12px rgb(0 0 0 / 42%);
+  --tq-shadow-lg: 0 16px 40px rgb(0 0 0 / 52%);
+  --tq-scrollbar: #2c3a41;
+  --tq-scrollbar-hover: #3d4f57;
+}
+
+/* ==================================================================== light */
+:root[data-theme='light'] {
+  color-scheme: light;
+
+  --tq-bg: #f3f6f7;
+  --tq-surface: #ffffff;
+  --tq-surface-raised: #ffffff;
+  --tq-surface-sunken: #eaf0f2;
+  --tq-surface-hover: #eef3f5;
+  --tq-surface-active: #e1eaed;
+
+  --tq-border-subtle: #e8eef0;
+  --tq-border: #d6e0e4;
+  --tq-border-strong: #b4c4ca;
+
+  --tq-text: #14232a;
+  --tq-text-muted: #55676f;
+  --tq-text-subtle: #7b8c94;
+  --tq-text-inverse: #ffffff;
+
+  --tq-accent: #00897b;
+  --tq-accent-hover: #00796b;
+  --tq-accent-active: #00695c;
+  --tq-accent-soft: rgb(0 137 123 / 10%);
+  --tq-accent-soft-hover: rgb(0 137 123 / 15%);
+  --tq-accent-contrast: #ffffff;
+  --tq-accent-line: rgb(0 137 123 / 35%);
+
+  --tq-success: #12854c;
+  --tq-success-soft: rgb(18 133 76 / 11%);
+  --tq-warning: #a4670a;
+  --tq-warning-soft: rgb(164 103 10 / 12%);
+  --tq-danger: #c62f26;
+  --tq-danger-soft: rgb(198 47 38 / 10%);
+  --tq-info: #0b6bbf;
+  --tq-info-soft: rgb(11 107 191 / 10%);
+
+  --tq-node-new: #7b8c94;
+  --tq-node-new-soft: rgb(123 140 148 / 14%);
+  --tq-node-running: #00897b;
+  --tq-node-running-soft: rgb(0 137 123 / 14%);
+  --tq-node-waiting: #a4670a;
+  --tq-node-waiting-soft: rgb(164 103 10 / 14%);
+  --tq-node-done: #12854c;
+  --tq-node-done-soft: rgb(18 133 76 / 14%);
+  --tq-node-failed: #c62f26;
+  --tq-node-failed-soft: rgb(198 47 38 / 12%);
+
+  --tq-overlay: rgb(20 35 42 / 34%);
+  --tq-focus-ring: rgb(0 137 123 / 45%);
+  --tq-shadow-sm: 0 1px 2px rgb(20 35 42 / 8%);
+  --tq-shadow-md: 0 4px 14px rgb(20 35 42 / 10%);
+  --tq-shadow-lg: 0 18px 44px rgb(20 35 42 / 16%);
+  --tq-scrollbar: #c8d5da;
+  --tq-scrollbar-hover: #aebec5;
+}

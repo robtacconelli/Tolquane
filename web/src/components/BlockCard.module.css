@@ -1,0 +1,140 @@
+/* The card the canvas draws for every block. Wave 2 (F2) styles its @xyflow nodes with
+ * this component so the palette, the canvas and the property panel agree. */
+.card {
+  --card-accent: var(--tq-border-strong);
+
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--tq-space-4);
+  width: 208px;
+  padding: var(--tq-space-4) var(--tq-space-5);
+  background: var(--tq-surface-raised);
+  border: 1px solid var(--tq-border);
+  border-radius: var(--tq-radius-lg);
+  box-shadow: var(--tq-shadow-sm);
+  transition:
+    border-color var(--tq-duration-fast) var(--tq-ease),
+    box-shadow var(--tq-duration-fast) var(--tq-ease);
+}
+
+.card::before {
+  /* The kind stripe: the only place a card carries its kind as colour. */
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 12px;
+  bottom: 12px;
+  width: 2px;
+  border-radius: var(--tq-radius-pill);
+  background: var(--card-accent);
+}
+
+.selected {
+  border-color: var(--tq-accent);
+  box-shadow:
+    var(--tq-shadow-md),
+    0 0 0 3px var(--tq-accent-soft);
+}
+
+.ghost {
+  /* Legible in both themes: a translucent card, not a faded one, so the text stays
+   * readable while the dashes say "this is where a block would go". */
+  background: color-mix(in srgb, var(--tq-surface-raised) 88%, transparent);
+  border-style: dashed;
+  border-color: var(--tq-border-strong);
+  box-shadow: none;
+}
+
+.glyph {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--tq-radius-md);
+  background: var(--tq-accent-soft);
+  color: var(--card-accent);
+}
+
+.text {
+  display: block;
+  min-width: 0;
+  flex: 1;
+}
+
+.title {
+  display: block;
+  font-size: var(--tq-text-md);
+  font-weight: var(--tq-weight-semibold);
+  color: var(--tq-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.subtitle {
+  display: block;
+  margin-top: 1px;
+  font-size: var(--tq-text-sm);
+  color: var(--tq-text-subtle);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.state {
+  flex: none;
+}
+
+.port {
+  position: absolute;
+  top: 50%;
+  width: 9px;
+  height: 9px;
+  margin-top: -4.5px;
+  border-radius: var(--tq-radius-pill);
+  background: var(--tq-surface);
+  border: 2px solid var(--tq-border-strong);
+}
+
+.portIn {
+  left: -5px;
+}
+
+.portOut {
+  right: -5px;
+}
+
+/* ------------------------------------------------------------------ palette */
+.chip {
+  display: flex;
+  align-items: center;
+  gap: var(--tq-space-3);
+  width: 100%;
+  height: 30px;
+  padding: 0 var(--tq-space-3);
+  border-radius: var(--tq-radius-md);
+  color: var(--tq-text-muted);
+  font-size: var(--tq-text-base);
+  cursor: grab;
+  transition:
+    background-color var(--tq-duration-fast) var(--tq-ease),
+    color var(--tq-duration-fast) var(--tq-ease);
+}
+
+.chip:hover {
+  background: var(--tq-surface-hover);
+  color: var(--tq-text);
+}
+
+.chipGlyph {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: var(--tq-radius-sm);
+  background: var(--tq-surface-sunken);
+  color: var(--card-accent, var(--tq-text-subtle));
+}

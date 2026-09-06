@@ -1,0 +1,269 @@
+.editor {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--tq-panel-width);
+  grid-template-rows: auto minmax(0, 1fr) var(--tq-drawer-height);
+  height: 100%;
+  min-height: 520px;
+  background: var(--tq-bg);
+}
+
+/* ------------------------------------------------------------------ toolbar */
+.toolbar {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: var(--tq-space-4);
+  padding: var(--tq-space-3) var(--tq-space-5);
+  background: var(--tq-surface);
+  border-bottom: 1px solid var(--tq-border-subtle);
+}
+
+.file {
+  display: flex;
+  align-items: baseline;
+  gap: var(--tq-space-3);
+  min-width: 0;
+}
+
+.fileName {
+  font-family: var(--tq-font-mono);
+  font-size: var(--tq-text-base);
+  color: var(--tq-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fileState {
+  font-size: var(--tq-text-sm);
+  color: var(--tq-text-subtle);
+  white-space: nowrap;
+}
+
+.toolbarSpacer {
+  flex: 1;
+}
+
+.divider {
+  width: 1px;
+  height: 20px;
+  background: var(--tq-border);
+}
+
+/* ------------------------------------------------------------------- canvas */
+.canvas {
+  grid-column: 1;
+  grid-row: 2;
+  position: relative;
+  overflow: hidden;
+  background-color: var(--tq-surface-sunken);
+  background-image: radial-gradient(circle at 1px 1px, var(--tq-border) 1px, transparent 0);
+  background-size: 22px 22px;
+}
+
+.palette {
+  position: absolute;
+  top: var(--tq-space-5);
+  left: var(--tq-space-5);
+  width: 168px;
+  padding: var(--tq-space-3);
+  background: var(--tq-surface);
+  border: 1px solid var(--tq-border-subtle);
+  border-radius: var(--tq-radius-lg);
+  box-shadow: var(--tq-shadow-md);
+}
+
+.paletteTitle {
+  padding: var(--tq-space-2) var(--tq-space-3) var(--tq-space-3);
+  font-size: var(--tq-text-xs);
+  font-weight: var(--tq-weight-semibold);
+  letter-spacing: var(--tq-tracking-wide);
+  text-transform: uppercase;
+  color: var(--tq-text-subtle);
+}
+
+.dropZone {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--tq-space-5);
+  pointer-events: none;
+}
+
+.dropHint {
+  color: var(--tq-text-subtle);
+  font-size: var(--tq-text-sm);
+  text-align: center;
+  max-width: 34ch;
+  line-height: var(--tq-leading-relaxed);
+}
+
+.zoom {
+  position: absolute;
+  right: var(--tq-space-5);
+  bottom: var(--tq-space-5);
+  display: flex;
+  align-items: center;
+  gap: var(--tq-space-1);
+  padding: var(--tq-space-1);
+  background: var(--tq-surface);
+  border: 1px solid var(--tq-border-subtle);
+  border-radius: var(--tq-radius-md);
+  box-shadow: var(--tq-shadow-sm);
+}
+
+.zoomButton {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 24px;
+  border-radius: var(--tq-radius-sm);
+  color: var(--tq-text-muted);
+  font-size: var(--tq-text-md);
+}
+
+.zoomButton:hover {
+  background: var(--tq-surface-hover);
+  color: var(--tq-text);
+}
+
+.zoomLevel {
+  padding: 0 var(--tq-space-3);
+  font-size: var(--tq-text-sm);
+  font-variant-numeric: tabular-nums;
+  color: var(--tq-text-subtle);
+}
+
+/* --------------------------------------------------------- property panel */
+.properties {
+  grid-column: 2;
+  grid-row: 2 / 4;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--tq-surface);
+  border-left: 1px solid var(--tq-border-subtle);
+}
+
+.sectionHead {
+  display: flex;
+  align-items: center;
+  gap: var(--tq-space-3);
+  height: 36px;
+  padding: 0 var(--tq-space-5);
+  border-bottom: 1px solid var(--tq-border-subtle);
+  font-size: var(--tq-text-xs);
+  font-weight: var(--tq-weight-semibold);
+  letter-spacing: var(--tq-tracking-wide);
+  text-transform: uppercase;
+  color: var(--tq-text-subtle);
+  flex: none;
+}
+
+.sectionBody {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--tq-space-3);
+  padding: var(--tq-space-6);
+}
+
+.hintGlyph {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: var(--tq-radius-lg);
+  border: 1px solid var(--tq-border-subtle);
+  background: var(--tq-surface-sunken);
+  color: var(--tq-text-subtle);
+}
+
+.hintTitle {
+  font-size: var(--tq-text-base);
+  font-weight: var(--tq-weight-medium);
+  color: var(--tq-text-muted);
+}
+
+.hint {
+  color: var(--tq-text-subtle);
+  font-size: var(--tq-text-sm);
+  text-align: center;
+  max-width: 30ch;
+  line-height: var(--tq-leading-relaxed);
+}
+
+/* ------------------------------------------------------------------- drawer */
+.drawer {
+  grid-column: 1;
+  grid-row: 3;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--tq-surface);
+  border-top: 1px solid var(--tq-border-subtle);
+}
+
+.tabs {
+  display: flex;
+  align-items: stretch;
+  gap: var(--tq-space-2);
+  padding: 0 var(--tq-space-5);
+  border-bottom: 1px solid var(--tq-border-subtle);
+  flex: none;
+}
+
+.tab {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--tq-space-2);
+  height: 35px;
+  padding: 0 var(--tq-space-3);
+  border-bottom: 2px solid transparent;
+  color: var(--tq-text-subtle);
+  font-size: var(--tq-text-base);
+  font-weight: var(--tq-weight-medium);
+  transition: color var(--tq-duration-fast) var(--tq-ease);
+}
+
+.tab:hover {
+  color: var(--tq-text);
+}
+
+.tabActive,
+.tabActive:hover {
+  color: var(--tq-text);
+  border-bottom-color: var(--tq-accent);
+}
+
+.tabCount {
+  padding: 0 var(--tq-space-2);
+  border-radius: var(--tq-radius-pill);
+  background: var(--tq-surface-active);
+  font-size: var(--tq-text-xs);
+  color: var(--tq-text-subtle);
+}
+
+.console {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: var(--tq-space-5) var(--tq-space-6);
+  background: var(--tq-surface-sunken);
+  font-family: var(--tq-font-mono);
+  font-size: var(--tq-text-sm);
+  color: var(--tq-text-subtle);
+  line-height: var(--tq-leading-relaxed);
+}
+
+.prompt {
+  color: var(--tq-accent);
+  user-select: none;
+}

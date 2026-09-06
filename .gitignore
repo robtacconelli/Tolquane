@@ -25,3 +25,12 @@ htmlcov/
 .vscode/
 .DS_Store
 site/
+
+# Tolquane Web (frontend)
+web/node_modules/
+src/tolquane/web/static/
+web/dist/
+web/test-results/
+web/playwright-report/
+web/e2e/screenshots/
+.claude/worktrees/

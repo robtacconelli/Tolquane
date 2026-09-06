@@ -1,0 +1,156 @@
+/* Element defaults built on tokens.css. Everything here is unclassed: components own
+ * their own layout, this file only makes bare HTML look like the product. */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--tq-bg);
+  color: var(--tq-text);
+  font-family: var(--tq-font-ui);
+  font-size: var(--tq-text-base);
+  line-height: var(--tq-leading-normal);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+h1,
+h2,
+h3,
+h4,
+p,
+figure {
+  margin: 0;
+}
+
+h1 {
+  font-size: var(--tq-text-xl);
+  font-weight: var(--tq-weight-semibold);
+  letter-spacing: var(--tq-tracking-tight);
+  line-height: var(--tq-leading-tight);
+}
+
+h2 {
+  font-size: var(--tq-text-lg);
+  font-weight: var(--tq-weight-semibold);
+  line-height: var(--tq-leading-tight);
+}
+
+h3 {
+  font-size: var(--tq-text-md);
+  font-weight: var(--tq-weight-semibold);
+  line-height: var(--tq-leading-tight);
+}
+
+ul,
+ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+a {
+  color: var(--tq-accent);
+  text-decoration: none;
+}
+
+a:hover {
+  color: var(--tq-accent-hover);
+  text-decoration: underline;
+}
+
+code,
+kbd,
+pre,
+samp {
+  font-family: var(--tq-font-mono);
+  font-size: 0.92em;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+svg {
+  display: block;
+}
+
+hr {
+  border: none;
+  border-top: 1px solid var(--tq-border-subtle);
+  margin: 0;
+}
+
+/* One focus treatment everywhere: a soft ring outside the element, never a layout shift. */
+:focus-visible {
+  outline: 2px solid var(--tq-focus-ring);
+  outline-offset: 2px;
+  border-radius: var(--tq-radius-sm);
+}
+
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+::selection {
+  background: var(--tq-accent-soft-hover);
+}
+
+/* Thin, theme-aware scrollbars; the app has many small scrolling panes. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--tq-scrollbar) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: var(--tq-scrollbar);
+  border: 3px solid transparent;
+  background-clip: padding-box;
+  border-radius: var(--tq-radius-pill);
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--tq-scrollbar-hover);
+  background-clip: padding-box;
+}
+
+*::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

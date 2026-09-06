@@ -1,0 +1,88 @@
+.row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(240px, 340px);
+  gap: var(--tq-space-7);
+  align-items: start;
+  padding: var(--tq-space-5) var(--tq-space-6);
+}
+
+.row + .row {
+  border-top: 1px solid var(--tq-border-subtle);
+}
+
+.label {
+  font-size: var(--tq-text-base);
+  font-weight: var(--tq-weight-medium);
+  color: var(--tq-text);
+}
+
+.help {
+  max-width: 68ch;
+  margin-top: var(--tq-space-2);
+  color: var(--tq-text-muted);
+  font-size: var(--tq-text-sm);
+  line-height: var(--tq-leading-relaxed);
+}
+
+.control {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: var(--tq-space-3);
+}
+
+.input,
+.select {
+  width: 100%;
+  height: 30px;
+  padding: 0 var(--tq-space-4);
+  border: 1px solid var(--tq-border);
+  border-radius: var(--tq-radius-md);
+  background: var(--tq-surface-sunken);
+  color: var(--tq-text);
+  font-size: var(--tq-text-base);
+  outline: none;
+  transition: border-color var(--tq-duration-fast) var(--tq-ease);
+}
+
+.input:focus,
+.select:focus {
+  border-color: var(--tq-accent);
+}
+
+.input:disabled,
+.select:disabled {
+  color: var(--tq-text-subtle);
+}
+
+.mono {
+  font-family: var(--tq-font-mono);
+  font-size: var(--tq-text-sm);
+}
+
+/* A row whose control is too wide for the right-hand column: the label sits above it. */
+.stackRow {
+  padding: var(--tq-space-5) var(--tq-space-6);
+  border-top: 1px solid var(--tq-border-subtle);
+}
+
+/* The five run-state colours, shown so the palette is documented where people see it. */
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--tq-space-3);
+  margin-top: var(--tq-space-4);
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--tq-space-3);
+  height: 26px;
+  padding: 0 var(--tq-space-4) 0 var(--tq-space-3);
+  border: 1px solid var(--tq-border);
+  border-radius: var(--tq-radius-pill);
+  background: var(--tq-surface-sunken);
+  font-size: var(--tq-text-sm);
+  color: var(--tq-text-muted);
+}

@@ -1,0 +1,102 @@
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--tq-space-3);
+  border-radius: var(--tq-radius-md);
+  border: 1px solid transparent;
+  font-size: var(--tq-text-base);
+  font-weight: var(--tq-weight-medium);
+  line-height: 1;
+  white-space: nowrap;
+  transition:
+    background-color var(--tq-duration-fast) var(--tq-ease),
+    border-color var(--tq-duration-fast) var(--tq-ease),
+    color var(--tq-duration-fast) var(--tq-ease),
+    box-shadow var(--tq-duration-fast) var(--tq-ease);
+}
+
+.button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* sizes */
+.md {
+  height: 30px;
+  padding: 0 var(--tq-space-4);
+}
+
+.sm {
+  height: 25px;
+  padding: 0 var(--tq-space-3);
+  font-size: var(--tq-text-sm);
+  border-radius: var(--tq-radius-sm);
+}
+
+.lg {
+  height: 36px;
+  padding: 0 var(--tq-space-6);
+  font-size: var(--tq-text-md);
+}
+
+.iconOnly {
+  padding: 0;
+  aspect-ratio: 1;
+  width: auto;
+}
+
+/* variants */
+.primary {
+  background: var(--tq-accent);
+  color: var(--tq-accent-contrast);
+  box-shadow: var(--tq-shadow-sm);
+}
+
+.primary:hover:not(:disabled) {
+  background: var(--tq-accent-hover);
+}
+
+.primary:active:not(:disabled) {
+  background: var(--tq-accent-active);
+}
+
+.secondary {
+  background: var(--tq-surface);
+  border-color: var(--tq-border);
+  color: var(--tq-text);
+}
+
+.secondary:hover:not(:disabled) {
+  background: var(--tq-surface-hover);
+  border-color: var(--tq-border-strong);
+}
+
+.secondary:active:not(:disabled) {
+  background: var(--tq-surface-active);
+}
+
+.ghost {
+  background: transparent;
+  color: var(--tq-text-muted);
+}
+
+.ghost:hover:not(:disabled) {
+  background: var(--tq-surface-hover);
+  color: var(--tq-text);
+}
+
+.ghost:active:not(:disabled) {
+  background: var(--tq-surface-active);
+}
+
+.danger {
+  background: transparent;
+  border-color: var(--tq-border);
+  color: var(--tq-danger);
+}
+
+.danger:hover:not(:disabled) {
+  background: var(--tq-danger-soft);
+  border-color: var(--tq-danger);
+}

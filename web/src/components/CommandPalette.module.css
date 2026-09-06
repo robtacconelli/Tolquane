@@ -1,0 +1,154 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--tq-z-modal);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 12vh;
+  background: var(--tq-overlay);
+  backdrop-filter: blur(2px);
+  animation: fade var(--tq-duration-base) var(--tq-ease);
+}
+
+.palette {
+  width: min(560px, calc(100vw - var(--tq-space-8)));
+  max-height: min(72vh, 620px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--tq-surface-raised);
+  border: 1px solid var(--tq-border);
+  border-radius: var(--tq-radius-xl);
+  box-shadow: var(--tq-shadow-lg);
+  animation: rise var(--tq-duration-base) var(--tq-ease);
+}
+
+.searchRow {
+  display: flex;
+  align-items: center;
+  gap: var(--tq-space-4);
+  padding: var(--tq-space-5) var(--tq-space-6);
+  border-bottom: 1px solid var(--tq-border-subtle);
+  color: var(--tq-text-subtle);
+  transition: border-color var(--tq-duration-fast) var(--tq-ease);
+}
+
+/* The row, not the bare input, carries the focus: the input fills it edge to edge, so a
+ * ring around it would trace the whole header. */
+.searchRow:focus-within {
+  border-bottom-color: var(--tq-accent-line);
+  color: var(--tq-accent);
+}
+
+.input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: none;
+  outline: none;
+  font-size: var(--tq-text-lg);
+  color: var(--tq-text);
+}
+
+.input:focus-visible {
+  outline: none;
+}
+
+.input::placeholder {
+  color: var(--tq-text-subtle);
+}
+
+.list {
+  padding: var(--tq-space-3);
+  overflow-y: auto;
+}
+
+.group {
+  padding: var(--tq-space-3) var(--tq-space-4) var(--tq-space-1);
+  font-size: var(--tq-text-xs);
+  font-weight: var(--tq-weight-semibold);
+  letter-spacing: var(--tq-tracking-wide);
+  text-transform: uppercase;
+  color: var(--tq-text-subtle);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--tq-space-4);
+  width: 100%;
+  height: 34px;
+  padding: 0 var(--tq-space-4);
+  border-radius: var(--tq-radius-md);
+  color: var(--tq-text-muted);
+  font-size: var(--tq-text-base);
+  text-align: left;
+  cursor: default;
+}
+
+.rowActive {
+  background: var(--tq-accent-soft);
+  color: var(--tq-accent);
+}
+
+.rowText {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rowHint {
+  color: var(--tq-text-subtle);
+  font-size: var(--tq-text-sm);
+}
+
+.foot {
+  display: flex;
+  align-items: center;
+  gap: var(--tq-space-5);
+  padding: var(--tq-space-3) var(--tq-space-6);
+  border-top: 1px solid var(--tq-border-subtle);
+  background: var(--tq-surface);
+  color: var(--tq-text-subtle);
+  font-size: var(--tq-text-xs);
+}
+
+.footItem {
+  display: flex;
+  align-items: center;
+  gap: var(--tq-space-2);
+}
+
+.footNote {
+  margin-left: auto;
+}
+
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.985);
+  }
+}
+
+.foot kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 var(--tq-space-2);
+  border: 1px solid var(--tq-border);
+  border-radius: var(--tq-radius-xs);
+  background: var(--tq-surface-raised);
+  font-family: var(--tq-font-ui);
+  font-size: 10px;
+  line-height: 1;
+}
