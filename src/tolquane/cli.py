@@ -410,6 +410,9 @@ def _port_taken(host: str, port: int) -> bool:
     for family, kind, proto, _canonical, address in addresses:
         try:
             with socket.socket(family, kind, proto) as probe:
+                # uvicorn binds with SO_REUSEADDR, so a connection in TIME_WAIT from a
+                # server that just stopped must not count as the port being taken.
+                probe.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
                 probe.bind(address)
         except OSError:
             return True
