@@ -131,6 +131,26 @@ print(report.busiest(1))         # the stage to farm next
 tq.run(graph, trace="trace.json")                   # open in Perfetto or chrome://tracing
 ```
 
+## Watch a run, and stop it
+
+```python
+stop = threading.Event()
+
+def show(p):                                        # called from the watchdog thread
+    print(p.phase, {name: n.items_out for name, n in p.nodes.items()})
+
+tq.run(graph, on_progress=show, progress_interval=0.5, tap=5, stop=stop)
+```
+
+`show` is called every half second and once more at the end, where `p.phase` says how the
+run finished: `done`, `failed`, `cancelled` or `deadlock`. A snapshot reads the counters
+without taking a channel lock, so watching costs the run nothing; `tap=5` also keeps the
+last five items of every edge as text in `p.edges["src->dst"].taps`, which does cost a
+`repr` per item. Setting `stop` cancels the run the way an error does, and `tq.run` then
+raises `tq.RunCancelled`. `tolquane run flow.py --events` prints the same snapshots, the
+flow's own output, the report and any error as one JSON object per line: that is how a
+supervisor follows a run it did not start itself.
+
 ## A topology the blocks cannot say
 
 ```python

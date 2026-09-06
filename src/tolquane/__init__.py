@@ -43,6 +43,7 @@ from .errors import (
     DeadlockError,
     GraphError,
     NodeError,
+    RunCancelled,
     TolquaneError,
     WorkerDied,
 )
@@ -51,7 +52,7 @@ from .net import PeerFailed, PeerLost, load_deployment
 from .optimize import optimize
 from .run import check, run
 from .runner import Context
-from .runtime import NodeStats, Report
+from .runtime import EdgeProgress, NodeProgress, NodeStats, Progress, Report
 from .session import Session, SessionClosed
 
 __version__ = "1.1.0"
@@ -65,6 +66,7 @@ __all__ = [
     "Comb",
     "Context",
     "DeadlockError",
+    "EdgeProgress",
     "Farm",
     "Feedback",
     "Graph",
@@ -72,11 +74,14 @@ __all__ = [
     "ListSink",
     "Node",
     "NodeError",
+    "NodeProgress",
     "NodeStats",
     "PeerFailed",
     "PeerLost",
     "Pipeline",
+    "Progress",
     "Report",
+    "RunCancelled",
     "Session",
     "SessionClosed",
     "TolquaneError",

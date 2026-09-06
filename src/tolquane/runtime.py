@@ -5,12 +5,21 @@ from __future__ import annotations
 import enum
 import threading
 import time
+from collections import deque
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
 from .channel import Edge, Inbox, Loop, Outbox, Window
-from .errors import Cancelled, DeadlockError, GraphError, NodeError, RunFailure, TolquaneError
+from .errors import (
+    Cancelled,
+    DeadlockError,
+    GraphError,
+    NodeError,
+    RunCancelled,
+    RunFailure,
+    TolquaneError,
+)
 from .graph import DEFAULT_BATCH, DEFAULT_CAPACITY, Graph, NodeSpec
 from .policies import Strategy, make_strategy
 from .runner import run_node
@@ -52,6 +61,19 @@ class NodeStats:
         """Fraction of the node's own life spent busy, 0 to 1. Compare ``busy`` seconds
         across nodes to find the bottleneck: a node's life ends when its inputs do."""
         return self.busy / self.elapsed if self.elapsed > 0 else 0.0
+
+    def to_dict(self) -> dict[str, Any]:
+        """The counts and times as JSON-ready data."""
+        return {
+            "items_in": self.items_in,
+            "items_out": self.items_out,
+            "dropped": self.dropped,
+            "elapsed": self.elapsed,
+            "busy": self.busy,
+            "wait_in": self.wait_in,
+            "wait_out": self.wait_out,
+            "busy_share": self.busy_share,
+        }
 
     def _record_wait(self, reason: str, seconds: float, outside: bool) -> None:
         if outside:
@@ -429,6 +451,146 @@ def describe_stall(insts: list[NodeInstance]) -> str:
 
 
 @dataclass
+class NodeProgress:
+    """One node as it is right now: what it is doing and what it has handled so far."""
+
+    state: str
+    reason: str
+    detail: str
+    items_in: int
+    items_out: int
+    dropped: int
+    busy: float
+    wait_in: float
+    wait_out: float
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "state": self.state,
+            "reason": self.reason,
+            "detail": self.detail,
+            "items_in": self.items_in,
+            "items_out": self.items_out,
+            "dropped": self.dropped,
+            "busy": self.busy,
+            "wait_in": self.wait_in,
+            "wait_out": self.wait_out,
+        }
+
+
+@dataclass
+class EdgeProgress:
+    """One channel as it is right now: how full it is, and what has crossed it."""
+
+    queued: int
+    high_water: int
+    capacity: int | None
+    taps: list[str] = field(default_factory=list)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "queued": self.queued,
+            "high_water": self.high_water,
+            "capacity": self.capacity,
+            "taps": self.taps,
+        }
+
+
+@dataclass
+class Progress:
+    """A snapshot of a running graph, handed to ``run(on_progress=...)``.
+
+    Nodes are keyed by name, edges by ``"src->dst"``. ``phase`` is ``"running"`` for
+    every snapshot but the last, which says how the run ended: ``"done"``, ``"failed"``,
+    ``"cancelled"`` or ``"deadlock"``.
+    """
+
+    elapsed: float
+    phase: str
+    nodes: dict[str, NodeProgress] = field(default_factory=dict)
+    edges: dict[str, EdgeProgress] = field(default_factory=dict)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "elapsed": self.elapsed,
+            "phase": self.phase,
+            "nodes": {name: n.to_dict() for name, n in self.nodes.items()},
+            "edges": {key: e.to_dict() for key, e in self.edges.items()},
+        }
+
+
+def _edge_keys(edges: list[Edge]) -> list[tuple[str, Edge]]:
+    """Name every edge ``"src->dst"``, numbering the pairs wired more than once."""
+    keys: list[tuple[str, Edge]] = []
+    seen: dict[str, int] = {}
+    for edge in edges:
+        key = f"{edge.src.name}->{edge.dst.name}"
+        n = seen.get(key, 0)
+        seen[key] = n + 1
+        keys.append((key if n == 0 else f"{key}#{n}", edge))
+    return keys
+
+
+def _read_taps(taps: deque[str]) -> list[str]:
+    """Copy an edge's tap ring without locking it.
+
+    A node appending while the copy is being taken makes ``deque`` refuse to be iterated
+    (on a free-threaded interpreter, where the two really do overlap). The snapshot tries
+    again rather than taking the edge's lock, and gives the tap up after a few tries: a
+    progress display must never get in the way of the run it is watching.
+    """
+    for _ in range(4):
+        try:
+            return list(taps)
+        except RuntimeError:
+            continue
+    return []
+
+
+def _snapshot(
+    insts: list[NodeInstance], keys: list[tuple[str, Edge]], start: float, phase: str
+) -> Progress:
+    """Read every counter as it stands, without taking a channel lock.
+
+    A number read while its node is changing it is at most one item out of date, which
+    is what a progress display wants; taking the locks would put the watchdog in the way
+    of the run it is only watching.
+    """
+    now = time.perf_counter()
+    p = Progress(elapsed=now - start, phase=phase)
+    for inst in insts:
+        stats = inst.stats
+        state = inst.state
+        if state is State.NEW:
+            busy = 0.0
+        elif state is State.DONE or state is State.FAILED:
+            busy = stats.busy  # settled when the node finished
+        else:
+            busy = max(0.0, (now - inst.started_at) - stats.wait_in - stats.wait_out)
+        waiting = state is State.WAITING
+        p.nodes[inst.name] = NodeProgress(
+            state=state.value,
+            reason=inst.reason if waiting else "",
+            detail=inst.detail if waiting else "",
+            items_in=stats.items_in,
+            items_out=stats.items_out,
+            dropped=stats.dropped,
+            busy=busy,
+            wait_in=stats.wait_in,
+            wait_out=stats.wait_out,
+        )
+    for key, edge in keys:
+        taps = edge.taps
+        p.edges[key] = EdgeProgress(
+            queued=edge.queued,
+            high_water=edge.high_water,
+            capacity=edge.capacity,
+            taps=_read_taps(taps) if taps is not None else [],
+        )
+    return p
+
+
+@dataclass
 class Report:
     """What happened during a run. ``print(report)`` shows a table."""
 
@@ -441,6 +603,16 @@ class Report:
         """Node names with the most busy seconds, most busy first: the bottleneck first."""
         ranked = sorted(self.nodes.items(), key=lambda kv: kv[1].busy, reverse=True)
         return [name for name, _ in ranked[:n]]
+
+    def to_dict(self) -> dict[str, Any]:
+        """The report as JSON-ready data. Edges are keyed ``"src->dst"``."""
+        return {
+            "runtime": self.runtime,
+            "elapsed": self.elapsed,
+            "nodes": {name: stats.to_dict() for name, stats in self.nodes.items()},
+            "edges": {f"{src}->{dst}": hw for (src, dst), hw in self.edges.items()},
+            "busiest": self.busiest(3),
+        }
 
     def __str__(self) -> str:
         w = max([len(n) for n in self.nodes] + [4])
@@ -477,9 +649,17 @@ def execute(
     remote_loops: dict[str, tuple[Loop, list[Any]]] | None = None,
     on_failure: Callable[[str], None] | None = None,
     trace: str | None = None,
+    on_progress: Callable[[Progress], None] | None = None,
+    progress_interval: float = 0.5,
+    tap: int = 0,
+    stop: threading.Event | None = None,
 ) -> Report:
     if runtime not in ("threads", "sync", "processes"):
         raise TolquaneError(f"unknown runtime {runtime!r}; use 'threads', 'processes' or 'sync'")
+    if progress_interval <= 0:
+        raise TolquaneError("progress_interval must be greater than zero")
+    if tap < 0:
+        raise TolquaneError("tap must be 0 (off) or the number of items to keep per edge")
     all_workers_remote = runtime == "processes"
     if all_workers_remote:
         runtime = "threads"
@@ -508,6 +688,8 @@ def execute(
             else:
                 edge.entry_loop = dst_loop
                 dst_loop.external_remaining += 1
+        if tap:
+            edge.taps = deque(maxlen=tap)
         edges.append(edge)
     for inst in insts:
         spec = inst.spec
@@ -545,10 +727,25 @@ def execute(
 
     stall_ticks = 0
     last_progress = -1
+    edge_keys = _edge_keys(edges) if on_progress is not None else []
+    next_snapshot = start + progress_interval
+    # A stop event that is already set cancels the run before it does any work.
+    stopped = stop is not None and stop.is_set()
+    if stopped:
+        rc.cancel()
     try:
-        while any(i.live for i in insts):
+        while not stopped and any(i.live for i in insts):
             rc.done_event.wait(TICK)
             rc.done_event.clear()
+            if stop is not None and stop.is_set():
+                stopped = True
+                rc.cancel()
+                break
+            if on_progress is not None:
+                now = time.perf_counter()
+                if now >= next_snapshot:
+                    next_snapshot = now + progress_interval
+                    on_progress(_snapshot(insts, edge_keys, start, "running"))
             if rc.deadlock_message is not None and not rc.cancelled:
                 rc.cancel()
             if rc.cancelled:
@@ -567,7 +764,9 @@ def execute(
                 else:
                     stall_ticks = 0
                     last_progress = -1
-    except KeyboardInterrupt:
+    except BaseException:
+        # A Ctrl-C, or an ``on_progress`` callback that raised: unwind the run first,
+        # so no thread outlives the call that started it.
         rc.cancel()
         _join(insts)
         for remote in remotes:
@@ -580,9 +779,19 @@ def execute(
     if tracer is not None and trace:
         tracer.write(trace, insts)
 
+    # A failure cancels the run, and a cancelled run can look stalled or stopped; the
+    # failure is the cause, so it is what gets reported.
     if rc.failures:
-        # A failure cancels the run, and a cancelled run can look stalled; the failure
-        # is the cause, so it is what gets reported.
+        phase = "failed"
+    elif stopped:
+        phase = "cancelled"
+    elif rc.deadlock_message is not None:
+        phase = "deadlock"
+    else:
+        phase = "done"
+    if on_progress is not None:
+        on_progress(_snapshot(insts, edge_keys, start, phase))
+    if rc.failures:
         for _, exc in rc.failures:
             if isinstance(exc, KeyboardInterrupt | SystemExit | RunFailure):
                 raise exc
@@ -590,6 +799,10 @@ def execute(
         if len(errors) == 1:
             raise errors[0]
         raise ExceptionGroup("several nodes failed", errors)
+    if phase == "cancelled":
+        if rc.on_failure is not None:
+            rc.on_failure("the run was stopped")
+        raise RunCancelled("the run was stopped before it finished")
     if rc.deadlock_message is not None:
         if rc.on_failure is not None:
             rc.on_failure(rc.deadlock_message.splitlines()[0])
@@ -642,4 +855,14 @@ def _join(insts: list[NodeInstance], timeout: float = 5.0) -> None:
         t.join(remaining)
 
 
-__all__ = ["NodeInstance", "NodeStats", "Report", "RunContext", "State", "execute"]
+__all__ = [
+    "EdgeProgress",
+    "NodeInstance",
+    "NodeProgress",
+    "NodeStats",
+    "Progress",
+    "Report",
+    "RunContext",
+    "State",
+    "execute",
+]

@@ -216,8 +216,11 @@ def _run_source(spec: NodeSpec, fn: Any, ctx: Context) -> None:
             f"source {spec.name!r} returned None; a source yields items or returns an iterable"
         )
     send = ctx.send
+    rc = ctx._rc
     for item in items:
-        if ctx._stopped:
+        # Once the run is cancelled nobody reads any more and every send is dropped
+        # instead of blocking, so a source that never ends would spin on for ever.
+        if ctx._stopped or rc.cancelled:
             break
         send(item)
 

@@ -28,6 +28,9 @@ if TYPE_CHECKING:
 FLUSH_AFTER = 0.001
 """Seconds a partial batch may wait before it is sent anyway."""
 
+TAP_WIDTH = 200
+"""Characters a tapped item's ``repr`` is cut to."""
+
 
 @dataclass(frozen=True, slots=True)
 class Tagged:
@@ -168,6 +171,7 @@ class Edge:
         "queued",
         "src",
         "src_index",
+        "taps",
     )
 
     def __init__(
@@ -189,6 +193,7 @@ class Edge:
         self.queued = 0
         self.high_water = 0
         self.pending: list[Any] = []
+        self.taps: deque[str] | None = None  # set by execute() when tap=N asks for them
         self.last_flush = time.monotonic()
         self.loop: Loop | None = None
         self.entry_loop: Loop | None = None
@@ -352,6 +357,8 @@ class Outbox:
             self._push_entry(e, Batch(items), n)
 
     def _push_entry(self, edge: Edge, entry: Any, n: int) -> None:
+        if edge.taps is not None:
+            record_taps(edge.taps, entry)
         if edge.inbox.push(edge, entry, n):
             self.inst.stats.items_out += n
         else:
@@ -579,6 +586,26 @@ class Outbox:
         e.closed = True
         self._acquire_credit(e, 1)
         e.inbox.push(e, EOS)
+
+
+def record_taps(taps: deque[str], entry: Any) -> None:
+    """Note what is crossing an edge, as text, now.
+
+    The ``repr`` is taken as the item is handed over, so an object the receiver mutates
+    later still shows the value that was sent. Tags are unwrapped and the markers that
+    only the runtime cares about are left out: a tap shows what user code sent.
+    """
+    items = entry.items if isinstance(entry, Batch) else (entry,)
+    for item in items:
+        if isinstance(item, Tagged | TaggedOut):
+            item = item.item
+        if item is END or item is EOS or item is LOOP_DONE:
+            continue
+        try:
+            text = repr(item)
+        except Exception as exc:  # a broken __repr__ must not take the run down
+            text = f"<{type(item).__name__} has no usable repr: {type(exc).__name__}>"
+        taps.append(text[:TAP_WIDTH])
 
 
 def split_sequence(item: Any, n: int, node: str) -> list[Any]:

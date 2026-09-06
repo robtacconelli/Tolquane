@@ -4,12 +4,12 @@ from __future__ import annotations
 
 import queue
 import threading
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from typing import Any
 
 from .errors import GraphError, TolquaneError
 from .graph import Graph, NodeSpec, connect, expand, validate
-from .runtime import Report, execute
+from .runtime import Progress, Report, execute
 
 _CLOSE = object()
 _END = object()
@@ -23,7 +23,9 @@ class Session:
     """A running graph you feed with ``put`` and read with ``get`` or iteration.
 
     Use it as a context manager; leaving the block closes the input, waits for the
-    graph to drain and re-raises any failure.
+    graph to drain and re-raises any failure. ``on_progress``, ``progress_interval``,
+    ``tap`` and ``stop`` work as they do in ``run``; a session that is stopped raises
+    ``RunCancelled`` when the block is left.
     """
 
     def __init__(
@@ -34,6 +36,10 @@ class Session:
         capacity: int | None = 1024,
         batch: int = 32,
         deadlock_timeout: float | None = 0.3,
+        on_progress: Callable[[Progress], None] | None = None,
+        progress_interval: float = 0.5,
+        tap: int = 0,
+        stop: threading.Event | None = None,
     ) -> None:
         if runtime not in ("threads", "processes"):
             raise GraphError("session() runs on the threads or processes runtime, not sync")
@@ -63,6 +69,10 @@ class Session:
         self._capacity = capacity
         self._batch = batch
         self._deadlock_timeout = deadlock_timeout
+        self._on_progress = on_progress
+        self._progress_interval = progress_interval
+        self._tap = tap
+        self._stop = stop
         self._thread = threading.Thread(target=self._run, name="tolquane:session", daemon=True)
 
     def _feed(self, ctx: Any) -> None:
@@ -86,6 +96,10 @@ class Session:
                 capacity=self._capacity,
                 batch=self._batch,
                 deadlock_timeout=self._deadlock_timeout,
+                on_progress=self._on_progress,
+                progress_interval=self._progress_interval,
+                tap=self._tap,
+                stop=self._stop,
             )
         except BaseException as exc:
             self._error = exc

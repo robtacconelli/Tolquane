@@ -35,6 +35,7 @@ import threading
 import time
 import tomllib
 from collections import deque
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -760,6 +761,10 @@ def run_group(
     capacity: int | None = 1024,
     batch: int = 32,
     deadlock_timeout: float | None = 0.3,
+    on_progress: Callable[[Any], None] | None = None,
+    progress_interval: float = 0.5,
+    tap: int = 0,
+    stop: threading.Event | None = None,
 ) -> Any:
     """Run this group's share of ``graph``; every other group runs the same call elsewhere."""
     from .runtime import execute
@@ -781,6 +786,10 @@ def run_group(
             batch=batch,
             deadlock_timeout=deadlock_timeout,
             on_failure=lambda message: setattr(state, "failure", message),
+            on_progress=on_progress,
+            progress_interval=progress_interval,
+            tap=tap,
+            stop=stop,
         )
     finally:
         state.close()

@@ -21,6 +21,10 @@ class DeadlockError(TolquaneError):
     """Every live node is waiting on another one, so nothing can make progress."""
 
 
+class RunCancelled(TolquaneError):
+    """The run was stopped through its ``stop`` event before it had finished."""
+
+
 class NodeError(TolquaneError):
     """User code inside a node raised. The original exception is the ``__cause__``."""
 

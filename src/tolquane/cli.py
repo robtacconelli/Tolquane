@@ -6,11 +6,13 @@ import argparse
 import importlib.util
 import json
 import sys
+import threading
+import time
 from pathlib import Path
 from typing import Any
 
 from . import check, draw, explain, optimize, run
-from .errors import TolquaneError
+from .errors import DeadlockError, RunCancelled, TolquaneError
 
 
 def _load_flow(path: str) -> Any:
@@ -69,12 +71,60 @@ def cmd_draw(args: argparse.Namespace) -> int:
 def cmd_run(args: argparse.Namespace) -> int:
     if bool(args.deploy) != bool(args.group):
         raise SystemExit("--deploy and --group go together")
+    if args.events:
+        return _run_with_events(args)
     report = run(
         _graph(args), runtime=args.runtime, batch=args.batch, deploy=args.deploy, group=args.group
     )
     if args.stats:
         print(report, file=sys.stderr)
     return 0
+
+
+EXIT_CODES = {"done": 0, "failed": 1, "deadlock": 1, "cancelled": 130}
+
+
+def _run_with_events(args: argparse.Namespace) -> int:
+    """Run the flow and report it as JSON lines: what a supervisor watches a run through."""
+    from ._events import EventStream, capture_output, graph_view, stop_on_signal
+
+    stream = EventStream(sys.stdout)  # the real stdout, taken before the flow's is swapped
+    stop = threading.Event()
+    status = "done"
+    start = time.perf_counter()
+    # The capture is up before the flow is imported, so nothing a flow prints, at import
+    # time or later, can end up in the middle of the line stream.
+    with stop_on_signal(stop), capture_output(stream):
+        try:
+            graph = check(_graph(args))
+            stream.emit("start", graph=graph_view(graph), runtime=args.runtime, flow=args.flow)
+            report = run(
+                graph,
+                runtime=args.runtime,
+                batch=args.batch,
+                deploy=args.deploy,
+                group=args.group,
+                on_progress=stream.progress,
+                progress_interval=args.progress_interval,
+                tap=args.tap,
+                stop=stop,
+            )
+        except (RunCancelled, KeyboardInterrupt):
+            status = "cancelled"
+        except DeadlockError as exc:
+            stream.emit("deadlock", message=str(exc))
+            status = "deadlock"
+        except ExceptionGroup as group:
+            for failure in group.exceptions:
+                stream.error(failure)
+            status = "failed"
+        except (Exception, SystemExit) as exc:
+            stream.error(exc)
+            status = "failed"
+        else:
+            stream.emit("report", report=report.to_dict())
+    stream.emit("done", status=status, elapsed=time.perf_counter() - start)
+    return EXIT_CODES[status]
 
 
 def cmd_optimize(args: argparse.Namespace) -> int:
@@ -193,6 +243,26 @@ def main(argv: list[str] | None = None) -> int:
             p.add_argument("--runtime", default="threads", choices=["threads", "processes", "sync"])
             p.add_argument("--batch", type=int, default=32)
             p.add_argument("--stats", action="store_true", help="print the run report")
+            p.add_argument(
+                "--events",
+                action="store_true",
+                help="print the run as JSON lines (start, progress, stdout, report, done); "
+                "the flow's own output becomes events, SIGTERM cancels the run",
+            )
+            p.add_argument(
+                "--progress-interval",
+                type=float,
+                default=0.5,
+                metavar="S",
+                help="seconds between --events progress snapshots (default 0.5)",
+            )
+            p.add_argument(
+                "--tap",
+                type=int,
+                default=0,
+                metavar="N",
+                help="keep the last N items of every edge in the progress snapshots",
+            )
             p.add_argument("--optimize", action="store_true", help="cut threads before running")
             p.add_argument(
                 "--deploy", default=None, help="deploy file (TOML) cutting the graph into groups"

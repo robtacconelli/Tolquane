@@ -82,8 +82,9 @@ with tq.session(tq.farm(work, 4)) as s:       # keep a graph running
 
 Errors: `tq.GraphError` (bad wiring, raised before anything runs), `tq.NodeError`
 (user code raised; `.node`, `.index`, `__cause__`), `tq.DeadlockError` (every node
-waiting; message names the cycle), `tq.WorkerDied` (a worker process crashed).
-Several failures come as an `ExceptionGroup`.
+waiting; message names the cycle), `tq.WorkerDied` (a worker process crashed),
+`tq.RunCancelled` (the run's `stop` event was set). Several failures come as an
+`ExceptionGroup`.
 
 Distributed: a deploy file (TOML) names groups, gives each an `endpoint = "host:port"`
 and lists the `nodes` it runs (node names, farm names or glob patterns such as
@@ -96,6 +97,27 @@ Processes: workers must be importable (module-level functions or classes, a
 `if __name__ == "__main__":` guard); lambdas and closures need `pip install cloudpickle`.
 Worker state lives in the child; send results out in `on_end`. Send rows, chunks or
 arrays rather than scalars, since each hand-off now crosses a pipe.
+
+## Watching a run
+
+```python
+tq.run(graph, on_progress=show, progress_interval=0.5, tap=5, stop=threading.Event())
+#   tolquane run flow.py --events [--progress-interval 0.5] [--tap 5]
+```
+
+`show(p)` is called from the run's watchdog thread every `progress_interval` seconds and
+once more at the end, where `p.phase` turns from `"running"` into `"done"`, `"failed"`,
+`"cancelled"` or `"deadlock"`. `p.nodes[name]`: `state` (`new`, `running`, `waiting`,
+`done`, `failed`), `reason` (`input`, `output`, `window`, `loop`), `detail`, `items_in`,
+`items_out`, `dropped`, `busy`, `wait_in`, `wait_out`. `p.edges["src->dst"]`: `queued`,
+`high_water`, `capacity`, `taps` (the last `tap` items as `repr` cut to 200 characters;
+none by default). Snapshots take no channel lock, so watching costs the run nothing.
+Setting `stop` cancels the run the way an error does and `run` then raises
+`tq.RunCancelled`; a failure is still reported ahead of the cancellation it caused.
+`p.to_dict()` and `report.to_dict()` are JSON-ready. `--events` prints one JSON object
+per line (`start` with the expanded graph, `progress`, `stdout`, `stderr`, `report`,
+`error`, `deadlock`, `done`), turning the flow's own output into events; `SIGTERM` and
+`SIGINT` cancel the run, and it exits 0, 1 or 130.
 
 ## Looking before running
 

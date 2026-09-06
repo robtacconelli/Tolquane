@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import threading
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
 from .errors import TolquaneError
 from .graph import Graph, build, validate
-from .runtime import Report, execute
+from .runtime import Progress, Report, execute
 
 
 def check(block: Any) -> Graph:
@@ -28,6 +30,10 @@ def run(
     deploy: str | Path | dict[str, Any] | None = None,
     group: str | None = None,
     trace: str | None = None,
+    on_progress: Callable[[Progress], None] | None = None,
+    progress_interval: float = 0.5,
+    tap: int = 0,
+    stop: threading.Event | None = None,
 ) -> Report:
     """Run a block to completion and return a ``Report``.
 
@@ -44,6 +50,11 @@ def run(
     every group runs the same call with its own name. ``trace`` writes a Chrome trace
     file (open it in Perfetto or chrome://tracing) with every node's run and every
     wait for input, output or window, to see where time goes.
+    ``on_progress`` is called with a ``Progress`` snapshot every ``progress_interval``
+    seconds while the run is going and once more when it ends, from the watchdog thread;
+    ``tap=N`` adds the last ``N`` items that crossed each edge to it, as text. ``stop``
+    is a ``threading.Event``: setting it cancels the run the way an error does, and
+    ``run`` then raises ``RunCancelled``.
     """
     if capacity is not None and capacity < 1:
         raise TolquaneError("capacity must be at least 1, or None for unbounded")
@@ -65,6 +76,10 @@ def run(
             capacity=capacity,
             batch=batch,
             deadlock_timeout=deadlock_timeout,
+            on_progress=on_progress,
+            progress_interval=progress_interval,
+            tap=tap,
+            stop=stop,
         )
         return report
     return execute(
@@ -74,4 +89,8 @@ def run(
         batch=batch,
         deadlock_timeout=deadlock_timeout,
         trace=trace,
+        on_progress=on_progress,
+        progress_interval=progress_interval,
+        tap=tap,
+        stop=stop,
     )
