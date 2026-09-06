@@ -225,11 +225,130 @@ has passed exactly once, records `next_run` in the store before calling `fire`, 
 skips runs missed while the server was down (one fire, not a backlog). `fire` is the
 server's "start a run" and must not block.
 
-## S4. The server (wave 1), for reference
+## S4. The server (`tolquane.web.server`, `tolquane.web.supervisor`)
 
-FastAPI under `/api`, WebSocket at `/api/runs/{id}/events`, OpenAPI at `/api/openapi.json`,
-static files at `/`. Routes: `GET/POST /api/flows`, `GET/PUT/DELETE /api/flows/{path}`,
-`POST /api/flows/{path}/parse|generate|check|explain|draw|optimize`, `GET/POST /api/runs`,
-`GET /api/runs/{id}`, `POST /api/runs/{id}/cancel`, `GET /api/runs/{id}/log|trace`,
-`GET/POST/PUT/DELETE /api/schedules`, `GET/PUT /api/settings`, `POST /api/ai/chat`
-(server-sent events), `GET /api/health`.
+FastAPI, started by `tolquane web [--host 127.0.0.1] [--port 8765] [--workspace DIR]
+[--token T] [--no-browser] [--check]`. Everything under `/api`; OpenAPI at
+`/api/openapi.json` (the frontend client is generated from it); the built frontend is
+served at `/` with an SPA fallback (unknown paths return `index.html`). With `--token`,
+every request needs `Authorization: Bearer T` (the WebSocket takes `?token=T`); without
+it the server binds only to loopback and refuses `--host` other than `127.0.0.1`.
+`--check` starts, hits `/api/health`, stops, for CI.
+
+### Workspace and flow paths
+
+The workspace is one directory (`--workspace`, default the current directory, stored in
+settings). A flow is a `.py` file inside it, addressed by its path relative to the
+workspace with forward slashes (`{path}` below, URL-encoded; `..` and absolute paths are
+rejected with 400). A flow's sidecar is `<stem>.layout.json` next to it.
+
+### Errors
+
+Every error is `{"error": {"type": "GraphError", "message": "...", "detail": {...}}}`
+with 400 for a bad request or a flow that does not validate, 404 for unknown paths and
+ids, 409 for a stale save, 401 for a bad token, 500 for the rest. `GraphError` and
+`TolquaneError` messages are passed through unchanged: they already say the fix.
+
+### Flows
+
+```
+GET  /api/flows                     -> {"workspace": "/abs/path", "flows": [{"path": "hello.py", "name": "hello",
+                                        "modified": "2026-09-06T10:00:00Z", "size": 1234, "has_layout": true,
+                                        "last_run": {"id": 12, "status": "done", "ended": "..."} | null}]}
+POST /api/flows                     {"path": "new.py", "template": "empty" | "hello" | {"model": <FlowModel>}} -> the flow (below)
+GET  /api/flows/{path}              -> {"path": ..., "source": "...", "modified": ..., "model": <FlowModel> | null,
+                                        "code_only": {"reason": "..."} | null, "graph": <graph_view>, "layout": <Layout> | null}
+PUT  /api/flows/{path}              {"source": "...", "modified": <the modified you were given>} -> the flow; 409 with the
+                                     current source when the file changed since (client shows a diff)
+PUT  /api/flows/{path}/layout       <Layout> -> {"ok": true}
+DELETE /api/flows/{path}            -> {"ok": true}
+POST /api/flows/{path}/rename       {"path": "other.py"} -> the flow
+POST /api/flows/parse               {"source": "...", "name": "flow"} -> {"model": ... | null, "code_only": ... | null, "graph": ...}
+POST /api/flows/generate            {"model": <FlowModel>} -> {"source": "..."}
+POST /api/flows/{path}/check        -> {"ok": true, "nodes": 12, "edges": 14} or 400 with the GraphError
+POST /api/flows/{path}/explain      -> {"text": "..."}
+POST /api/flows/{path}/draw         -> {"mermaid": "..."}
+POST /api/flows/{path}/optimize     {"all2all": false} -> {"source": "...", "notes": ["..."], "graph": <graph_view>}
+```
+
+`parse`, `generate`, `check`, `explain`, `draw` and `optimize` run user code, so the
+server runs them in a child process through `python -m tolquane.web.model ...` and
+`python -m tolquane ...` with a timeout (settings `exec_timeout`, default 30 s), never
+by importing the flow itself.
+
+### Runs
+
+```
+POST /api/runs                      {"path": "hello.py", "runtime": "threads" | "processes" | "sync",
+                                     "sample": "three lines" | null, "batch": 32, "tap": 5, "trace": false,
+                                     "optimize": false} -> <Run>
+GET  /api/runs?flow=hello.py&limit=50 -> {"runs": [<Run>]}
+GET  /api/runs/{id}                 -> <Run> (the store's Run.to_dict(), plus "live": true while running)
+POST /api/runs/{id}/cancel          -> <Run>
+GET  /api/runs/{id}/log             -> text/plain, the captured stdout and stderr
+GET  /api/runs/{id}/trace           -> the Chrome trace file, 404 when the run had none
+WS   /api/runs/{id}/events          -> every event line of the run as a JSON message, in order; a client that
+                                     connects late first receives the events so far (the supervisor keeps them
+                                     in memory until the run ends and for 10 minutes after), then live ones; the
+                                     socket closes after the "done" event
+```
+
+The supervisor owns the child processes: `python -m tolquane run <path> --events
+--progress-interval 0.5 --tap N [--sample tmpfile] [--runtime R] [--batch B] [--trace
+file] [--optimize]` with the workspace as the working directory and the flow's directory
+on `sys.path`. It limits concurrent runs (setting `max_concurrent_runs`, default 4;
+beyond it `POST /api/runs` answers 429), records every event into the run's log (the
+store keeps the last 64 KB), writes the report and status to the store on `done`, sends
+SIGTERM on cancel and SIGKILL after `cancel_grace` seconds (default 10), and kills every
+child when the server exits. A sample is written to a temporary `.json` file the CLI
+reads with `--sample`.
+
+### Schedules
+
+```
+GET    /api/schedules?flow=          -> {"schedules": [<Schedule> + {"description": cron.describe(), "next_five": [...]}]}
+POST   /api/schedules                {"flow": "hello.py", "cron": "*/15 * * * *", "sample": null, "runtime": "threads",
+                                      "enabled": true} -> <Schedule>; 400 with the cron error otherwise
+PUT    /api/schedules/{id}           any of the fields above -> <Schedule>
+DELETE /api/schedules/{id}           -> {"ok": true}
+POST   /api/schedules/{id}/run       -> <Run>   (fire now)
+POST   /api/schedules/preview        {"cron": "..."} -> {"description": "...", "next_five": ["..."]}
+```
+
+The scheduler's `fire` starts a run with trigger `schedule:<id>` through the supervisor.
+
+### Settings
+
+```
+GET /api/settings  -> {"workspace": "...", "default_runtime": "threads", "default_batch": 32, "exec_timeout": 30,
+                       "max_concurrent_runs": 4, "cancel_grace": 10, "theme": "dark",
+                       "ai": {"provider": "anthropic", "model": null, "has_anthropic_key": true, "has_openai_key": false},
+                       "server": {"host": "127.0.0.1", "port": 8765, "token_set": false}}
+PUT /api/settings  any subset of the above; "ai.anthropic_key" and "ai.openai_key" may be sent to store a key
+```
+
+Keys never enter the SQLite store: the server writes them to `~/.tolquane/web.toml`
+with mode 600 (or the file named by `TOLQUANE_WEB_CONFIG`), reads them from there or
+from `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` in the environment, and only ever reports
+whether one is set. Every other setting lives in the store.
+
+### AI chat
+
+```
+POST /api/ai/chat   {"path": "hello.py" | null, "messages": [{"role": "user", "content": "..."}], "provider": ..., "model": ...,
+                     "sample": "three lines" | null}
+                    -> text/event-stream
+```
+
+Events: `{"type": "text", "delta": "..."}` for the assistant's words, `{"type":
+"tool", "name": "write_flow", "status": "started" | "done", "summary": "..."}` for each
+tool call the builder makes, `{"type": "flow", "source": "...", "model": ..., "graph":
+...}` when the builder has written or changed the flow (the frontend offers "apply"),
+`{"type": "done", "usage": {...}}`, `{"type": "error", "message": "..."}`. The server
+runs `tolquane.ai.Builder` with the workspace as its workdir, the open flow's source in
+the first user turn's context, and the sample when given; it never writes over the
+open file itself: the client applies the result through `PUT /api/flows/{path}`.
+
+### Health
+
+`GET /api/health -> {"ok": true, "version": "1.2.0", "workspace": "...", "runs_live": 1, "scheduler": true}`
