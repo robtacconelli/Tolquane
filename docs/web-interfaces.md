@@ -404,3 +404,173 @@ earlier messages of the conversation.
 ### Health
 
 `GET /api/health -> {"ok": true, "version": "1.2.0", "workspace": "...", "runs_live": 1, "scheduler": true}`
+
+# 1.3: users, inputs and environments, history, schedule outcomes
+
+Four additions, built against the contracts below. Version 1.3.
+
+## U. Users and sessions
+
+**Modes.** `GET /api/auth/me` reports `mode`: `local` (bound to loopback, no `--token`,
+no users defined: every request is the implicit admin `local`, no login), `users`
+(at least one user exists: login required, on loopback too), `token` (`--token` given
+and no users yet: the token acts as an admin API token, and lets the first admin be
+created from the login page). The `--token` value keeps working as an admin API token
+in every mode, for scripts and setup.
+
+**Store.** `users(id, name unique, role 'admin'|'member', password_hash, created,
+disabled, must_change_password)` with `hashlib.scrypt` (`n=2**14, r=8, p=1`, per-user
+salt, stored as `scrypt$<salt b64>$<hash b64>`); `sessions(id, token_hash sha256,
+user_id, kind 'session'|'api', label, created, expires, last_seen)`. Session tokens
+are `secrets.token_urlsafe(32)`, shown once, sliding 30-day expiry; API tokens do not
+expire. `runs` and `schedules` gain a `user` column (the name; `local` in local mode).
+
+**Routes.**
+
+```
+POST /api/auth/login        {"name", "password"} -> {"token", "user"}; 401 on a wrong pair, 403 when disabled
+POST /api/auth/logout       -> {"ok": true}   (the session is deleted)
+GET  /api/auth/me           -> {"user": {"id", "name", "role", "must_change_password"} | null, "mode": "local"|"users"|"token",
+                                "can_setup": true when mode is token and no users exist}
+POST /api/auth/setup        {"name", "password"} -> creates the first admin; only in token mode with the token, 409 afterwards
+POST /api/auth/password     {"current", "new"} -> {"ok": true}; clears must_change_password
+GET  /api/auth/tokens       -> {"tokens": [{"id", "label", "created", "last_seen"}]}
+POST /api/auth/tokens       {"label"} -> {"id", "token"}   (the token is shown once)
+DELETE /api/auth/tokens/{id}
+GET  /api/users             admin -> {"users": [{"id", "name", "role", "created", "disabled", "must_change_password", "last_seen"}]}
+POST /api/users             admin {"name", "role", "password"} -> the user (must_change_password true)
+PUT  /api/users/{id}        admin {"role"?, "disabled"?, "password"?} -> the user; 400 when it would leave no enabled admin
+DELETE /api/users/{id}      admin -> {"ok": true}; 400 for yourself or the last admin
+```
+
+The bearer token is a session token, an API token, or the `--token` value. Passwords
+are at least 8 characters. Names are `[a-z0-9_.-]{2,32}`, lower-cased.
+
+**Roles.** `member`: flows, runs, schedules, AI, history; `GET /api/settings` (keys
+and server section hidden); `PUT /api/settings` only for `theme`. `admin`: everything,
+including users, settings, keys, `history/init`. A route the role cannot use answers
+403 `{"error": {"type": "Forbidden", ...}}`. `GET /api/health` needs no login and
+omits `workspace` when the caller is not signed in.
+
+**CLI.** `tolquane web users add NAME [--admin] [--password P]` (prompts when no
+`--password`), `users list`, `users disable NAME`, `users enable NAME`, `users passwd
+NAME`; all operate on the store named by `TOLQUANE_HOME` or the defaults, without a
+running server.
+
+**Frontend.** A `/login` page (name, password; "create the first admin" in token
+mode; the token dialog stays for token mode); an account menu at the bottom of the
+sidebar (name, role, change password, personal API tokens, sign out); a `/users` page
+for admins (list, create with a temporary password shown once, change role, disable,
+reset password, delete); route guards (members never see Users, and Settings hides
+the admin sections); a 401 anywhere sends to `/login` and back afterwards; a forced
+password change on first login.
+
+## E. Inputs and environments
+
+**Parameters.** A flow may declare keyword-only parameters after `source`, each with a
+literal default: `def build(source=None, *, threshold: float = 0.5, path: str =
+"data.csv")`. The model gains `params: [{"name", "default": "<python literal source>",
+"annotation": "<source>" | null}]`, in order; the code generator writes them back; a
+parameter without a default, or a default that is not a literal (`ast.literal_eval`),
+makes the file `CodeOnly` with that reason.
+
+**CLI.** `tolquane run|check|explain|draw flow.py --param name=value` (repeatable;
+`value` goes through `ast.literal_eval`, a plain word stays a string) and
+`tolquane run --env NAME=value` (repeatable). `build()` is called with the parameters
+as keywords; unknown names are an error naming the flow's parameters. The `--events`
+`start` event carries `params` and `env` (names only).
+
+**Runs and schedules.** `POST /api/runs` and the schedule bodies gain `params: {name:
+value}` and `env: {NAME: value}` (both JSON, stored with the run and the schedule);
+`Run.to_dict()` and schedules return them. The supervisor passes `--param`/`--env`
+to the child; per-run env is applied after the workspace env below and after the
+secret stripping, so a run can set anything except the server's own keys.
+
+**Workspace settings.** `python`: the interpreter for runs and one-shot commands
+(default: the server's own `sys.executable`); on `PUT`, the server runs it with
+`-c "import tolquane, sys; print(tolquane.__version__)"` and answers 400 with a `pip
+install tolquane` line when that fails or the major version differs. `env: {NAME:
+value}`: applied to every run; admins see values, members see names only
+(`env_names`). Both in `GET /api/settings`.
+
+**Import probe.** `tolquane.web.probe.probe_imports(source: str, python: str) ->
+list[Probe]` with `Probe(module, ok, hint)`: the top-level modules the file imports
+(ast), minus the standard library (`sys.stdlib_module_names`) and `tolquane`, each
+tried with `python -c "import <module>"` in one child call; `hint` is `pip install
+<name>` with a small map for the usual renames (`cv2` opencv-python, `PIL` pillow,
+`sklearn` scikit-learn, `yaml` pyyaml, `bs4` beautifulsoup4, `dotenv` python-dotenv).
+`POST /api/flows/{path}/check` gains `"imports": [Probe]`; the frontend shows a
+missing import as a warning in Problems with the hint, and the Run popover shows the
+interpreter in use.
+
+**Frontend.** The Run popover gains a Parameters section (one field per parameter,
+typed from the default: number, boolean toggle, text, or a code field for anything
+else; last values remembered per flow in localStorage) and an Environment section
+(name/value rows); the schedule dialog gains the same two; the properties panel of the
+start card lists the parameters and lets the user add, rename, retype and remove them
+(a model edit that regenerates `build()`); Settings gains Interpreter and Workspace
+environment rows (admin).
+
+## H. History of a flow
+
+Git, through `subprocess`, nothing else. Everything degrades to "history unavailable"
+with a reason when `git` is not on PATH or the workspace is not in a repository.
+
+```
+GET  /api/workspace/history          -> {"available": bool, "reason": str | null, "repo": bool, "root": path | null, "dirty": n}
+POST /api/workspace/history/init     admin -> {"ok": true}   (git init in the workspace; writes .gitignore with .tolquane-web/ and __pycache__/)
+GET  /api/flows/{path}/history?limit=50 -> {"entries": [{"rev", "short", "author", "date", "message", "head": bool}], "uncommitted": bool}
+GET  /api/flows/{path}/history/{rev} -> {"rev", "source", "diff": "<unified diff, that revision against the file now>"}
+POST /api/flows/{path}/restore       {"rev"} -> the flow (the file and its sidecar as they were at rev; not committed)
+PUT  /api/flows/{path}               gains optional "commit": {"message": "..."}; the response gains "commit": {"rev", "short"} | null
+```
+
+`git log --follow` for the entries; `git show rev:path` for a version; the sidecar
+is included in commits and restores when it exists. Commits use `--author "<user
+name> <name@tolquane.local>"` and only add the flow's own files. Setting
+`auto_commit: bool` (default false): every save commits, with the given message or
+`Edit <path>`; the AI apply passes `AI: <first line of the request>`; a restore does
+not commit. Nothing ever runs `git push`, `reset` or `checkout`.
+
+**Frontend.** The editor's right column gains a History tab (Properties | AI |
+History): the entries with relative dates, author and message, "uncommitted changes"
+on top when the file differs from HEAD, click to see the diff (the existing diff
+view), Restore with a confirmation, Initialize history when the workspace is not a
+repository (admin), and Save with message (Cmd/Ctrl+Shift+S) as a small dialog; the
+Save button shows a dot while uncommitted changes exist.
+
+## N. Schedule outcomes
+
+**Schedule fields.** `notify: {"events": ["failed", "deadlock", "cancelled", "done"],
+"webhook": url | null, "emails": [address]}` (default: no events), `retries: 0..5`
+(default 0), `retry_delay: seconds` (default 60). A retry re-runs the flow after a
+`failed` or `deadlock` end, never after `cancelled`, as a new run with trigger
+`retry:<schedule id>:<attempt>`; the notification for the schedule fires once, after
+the last attempt, with the final status and the attempt count.
+
+**Settings.** `notifications: {"webhook_default": url | null, "smtp": {"host", "port",
+"username", "from", "starttls": bool} | null, "has_smtp_password": bool}`; `PUT` accepts
+`notifications.smtp_password` write-only (it goes to the key file). A schedule with
+`webhook: null` uses the default; emails need the SMTP settings, else the attempt is
+recorded as failed with the reason.
+
+**Delivery.** Webhook: `POST` JSON `{"event", "status", "attempts", "flow", "schedule":
+{"id", "cron"}, "run": <Run.to_dict()>, "busiest", "error", "log_tail": "<last 2 KB>",
+"url": "<server url>/runs/<id>"}` with a 10 s timeout and one retry after 30 s.
+Email: `smtplib`, STARTTLS when set, subject `[Tolquane] <flow>: <status>`, a plain
+text body with the same facts. Attempts are recorded in `notifications(id, run_id,
+schedule_id, channel 'webhook'|'email', target, status 'sent'|'failed', error,
+created)`.
+
+```
+GET  /api/runs/{id}/notifications    -> {"notifications": [...]}
+POST /api/schedules/{id}/test        -> {"results": [{"channel", "target", "status", "error"}]}   (sends a test event now)
+```
+
+Schedule rows gain `last_outcome: {"status", "attempts", "notified": bool}`.
+
+**Frontend.** The schedule dialog gains an Outcomes section (notify-on chips, webhook
+with "use the default", emails, retries and delay, Send a test); the schedule list
+shows a bell when notifications are set and the last outcome; Settings gains a
+Notifications section (default webhook, SMTP with the password field that is never
+echoed); the run dialog lists the notification attempts and the retry chain.

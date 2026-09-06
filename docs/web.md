@@ -182,3 +182,23 @@ the library's own tests green throughout: S2 is the only sub-problem that touche
   Monaco was rejected for that reason.
 - Agents cannot see the browser. Every frontend sub-problem carries unit tests on its
   logic and an e2e journey in I2; the orchestrator inspects screenshots from Playwright.
+
+
+## 1.3: users, inputs and environments, history, schedule outcomes
+
+Chosen after the first release. The contracts are the "1.3" part of
+`web-interfaces.md`. Sub-problems, in the order they run:
+
+- **B1. Users backend.** Store tables and migration, scrypt passwords, session and API
+  tokens, the auth and users routes, the three modes, roles on every route, the
+  `tolquane web users` commands.
+- **B2. Parameters and the probe.** `build()` keyword parameters in the model, parser
+  and generator; `--param` and `--env` on the CLI; `tolquane.web.probe`.
+- **B3. Server integration.** Params and env on runs and schedules, the interpreter and
+  workspace env settings, the import probe on check, the git history routes and commit
+  on save, notifications with retries, the new store tables. Runs after B1 and B2.
+- **F-U, F-E, F-H, F-N.** The frontend for each, in parallel: login and users; run
+  inputs, environment and interpreter; the history tab; outcomes in schedules and
+  settings.
+- **C. Closing.** End-to-end journeys for the four, the user guide, the OpenAPI
+  regeneration, release notes.
