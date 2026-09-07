@@ -49,4 +49,4 @@ release", and the I3 hardening pass), and what 1.3 left for later.
 | Item | Where it came up | The work |
 |---|---|---|
 | Cancel on Windows | `tolquane run --events` and the run supervisor | Windows has no SIGTERM: a cancel kills the child, which ends as failed rather than cancelled. A control pipe or a file flag would let the child stop cleanly. |
-| Drop and resume on macOS | `tests/test_net.py`, expected to fail on the macOS runner | After a simulated connection drop the receiver on the macOS runner sometimes never sees the sender come back within the budget; the same test passes on Linux and Windows. Reproduce on a Mac and fix. |
+| The network runtime on macOS | `tests/test_net.py` is expected-to-fail on the macOS runner | Loopback connections between groups on the macOS runner sometimes drop, or a sender never comes back within the budget after a drop; every test passes on Linux and Windows. Reproduce on a Mac, then remove the mark. |
