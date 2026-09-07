@@ -1185,9 +1185,9 @@ release", and the I3 hardening pass), and what 1.3 left for later.</p>
 <td>Windows has no SIGTERM: a cancel kills the child, which ends as failed rather than cancelled. A control pipe or a file flag would let the child stop cleanly.</td>
 </tr>
 <tr>
-<td>Drop and resume on macOS</td>
-<td><code>tests/test_net.py</code>, expected to fail on the macOS runner</td>
-<td>After a simulated connection drop the receiver on the macOS runner sometimes never sees the sender come back within the budget; the same test passes on Linux and Windows. Reproduce on a Mac and fix.</td>
+<td>The network runtime on macOS</td>
+<td><code>tests/test_net.py</code> is expected-to-fail on the macOS runner</td>
+<td>Loopback connections between groups on the macOS runner sometimes drop, or a sender never comes back within the budget after a drop; every test passes on Linux and Windows. Reproduce on a Mac, then remove the mark.</td>
 </tr>
 </tbody>
 </table>
