@@ -43,7 +43,9 @@ Return `tq.SKIP` to drop an item; `None` is an ordinary value; a generator yield
 - **A GUI**: `tolquane web` opens a canvas of the blocks with the Python beside it,
   live runs, a history and schedules.
 
-Install with `pip install tolquane`. Pure Python, 3.11 or newer, no required
+Try Tolquane Web without installing anything on the
+[live demo](https://huggingface.co/spaces/robtacconelli/tolquane) (sign in as `demo` with
+the password `tolquane`). Install with `pip install tolquane`. Pure Python, 3.11 or newer, no required
 dependencies. Then read the [tutorial](tutorial.md), keep the [API card](api-card.md)
 open, and pick a [runtime](runtimes.md).
 

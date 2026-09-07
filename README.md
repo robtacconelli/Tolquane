@@ -12,6 +12,11 @@
   <a href="https://github.com/robtacconelli/Tolquane/actions/workflows/ci.yml"><img src="https://github.com/robtacconelli/Tolquane/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="https://github.com/robtacconelli/Tolquane/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-Apache_2.0-blue.svg" alt="License: Apache-2.0"></a>
   <a href="https://robtacconelli.github.io/Tolquane/"><img src="https://img.shields.io/badge/docs-tolquane-14b8a6" alt="Documentation"></a>
+  <a href="https://huggingface.co/spaces/robtacconelli/tolquane"><img src="https://img.shields.io/badge/live%20demo-Hugging%20Face%20Space-ffcc4d" alt="Live demo on Hugging Face"></a>
+</p>
+
+<p align="center">
+  Try it without installing anything: the <a href="https://huggingface.co/spaces/robtacconelli/tolquane">live demo on Hugging Face</a>, sign in as <code>demo</code> / <code>tolquane</code>.
 </p>
 
 <p align="center">
