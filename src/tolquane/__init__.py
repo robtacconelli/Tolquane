@@ -55,7 +55,7 @@ from .runner import Context
 from .runtime import EdgeProgress, NodeProgress, NodeStats, Progress, Report
 from .session import Session, SessionClosed
 
-__version__ = "1.3.1"
+__version__ = "1.3.2"
 
 __all__ = [
     "EOS",

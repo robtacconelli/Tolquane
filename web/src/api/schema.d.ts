@@ -1119,6 +1119,11 @@ export interface components {
        * @default false
        */
       can_setup: boolean;
+      /**
+       * Note
+       * @description A line the login page shows, from TOLQUANE_WEB_LOGIN_NOTE: a demo's credentials, who to ask for an account.
+       */
+      note?: string | null;
     };
     /** NewFlow */
     NewFlow: {

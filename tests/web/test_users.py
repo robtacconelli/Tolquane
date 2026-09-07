@@ -155,7 +155,12 @@ def test_making_the_first_user_turns_the_lights_on(client: TestClient) -> None:
     )
     assert made.status_code == 201, made.text
     assert made.json()["must_change_password"] is True
-    assert client.get("/api/auth/me").json() == {"user": None, "mode": "users", "can_setup": False}
+    assert client.get("/api/auth/me").json() == {
+        "user": None,
+        "mode": "users",
+        "can_setup": False,
+        "note": None,
+    }
     refused = client.get("/api/flows")
     assert refused.status_code == 401
     assert refused.json()["error"]["type"] == "Unauthorized"
@@ -243,6 +248,7 @@ def test_the_server_token_stays_an_admin_when_there_are_users(
             },
             "mode": "users",
             "can_setup": False,
+            "note": None,
         }
         # A session works alongside it: the wall lets a signed-in user past the token.
         assert client.get("/api/flows", headers=team.member).status_code == 200
@@ -783,3 +789,11 @@ def test_the_cli_and_the_server_share_the_database(
         assert client.get("/api/auth/me").json()["mode"] == "users"
         headers = sign_in(client, "ada", ADMIN_PASSWORD)
         assert client.get("/api/users", headers=headers).json()["users"][0]["name"] == "ada"
+
+
+def test_the_login_note_comes_from_the_environment(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    assert client.get("/api/auth/me").json()["note"] is None
+    monkeypatch.setenv("TOLQUANE_WEB_LOGIN_NOTE", "Demo: sign in as demo / tolquane")
+    assert client.get("/api/auth/me").json()["note"] == "Demo: sign in as demo / tolquane"

@@ -47,6 +47,8 @@ export interface AuthState {
   user: User | null;
   /** `token` mode with no users yet: the login page offers to make the first admin. */
   canSetup: boolean;
+  /** A line the server wants on the login page: a demo's credentials, who to ask. */
+  note: string | null;
   /** Why `me` could not be read, when it could not. */
   error: string | null;
   /** Ask `me` again. Called at start-up and on every token change. */
@@ -62,6 +64,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   mode: null,
   user: null,
   canSetup: false,
+  note: null,
   error: null,
 
   load: async () => {
@@ -74,6 +77,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         mode,
         user: answer.user ?? null,
         canSetup: answer.can_setup === true,
+        note: typeof answer.note === 'string' && answer.note ? answer.note : null,
         error: null,
       });
     } catch (caught) {

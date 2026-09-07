@@ -171,11 +171,15 @@ function SignInForm({ onSignedIn }: { onSignedIn: (password: string) => void }):
       },
     );
   }, [name, onSignedIn, password, signIn]);
+  const note = useAuthStore((state) => state.note);
 
   return (
     <Card
       title="Sign in"
-      subtitle="This Tolquane server has accounts. Yours was made by an administrator, or at the command line."
+      subtitle={
+        note ??
+        'This Tolquane server has accounts. Yours was made by an administrator, or at the command line.'
+      }
       error={error}
       onSubmit={submit}
       action="Sign in"

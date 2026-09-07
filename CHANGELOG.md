@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.3.2, 2026-09-07
+
+- `TOLQUANE_WEB_LOGIN_NOTE` puts a line on the sign-in page, for a demo's credentials
+  or who to ask for an account; `GET /api/auth/me` carries it as `note`.
+
 ## 1.3.1, 2026-09-07
 
 - `TOLQUANE_WEB_FRAME_ANCESTORS` names the hosts that may show Tolquane Web in a

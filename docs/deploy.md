@@ -227,6 +227,7 @@ Three things to know:
 | `TZ` | The zone schedules fire in |
 | `TOLQUANE_WEB_TOKEN` | Read by the container entrypoint and passed as `--token` |
 | `TOLQUANE_WEB_FRAME_ANCESTORS` | Hosts allowed to show the app in a frame (the `frame-ancestors` directive); default `'none'`. A Hugging Face Space sets `https://huggingface.co https://*.hf.space` |
+| `TOLQUANE_WEB_LOGIN_NOTE` | A line shown on the sign-in page: a demo's credentials, or who to ask for an account |
 
 The first four are secrets, and no flow the server runs ever sees them: the child's
 environment has them removed before the workspace's own variables are applied.

@@ -586,6 +586,11 @@ class MeResult(BaseModel):
     user: UserModel | None = None
     mode: str = Field(description="local | users | token")
     can_setup: bool = False
+    note: str | None = Field(
+        default=None,
+        description="A line the login page shows, from TOLQUANE_WEB_LOGIN_NOTE: a demo's "
+        "credentials, who to ask for an account.",
+    )
 
 
 class PasswordChange(BaseModel):
@@ -1971,6 +1976,7 @@ def _routes(
             "user": me.user.to_dict() if me is not None else None,
             "mode": mode,
             "can_setup": mode == "token",
+            "note": os.environ.get(LOGIN_NOTE_ENV, "").strip() or None,
         }
 
     @app.post(
@@ -2549,6 +2555,7 @@ def content_security_policy(index: Path, frame_ancestors: str = "'none'") -> str
 
 
 FRAME_ANCESTORS_ENV = "TOLQUANE_WEB_FRAME_ANCESTORS"
+LOGIN_NOTE_ENV = "TOLQUANE_WEB_LOGIN_NOTE"
 """Who may show the app in a frame: ``'none'`` unless this names the hosts that may,
 for example ``https://huggingface.co https://*.hf.space`` for a Space."""
 
