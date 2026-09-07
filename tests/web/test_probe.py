@@ -124,6 +124,7 @@ def test_an_interpreter_that_is_not_there_is_the_answer_itself() -> None:
     assert found.hint.startswith("could not ask /nowhere/python3: ")
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="the fake interpreters are sh scripts")
 def test_an_interpreter_that_fails_says_why(tmp_path: Path) -> None:
     broken = _fake(tmp_path, "python-broken", "echo 'no python here' >&2\nexit 2")
     found = probe_imports("import numpy\nimport pytest\n", broken)
@@ -132,6 +133,7 @@ def test_an_interpreter_that_fails_says_why(tmp_path: Path) -> None:
     assert all(p.hint == f"could not ask {broken}: no python here" for p in found)
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="the fake interpreters are sh scripts")
 def test_an_interpreter_that_never_answers_times_out(tmp_path: Path) -> None:
     slow = _fake(tmp_path, "python-slow", "sleep 30")
     (found,) = probe_imports("import numpy\n", slow, timeout=0.5)
@@ -139,6 +141,7 @@ def test_an_interpreter_that_never_answers_times_out(tmp_path: Path) -> None:
     assert found.hint == f"could not ask {slow}: it did not answer within 0.5 seconds"
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="the fake interpreters are sh scripts")
 def test_a_half_answer_leaves_the_rest_unknown(tmp_path: Path) -> None:
     partial = _fake(tmp_path, "python-partial", "echo 'numpy ok'\nexit 3")
     found = {p.module: p for p in probe_imports("import numpy\nimport pytest\n", partial)}
