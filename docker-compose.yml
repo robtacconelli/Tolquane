@@ -1,0 +1,78 @@
+# Tolquane Web, one service, two volumes.
+#
+#   echo "TOLQUANE_WEB_TOKEN=$(python -c 'import secrets; print(secrets.token_urlsafe(24))')" > .env
+#   docker compose up -d
+#   docker compose logs -f tolquane
+#
+# The port is published on 127.0.0.1 only: reach it through an SSH tunnel, or uncomment
+# the caddy service at the bottom to put HTTPS in front of it. docs/deploy.md has both.
+
+name: tolquane
+
+services:
+  tolquane:
+    build:
+      context: .
+      args:
+        # `local` installs this checkout instead of the wheel from PyPI. Build the
+        # frontend first: npm --prefix web ci && npm --prefix web run build
+        SOURCE: pypi
+    image: tolquane:local
+    restart: unless-stopped
+    # With caddy in front, drop this line: the two containers share a network already.
+    ports:
+      - "127.0.0.1:8765:8765"
+    environment:
+      # The one secret the server needs. Anyone holding it can run code in this
+      # container: python -c 'import secrets; print(secrets.token_urlsafe(24))'
+      TOLQUANE_WEB_TOKEN: ${TOLQUANE_WEB_TOKEN:?set TOLQUANE_WEB_TOKEN in .env}
+      # The AI builder's key. Either one, or neither; a key set here is never written to
+      # the database and is taken out of the environment of every flow the server runs.
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      # The password for the SMTP server that schedule outcomes mail through.
+      TOLQUANE_SMTP_PASSWORD: ${TOLQUANE_SMTP_PASSWORD:-}
+      # Schedules fire in the container's zone, so give it yours.
+      TZ: ${TZ:-UTC}
+    volumes:
+      # The flows: ordinary .py files, yours to edit, commit and copy elsewhere.
+      - ./workspace:/workspace
+      # TOLQUANE_HOME: web.db (runs, schedules, settings, users) and web.toml (the keys).
+      - tolquane-data:/data
+    # The image runs as uid 1000. If the host directory belongs to someone else, say who
+    # to be here instead: user: "${UID:-1000}:${GID:-1000}"
+
+volumes:
+  tolquane-data:
+
+# ---------------------------------------------------------------- HTTPS, when you want it
+#
+# Tolquane Web speaks plain HTTP and has no idea it is behind anything, so put a proxy in
+# front of it on a hostname of its own -- it is served at `/`, not under a path. Caddy
+# gets the certificate itself and upgrades the run WebSocket without being asked to.
+#
+# Write a Caddyfile next to this file:
+#
+#     flows.example.com {
+#         reverse_proxy tolquane:8765
+#     }
+#
+# then uncomment this service and remove the `ports:` mapping above.
+#
+#  caddy:
+#    image: caddy:2
+#    restart: unless-stopped
+#    ports:
+#      - "80:80"
+#      - "443:443"
+#    volumes:
+#      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+#      - caddy-data:/data
+#      - caddy-config:/config
+#    depends_on:
+#      - tolquane
+#
+# and add these two to the volumes above:
+#
+#  caddy-data:
+#  caddy-config:

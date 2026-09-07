@@ -31,6 +31,7 @@ nav:
   - Backlog: backlog.md
   - Tolquane Web:
       - User guide: web-user.md
+      - Deploying it: deploy.md
       - The plan: web.md
       - Interfaces: web-interfaces.md
   - Decisions:

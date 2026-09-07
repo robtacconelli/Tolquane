@@ -1,0 +1,47 @@
+# What the build context does not need. `SOURCE=local` installs this checkout, so the
+# package, its build files and the GUI assets stay; everything else goes.
+#
+# `src/tolquane/web/static/` is deliberately NOT ignored: it is gitignored but it is the
+# built GUI, and the image has no npm to make it again.
+
+.git
+.github
+.gitignore
+.claude
+
+# Environments, and anything holding a key
+.venv*
+venv
+.env
+.env.*
+keys.env
+*.pem
+
+# Build output and caches
+dist
+build
+site
+*.egg-info
+**/__pycache__
+*.py[cod]
+.mypy_cache
+.pytest_cache
+.ruff_cache
+.coverage
+htmlcov
+
+# The frontend's own inputs and throwaways; the built assets under src/ are kept.
+web/node_modules
+web/dist
+web/test-results
+web/playwright-report
+web/e2e/screenshots
+web/e2e/.workspace
+
+# Not part of the package
+docs
+benchmarks
+reference
+Dockerfile
+docker-compose.yml
+.dockerignore

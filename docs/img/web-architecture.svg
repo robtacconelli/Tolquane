@@ -1,0 +1,117 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="530" viewBox="0 0 1040 530" role="img" aria-label="Tolquane Web architecture: browser, server, one child process per run, the workspace, git, SQLite, the key file and the AI provider">
+  <title>How Tolquane Web is put together</title>
+  <desc>The browser talks to one FastAPI server over HTTP and a WebSocket. The server spawns one child process per run and streams its events back. It reads and writes the flow files in the workspace, commits them with git, keeps runs, schedules, settings and users in SQLite, holds the API keys in a mode-600 file, and calls the AI provider with your key.</desc>
+
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#64748b"/>
+    </marker>
+    <marker id="at" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#14b8a6"/>
+    </marker>
+    <style>
+      .bg    { fill: #f4f6f8; stroke: #cbd5e1; }
+      .box   { fill: #ffffff; stroke: #94a3b8; stroke-width: 1.5; }
+      .main  { fill: #ffffff; stroke: #14b8a6; stroke-width: 2.5; }
+      .child { fill: #ffffff; stroke: #14b8a6; stroke-width: 1.5; }
+      .chip  { fill: #eef4f4; stroke: #cbd5e1; stroke-width: 1; }
+      .h     { font: 700 15px ui-sans-serif, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; fill: #0f172a; }
+      .t     { font: 600 13px ui-sans-serif, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; fill: #0f172a; }
+      .s     { font: 400 11.5px ui-sans-serif, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; fill: #64748b; }
+      .n     { font: 400 12px ui-sans-serif, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; fill: #475569; }
+      .m     { font: 400 12px ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; fill: #334155; }
+      .lbl   { font: 400 11px ui-sans-serif, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; fill: #0f766e; }
+      .line  { stroke: #64748b; stroke-width: 1.5; fill: none; }
+      .tline { stroke: #14b8a6; stroke-width: 1.5; fill: none; }
+    </style>
+  </defs>
+
+  <rect class="bg" x="0.5" y="0.5" width="1039" height="529" rx="14"/>
+
+  <!-- browser -->
+  <rect class="box" x="24" y="60" width="230" height="160" rx="12"/>
+  <text class="h" x="44" y="88">Browser</text>
+  <text class="s" x="44" y="107">the Tolquane Web page</text>
+  <text class="n" x="44" y="134">canvas and code, in sync</text>
+  <text class="n" x="44" y="156">run drawer: console, taps, report</text>
+  <text class="n" x="44" y="178">schedules, history, AI panel</text>
+  <text class="n" x="44" y="200">nothing of yours is uploaded</text>
+
+  <path class="tline" d="M 262 138 H 372" marker-start="url(#at)" marker-end="url(#at)"/>
+  <text class="lbl" x="317" y="126" text-anchor="middle">HTTP + WebSocket</text>
+  <text class="lbl" x="317" y="158" text-anchor="middle">token or session</text>
+
+  <!-- the server -->
+  <rect class="main" x="380" y="48" width="300" height="190" rx="12"/>
+  <text class="h" x="400" y="76">tolquane web</text>
+  <text class="s" x="400" y="95">one FastAPI process; no flow of yours runs inside it</text>
+  <rect class="chip" x="400" y="108" width="260" height="26" rx="6"/>
+  <text class="n" x="412" y="126">flows: parse, generate, save, fence</text>
+  <rect class="chip" x="400" y="140" width="260" height="26" rx="6"/>
+  <text class="n" x="412" y="158">runs: spawn, supervise, stream, cancel</text>
+  <rect class="chip" x="400" y="172" width="260" height="26" rx="6"/>
+  <text class="n" x="412" y="190">scheduler: cron, retries, outcomes</text>
+  <rect class="chip" x="400" y="204" width="260" height="26" rx="6"/>
+  <text class="n" x="412" y="222">users, roles, sessions, API tokens</text>
+
+  <!-- one child process per run -->
+  <path class="tline" d="M 688 143 H 722 V 76 H 776" marker-start="url(#at)" marker-end="url(#at)"/>
+  <path class="tline" d="M 688 143 H 722 V 132 H 776" marker-start="url(#at)" marker-end="url(#at)"/>
+  <path class="tline" d="M 688 143 H 722 V 188 H 776" marker-start="url(#at)" marker-end="url(#at)"/>
+
+  <rect class="child" x="780" y="54" width="236" height="44" rx="9"/>
+  <text class="t" x="796" y="72">run 41 &#183; threads</text>
+  <text class="s" x="796" y="88">python flow.py, in its own process</text>
+  <rect class="child" x="780" y="110" width="236" height="44" rx="9"/>
+  <text class="t" x="796" y="128">run 42 &#183; processes</text>
+  <text class="s" x="796" y="144">a hung flow costs one process</text>
+  <rect class="child" x="780" y="166" width="236" height="44" rx="9"/>
+  <text class="t" x="796" y="184">check &#183; draw &#183; optimize</text>
+  <text class="s" x="796" y="200">short-lived, with a timeout</text>
+  <text class="lbl" x="898" y="228" text-anchor="middle">spawn, then stream counts, taps and output back</text>
+
+  <!-- the AI provider -->
+  <path class="line" d="M 660 246 V 288 H 776" marker-end="url(#a)"/>
+  <text class="lbl" x="700" y="280">your key</text>
+  <rect class="box" x="780" y="264" width="236" height="62" rx="10"/>
+  <text class="t" x="796" y="288">AI provider</text>
+  <text class="s" x="796" y="308">Anthropic or OpenAI, over HTTPS</text>
+
+  <!-- the stores -->
+  <path class="line" d="M 420 246 V 330 H 169 V 366" marker-end="url(#a)"/>
+  <path class="line" d="M 520 246 V 330 H 649 V 366" marker-end="url(#a)"/>
+  <path class="line" d="M 600 246 V 348 H 900 V 366" marker-end="url(#a)"/>
+
+  <rect class="box" x="24" y="368" width="290" height="132" rx="12"/>
+  <text class="t" x="44" y="392">Workspace directory</text>
+  <text class="s" x="44" y="410">the flows, and where every run starts</text>
+  <text class="m" x="44" y="434">flow.py</text>
+  <text class="s" x="120" y="434">the artifact, and all of it</text>
+  <text class="m" x="44" y="456">flow.layout.json</text>
+  <text class="s" x="176" y="456">cards, samples</text>
+  <text class="m" x="44" y="478">.tolquane-web/</text>
+  <text class="s" x="160" y="478">traces, scratch</text>
+
+  <path class="line" d="M 322 434 H 350" marker-end="url(#a)"/>
+  <rect class="box" x="354" y="368" width="180" height="132" rx="12"/>
+  <text class="t" x="374" y="392">git</text>
+  <text class="s" x="374" y="410">optional, and the</text>
+  <text class="s" x="374" y="426">workspace&#8217;s own</text>
+  <text class="n" x="374" y="452">one commit per save,</text>
+  <text class="n" x="374" y="470">the flow and its sidecar,</text>
+  <text class="n" x="374" y="488">authored as you</text>
+
+  <rect class="box" x="554" y="368" width="230" height="132" rx="12"/>
+  <text class="m" x="574" y="392">~/.tolquane/web.db</text>
+  <text class="s" x="574" y="410">SQLite</text>
+  <text class="n" x="574" y="436">runs and their reports</text>
+  <text class="n" x="574" y="456">schedules and outcomes</text>
+  <text class="n" x="574" y="476">settings, users, sessions</text>
+
+  <rect class="box" x="804" y="368" width="212" height="132" rx="12"/>
+  <text class="m" x="824" y="392">~/.tolquane/web.toml</text>
+  <text class="s" x="824" y="410">mode 600, not in the database</text>
+  <text class="n" x="824" y="436">the API keys</text>
+  <text class="n" x="824" y="456">the SMTP password</text>
+  <text class="n" x="824" y="476">taken out of every child</text>
+</svg>

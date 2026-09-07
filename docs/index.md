@@ -56,4 +56,5 @@ and the AI builder in a side panel. The file is still a plain `flow.py`, so anyt
 made there runs with `python flow.py` wherever Tolquane is installed. Since 1.3 it also
 has accounts with roles, parameters and environment variables for a run or a schedule, a
 git history of every flow, and webhooks, mail and retries when a schedule ends. The
-[user guide](web-user.md) is the tour.
+[user guide](web-user.md) is the tour, and [Deploying Tolquane Web](deploy.md) covers a
+shared machine, a systemd service, Docker and a reverse proxy.
