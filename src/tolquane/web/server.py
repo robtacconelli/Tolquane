@@ -34,6 +34,7 @@ import hashlib
 import hmac
 import json
 import logging
+import os
 import re
 import shutil
 import threading
@@ -2517,7 +2518,7 @@ the theme before the first paint. Each is allowed by its hash, not by ``unsafe-i
 SECURITY_HEADERS = {"X-Content-Type-Options": "nosniff", "Referrer-Policy": "no-referrer"}
 
 
-def content_security_policy(index: Path) -> str:
+def content_security_policy(index: Path, frame_ancestors: str = "'none'") -> str:
     """What the page may load: its own files, and nothing from anywhere else.
 
     ``style-src`` allows ``'unsafe-inline'`` because CodeMirror and the canvas write
@@ -2542,9 +2543,14 @@ def content_security_policy(index: Path) -> str:
             "object-src 'none'",
             "base-uri 'self'",
             "form-action 'self'",
-            "frame-ancestors 'none'",
+            "frame-ancestors " + frame_ancestors,
         ]
     )
+
+
+FRAME_ANCESTORS_ENV = "TOLQUANE_WEB_FRAME_ANCESTORS"
+"""Who may show the app in a frame: ``'none'`` unless this names the hosts that may,
+for example ``https://huggingface.co https://*.hf.space`` for a Space."""
 
 
 def _frontend(app: FastAPI, settings: AppSettings) -> None:
@@ -2552,7 +2558,8 @@ def _frontend(app: FastAPI, settings: AppSettings) -> None:
     ``/api`` route is matched before the single-page fallback sees the request."""
     static = settings.static_dir
     index = static / "index.html"
-    policy = content_security_policy(index)
+    ancestors = os.environ.get(FRAME_ANCESTORS_ENV, "").strip() or "'none'"
+    policy = content_security_policy(index, ancestors)
     headers = {**SECURITY_HEADERS, "Content-Security-Policy": policy}
 
     @app.get("/{full_path:path}", include_in_schema=False)

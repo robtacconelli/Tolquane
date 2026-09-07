@@ -226,6 +226,7 @@ Three things to know:
 | `TOLQUANE_SMTP_PASSWORD` | The password schedule outcomes mail with |
 | `TZ` | The zone schedules fire in |
 | `TOLQUANE_WEB_TOKEN` | Read by the container entrypoint and passed as `--token` |
+| `TOLQUANE_WEB_FRAME_ANCESTORS` | Hosts allowed to show the app in a frame (the `frame-ancestors` directive); default `'none'`. A Hugging Face Space sets `https://huggingface.co https://*.hf.space` |
 
 The first four are secrets, and no flow the server runs ever sees them: the child's
 environment has them removed before the workspace's own variables are applied.

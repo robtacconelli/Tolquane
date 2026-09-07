@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.3.1, 2026-09-07
+
+- `TOLQUANE_WEB_FRAME_ANCESTORS` names the hosts that may show Tolquane Web in a
+  frame (the content security policy's `frame-ancestors`, `'none'` by default), so a
+  Hugging Face Space can embed it.
+- `tolquane web --check` connects to loopback when bound to a wildcard address; the
+  port probe ignores lingering sockets.
+- Distributed runtime: a peer's error or silence reaches the sender wherever it is
+  blocked; receivers send heartbeat acknowledgements while idle; both sides half-close
+  before closing after an error frame so it is never lost to a reset.
+
 ## 1.3.0, 2026-09-06
 
 Four additions to Tolquane Web, chosen after the first release.

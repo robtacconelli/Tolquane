@@ -686,3 +686,20 @@ def test_every_template_opens_on_the_canvas(client: TestClient) -> None:
         assert made.status_code in (200, 201), made.text
         assert made.json()["model"] is not None
         assert made.json()["code_only"] is None
+
+
+def test_frame_ancestors_can_be_opened_for_a_host(
+    tmp_path: Path,
+    workspace: Path,  # noqa: F811
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A Space or a portal shows the app in a frame; the policy names who may."""
+    static = tmp_path / "static"
+    static.mkdir()
+    (static / "index.html").write_text("<html><body></body></html>")
+    monkeypatch.setenv("TOLQUANE_WEB_FRAME_ANCESTORS", "https://huggingface.co https://*.hf.space")
+    settings = make_settings(tmp_path, workspace, static_dir=static)
+    with TestClient(create_app(settings)) as client:
+        policy = client.get("/").headers["content-security-policy"]
+    assert "frame-ancestors https://huggingface.co https://*.hf.space" in policy
+    assert "'none'" not in policy.split("frame-ancestors")[1]
