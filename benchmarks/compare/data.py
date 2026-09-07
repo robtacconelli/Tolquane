@@ -2,9 +2,11 @@
 
     python benchmarks/compare/data.py [DIR]     # default /mnt/1T/home/st4ck/.cache/data
 
-- enwik8: the first 100 MB of Wikipedia, from mattmahoney.net (md5 a1fa5ffddb56f4953e226637dabbb36a)
+- enwik8: the first 100 MB of Wikipedia, from mattmahoney.net
+  (md5 a1fa5ffddb56f4953e226637dabbb36a)
 - sales.csv: 10,000,000 rows `region,product,amount` from a fixed seed
-- matrix.bin: 20,000 x 1,000 float32, row-major, from a fixed seed (matrix.npy is the same data for numpy)
+- matrix.bin: 20,000 x 1,000 float32, row-major, from a fixed seed
+  (matrix.npy is the same data for numpy)
 """
 
 from __future__ import annotations
@@ -43,8 +45,10 @@ def sales(root: Path) -> Path:
     with target.open("w", encoding="ascii", newline="\n") as f:
         f.write("region,product,amount\n")
         chunk: list[str] = []
-        for i in range(ROWS):
-            chunk.append(f"{REGIONS[rng.randrange(8)]},{rng.randrange(1, 1001)},{rng.randrange(100, 100000) / 100:.2f}\n")
+        for _ in range(ROWS):
+            region = REGIONS[rng.randrange(8)]
+            amount = rng.randrange(100, 100000) / 100
+            chunk.append(f"{region},{rng.randrange(1, 1001)},{amount:.2f}\n")
             if len(chunk) == 100_000:
                 f.write("".join(chunk))
                 chunk = []
