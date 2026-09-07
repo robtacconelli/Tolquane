@@ -1,0 +1,657 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tolquane — parallel programming in a few clicks</title>
+<meta name="description" content="Build a parallel program out of blocks. Run the same graph on threads, in child processes, or across machines — and watch it work in your browser.">
+<link rel="canonical" href="https://tolquane.com/">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/style.css">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Tolquane">
+<meta property="og:url" content="https://tolquane.com/">
+<meta property="og:title" content="Tolquane — parallel programming in a few clicks">
+<meta property="og:description" content="Build a parallel program out of blocks. Run the same graph on threads, in child processes, or across machines — and watch it work in your browser.">
+<meta property="og:image" content="https://tolquane.com/img/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Tolquane: ever dreamed of parallel programming in a few clicks?">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Tolquane — parallel programming in a few clicks">
+<meta name="twitter:description" content="Build a parallel program out of blocks. Run the same graph on threads, in child processes, or across machines — and watch it work in your browser.">
+<meta name="twitter:image" content="https://tolquane.com/img/og.png">
+<meta name="theme-color" content="#0b1013" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f3f6f7" media="(prefers-color-scheme: light)">
+
+<script>
+  (function () {
+    try {
+      var saved = localStorage.getItem('tq-theme');
+      if (saved === 'light' || saved === 'dark') {
+        document.documentElement.setAttribute('data-theme', saved);
+      } else {
+        document.documentElement.removeAttribute('data-theme');
+      }
+    } catch (e) {
+      document.documentElement.removeAttribute('data-theme');
+    }
+  })();
+</script>
+</head>
+<body>
+
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="site-header">
+  <div class="wrap header-inner">
+    <a class="brand" href="#top" aria-label="Tolquane, home">
+      <svg class="mark" width="30" height="30" viewBox="0 0 56 56" role="img" aria-hidden="true" focusable="false">
+        <rect width="56" height="56" rx="15" fill="var(--mark-bg)"/>
+        <g stroke="var(--mark-fg)" stroke-width="3" stroke-linecap="round" fill="none">
+          <line x1="11" y1="28" x2="19" y2="28"/>
+          <circle cx="28" cy="28" r="9"/>
+          <line x1="37" y1="28" x2="45" y2="28"/>
+        </g>
+        <circle cx="28" cy="28" r="3.4" fill="var(--mark-fg)"/>
+      </svg>
+      <span class="brand-name">Tolquane</span>
+    </a>
+    <nav class="header-nav" aria-label="Sections">
+      <a href="#library">Library</a>
+      <a href="#web">Tolquane Web</a>
+      <a href="#run">Ways to run it</a>
+      <a href="https://tolquane.com/docs/">Docs</a>
+      <a href="https://github.com/robtacconelli/Tolquane">GitHub</a>
+    </nav>
+    <button id="theme-toggle" class="icon-button" type="button" aria-label="Switch to light theme">
+      <svg class="icon-moon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg>
+      <svg class="icon-sun" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.6v2.2M12 19.2v2.2M4.3 4.3l1.6 1.6M18.1 18.1l1.6 1.6M2.6 12h2.2M19.2 12h2.2M4.3 19.7l1.6-1.6M18.1 5.9l1.6-1.6"/></svg>
+    </button>
+  </div>
+</header>
+
+<main id="main">
+
+<!-- ======================================================== hero -->
+<section class="hero" id="top">
+  <div class="wrap">
+    <div class="hero-lockup">
+      <svg class="mark mark-lg" width="60" height="60" viewBox="0 0 56 56" role="img" aria-label="Tolquane" focusable="false">
+        <rect width="56" height="56" rx="15" fill="var(--mark-bg)"/>
+        <g stroke="var(--mark-fg)" stroke-width="3" stroke-linecap="round" fill="none">
+          <line x1="11" y1="28" x2="19" y2="28"/>
+          <circle cx="28" cy="28" r="9"/>
+          <line x1="37" y1="28" x2="45" y2="28"/>
+        </g>
+        <circle cx="28" cy="28" r="3.4" fill="var(--mark-fg)"/>
+      </svg>
+      <span class="wordmark">Tolquane</span>
+    </div>
+
+    <h1 class="hero-title">Ever dreamed of parallel programming in a few clicks?</h1>
+
+    <p class="hero-lead">Build a parallel program out of blocks. Run the same graph on threads, in child
+      processes, or across machines — and watch it work in your browser.</p>
+
+    <div class="hero-install">
+      <pre class="install"><code><span class="prompt">$</span> pip install <span class="s">"tolquane[web]"</span>
+<span class="prompt">$</span> tolquane web</code></pre>
+      <button class="copy" type="button" data-copy='pip install "tolquane[web]"
+tolquane web' aria-label="Copy the install commands">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2.5"/><path d="M5.5 15H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v.5"/></svg>
+        <span class="copy-label">Copy</span>
+      </button>
+    </div>
+
+    <div class="hero-actions">
+      <div class="cta">
+        <a class="button button-primary" href="https://huggingface.co/spaces/robtacconelli/tolquane">Try the live demo
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h13M12.5 6l6 6-6 6"/></svg>
+        </a>
+        <span class="cta-note">sign in as <code>demo</code> / <code>tolquane</code></span>
+      </div>
+      <div class="cta">
+        <a class="button button-ghost" href="https://tolquane.com/docs/">Read the docs</a>
+        <span class="cta-note">the tutorial, the cookbook, the API card</span>
+      </div>
+    </div>
+
+    <p class="hero-facts">Apache-2.0 · Python 3.11 or newer · pure Python, no required dependencies</p>
+
+    <figure class="shot shot-hero">
+      <img src="/img/run-live.png" width="1920" height="1080" fetchpriority="high" decoding="async"
+           alt="A flow running in Tolquane Web: item counts on every card, queue depths on every edge, output arriving live">
+    </figure>
+    <p class="caption">A run in progress: every card carries its state, how many items it has taken and
+      produced and how busy it has been; every edge carries its queue depth.</p>
+  </div>
+</section>
+
+<!-- ======================================================== a function is a node -->
+<section class="band" id="library">
+  <div class="wrap">
+    <p class="eyebrow">The library</p>
+    <h2>A function is a node</h2>
+    <p class="lead">A parallel programming library where a function is a node, <code>&gt;&gt;</code> is a
+      pipeline, and <code>tq.farm</code> runs copies of a worker. The graph you describe is separate from
+      the way it runs, so one line switches it from threads to child processes to two machines.</p>
+
+    <div class="code-figure">
+<pre class="code"><code><span class="k">import</span> tolquane <span class="k">as</span> tq
+
+<span class="d">@tq.source</span>
+<span class="k">def</span> <span class="fn">numbers</span>():
+    <span class="k">yield from</span> <span class="fn">range</span>(<span class="n">1</span>, <span class="n">101</span>)           <span class="c"># a source is a generator</span>
+
+<span class="d">@tq.node</span>
+<span class="k">def</span> <span class="fn">double</span>(x: <span class="ty">int</span>) -&gt; <span class="ty">int</span>:
+    <span class="k">return</span> x * <span class="n">2</span>                       <span class="c"># the return value goes downstream</span>
+
+<span class="d">@tq.sink</span>
+<span class="k">def</span> <span class="fn">show</span>(x: <span class="ty">int</span>) -&gt; <span class="ty">None</span>:
+    <span class="fn">print</span>(x)
+
+graph = numbers &gt;&gt; tq.<span class="fn">farm</span>(double, workers=<span class="n">4</span>) &gt;&gt; show
+
+tq.<span class="fn">run</span>(graph)                                     <span class="c"># threads, by default</span>
+tq.<span class="fn">run</span>(graph, runtime=<span class="s">"processes"</span>)                <span class="c"># the farm's workers in child processes</span>
+tq.<span class="fn">run</span>(graph, runtime=<span class="s">"sync"</span>)                     <span class="c"># one thread, deterministic, for tests</span>
+tq.<span class="fn">run</span>(graph, deploy=<span class="s">"deploy.toml"</span>, group=<span class="s">"G1"</span>)   <span class="c"># this host's share of the same graph</span></code></pre>
+    </div>
+
+    <figure class="shot shot-diagram">
+      <img src="/img/blocks.svg" width="900" height="560" loading="lazy" decoding="async"
+           alt="A function is a node; the shift operator builds a pipeline; a farm copies a worker between an emitter and a collector">
+    </figure>
+
+    <div class="vocab">
+      <h3>The vocabulary</h3>
+      <dl class="vocab-list">
+        <div><dt><code>@tq.source</code>, <code>@tq.node</code>, <code>@tq.sink</code></dt>
+          <dd>A function is a node. <code>tq.SKIP</code> drops an item, <code>None</code> is a value, a generator yields many.</dd></div>
+        <div><dt><code>a &gt;&gt; b &gt;&gt; c</code></dt>
+          <dd>A pipeline. Five wiring rules cover 1-to-1, 1-to-N, N-to-1, N-to-N and N-to-M.</dd></div>
+        <div><dt><code>tq.farm(work, 8)</code></dt>
+          <dd>Eight copies of a worker, with round-robin, on-demand, broadcast, scatter and keyed emitters and first-come, round-robin, gather and ordered collectors.</dd></div>
+        <div><dt><code>tq.farm(a &gt;&gt; b, 4)</code></dt>
+          <dd>Any block as a worker: a pipeline, another farm, a loop, an all-to-all.</dd></div>
+        <div><dt><code>tq.comb(a, b)</code></dt>
+          <dd>Two nodes fused onto one thread.</dd></div>
+        <div><dt><code>tq.all2all(left, right)</code></dt>
+          <dd>Every left worker to every right worker; the eight FastFlow fusion cases.</dd></div>
+        <div><dt><code>tq.feedback(block)</code></dt>
+          <dd>Outputs wired back to inputs, with a loop that closes when nothing is left in flight.</dd></div>
+        <div><dt><code>tq.session(block)</code></dt>
+          <dd>A graph kept running while you push items in and read results out.</dd></div>
+        <div><dt><code>tq.optimize(block)</code></dt>
+          <dd>The same results with fewer threads.</dd></div>
+        <div><dt><code>tq.check</code>, <code>tq.explain</code>, <code>tq.draw</code></dt>
+          <dd>Validate the wiring, list what was wired and why, print a Mermaid diagram.</dd></div>
+      </dl>
+      <p class="note">The whole public surface fits on <a href="https://tolquane.com/docs/api-card/">one page</a>.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ======================================================== runtimes -->
+<section class="band band-alt" id="runtimes">
+  <div class="wrap">
+    <p class="eyebrow">The same graph, elsewhere</p>
+    <h2>One graph, four runtimes</h2>
+    <p class="lead">The graph is separate from the way it runs. Nothing in the flow changes when the
+      nodes move onto child processes, onto another machine, or into a single deterministic thread.</p>
+
+    <div class="table-wrap">
+      <table class="runtimes">
+        <thead>
+          <tr><th scope="col">Runtime</th><th scope="col">Nodes run as</th><th scope="col">Pick it when</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td data-label="Runtime"><code>threads</code> <span class="pill">default</span></td>
+            <td data-label="Nodes run as">one thread per node</td>
+            <td data-label="Pick it when">I/O-bound stages, numpy and C extensions, and full parallelism on free-threaded CPython 3.14t</td>
+          </tr>
+          <tr>
+            <td data-label="Runtime"><code>processes</code></td>
+            <td data-label="Nodes run as">farm workers in spawned children, the rest as threads here</td>
+            <td data-label="Pick it when">CPU-bound pure Python on a GIL build</td>
+          </tr>
+          <tr>
+            <td data-label="Runtime">distributed</td>
+            <td data-label="Nodes run as">each group on its host, TCP between groups</td>
+            <td data-label="Pick it when">two or more machines</td>
+          </tr>
+          <tr>
+            <td data-label="Runtime"><code>sync</code></td>
+            <td data-label="Nodes run as">one node at a time, in a fixed order, in the calling thread</td>
+            <td data-label="Pick it when">tests, debugging, deterministic runs</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note">And async nodes: <code>async def</code> nodes on an event loop, a farm of them one pool —
+      for hundreds of network requests in flight on one thread.</p>
+
+    <h3 class="stats-title">What that measured</h3>
+    <p class="stats-sub">On a 16-thread machine, a farm of eight CPU-bound pure-Python workers,
+      2.4&nbsp;s of sequential work:</p>
+    <div class="stats">
+      <div class="stat">
+        <span class="stat-number">0.9×</span>
+        <span class="stat-label">3.13 threads (GIL)</span>
+      </div>
+      <div class="stat stat-strong">
+        <span class="stat-number">5.5×</span>
+        <span class="stat-label">3.13 processes</span>
+      </div>
+      <div class="stat stat-strong">
+        <span class="stat-number">5.6×</span>
+        <span class="stat-label">3.14t threads</span>
+      </div>
+    </div>
+    <p class="note">Processes on a GIL build match the free-threaded interpreter. The rest of the gap to 8×
+      is process start-up, pickling each item, and the parent's own threads. Details in
+      <a href="https://tolquane.com/docs/runtimes/">Runtimes</a>.</p>
+
+    <div class="split">
+      <div>
+        <h3>Across machines</h3>
+        <p>A deploy file cuts the graph into named groups. Edges that cross a group become TCP channels
+          with batching, credit-based back pressure, resend after a dropped connection and an optional
+          shared secret — and the flow does not know.</p>
+      </div>
+      <div>
+<pre class="code code-sm"><code><span class="c"># deploy.toml</span>
+[groups.G1]
+endpoint = <span class="s">"10.0.0.1:7000"</span>
+nodes = [<span class="s">"numbers"</span>, <span class="s">"double.emitter"</span>, <span class="s">"show"</span>]
+
+[groups.G2]
+endpoint = <span class="s">"10.0.0.2:7000"</span>
+nodes = [<span class="s">"double.[0-9]*"</span>]   <span class="c"># the workers, there</span></code></pre>
+<pre class="code code-sm"><code><span class="prompt">$</span> tolquane launch deploy.toml flow.py</code></pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================================================== liveness -->
+<section class="band" id="liveness">
+  <div class="wrap">
+    <p class="eyebrow">The liveness contract</p>
+    <h2>It never hangs</h2>
+    <p class="lead">That is a contract, not a hope: section 6 of
+      <a href="https://github.com/robtacconelli/Tolquane/blob/main/DESIGN.md">DESIGN.md</a> states the rules and
+      <a href="https://github.com/robtacconelli/Tolquane/tree/main/tests/liveness">tests/liveness/</a> keeps them.</p>
+
+    <ol class="rules">
+      <li><strong>Every edge is bounded</strong> (1024 items by default) and back pressure is a state, not an error.</li>
+      <li><strong>EOS is a message</strong>, not a <code>None</code> sentinel and not a flag on a queue, so <code>None</code> is an ordinary value and a forgotten return cannot silently drop an item.</li>
+      <li><strong>Every node waits on one inbox</strong>, so a multi-input node never polls or scans.</li>
+      <li><strong>An error cancels the run</strong> and re-raises as a <code>NodeError</code> naming the node and the worker, or as an <code>ExceptionGroup</code> when several fail.</li>
+      <li><strong>A deadlock is reported</strong>, not suffered: the watchdog names the nodes in the cycle and what each was waiting for.</li>
+    </ol>
+  </div>
+</section>
+
+<!-- ======================================================== tolquane web -->
+<section class="band band-alt" id="web">
+  <div class="wrap">
+    <p class="eyebrow">The GUI</p>
+    <h2>Tolquane Web</h2>
+    <p class="lead">A local page for the flows in one directory. The point of it is that nothing is locked
+      in: every flow is an ordinary <code>flow.py</code> that <code>python flow.py</code> runs on any machine
+      with Tolquane installed. The canvas is a view of the file, not a format of its own.</p>
+
+    <div class="screen">
+      <div class="screen-text">
+        <h3>The blocks on a canvas</h3>
+        <p>The canvas shows the blocks you write — a source, a node, a sink, a farm with its worker inside
+          it, a feedback loop, an all-to-all pair — not the threads they become.</p>
+        <p>Drag a kind from the palette to add one, drag between handles to connect them, and press
+          <strong>Threads</strong> to see the expanded graph that will actually run.</p>
+      </div>
+      <figure class="shot">
+        <img src="/img/canvas.png" width="1280" height="720" loading="lazy" decoding="async"
+             alt="The Tolquane Web canvas: a source, a fused comb, a farm and an all-to-all block">
+      </figure>
+    </div>
+
+    <div class="screen screen-flip">
+      <div class="screen-text">
+        <h3>The code stays yours</h3>
+        <p><strong>Canvas / Code</strong> switches to the whole file in an editor, and the two edit each
+          other: a canvas change regenerates the Python in the house style, and typing re-parses about half
+          a second after you stop, with the canvas catching up.</p>
+        <p>Node bodies are kept exactly as written — a round trip never reformats what you typed — and if the
+          parser cannot model what you wrote, the file is left alone and the flow drops to code-only mode
+          rather than losing anything.</p>
+      </div>
+      <figure class="shot">
+        <img src="/img/code.png" width="1280" height="720" loading="lazy" decoding="async"
+             alt="The code view of a flow in Tolquane Web, with the canvas in sync">
+      </figure>
+    </div>
+
+    <div class="screen">
+      <div class="screen-text">
+        <h3>Run it, and see where the time went</h3>
+        <p><strong>Run</strong> starts the flow in a child process, never in the server, so a flow that hangs
+          or crashes costs one process and the page keeps answering.</p>
+        <p>The drawer has four tabs: <strong>Console</strong> for everything the flow printed,
+          <strong>Taps</strong> for the last items that crossed each edge, <strong>Report</strong> for the
+          per-node table with the bottleneck marked, and <strong>Problems</strong>, where an error or a
+          deadlock report points at the card that caused it.</p>
+      </div>
+      <figure class="shot">
+        <img src="/img/run.png" width="1280" height="720" loading="lazy" decoding="async"
+             alt="A run in progress in Tolquane Web: item counts on the cards, tapped items in the drawer">
+      </figure>
+    </div>
+
+    <figure class="shot shot-wide">
+      <img src="/img/deadlock.png" width="1280" height="720" loading="lazy" decoding="async"
+           alt="A deadlock report in the Problems tab, naming the nodes and what each was waiting for">
+    </figure>
+    <p class="caption">A flow that hangs will not hang for ever: the watchdog notices that every node is
+      waiting on another one, ends the run, and names the cycle and the fix. You can also pick the
+      <code>sync</code> runtime, where one node runs at a time in a fixed order and every run of the same
+      graph interleaves the same way.</p>
+
+    <!-- the AI builder, given the room it deserves -->
+    <div class="feature" id="ai">
+      <p class="eyebrow eyebrow-accent">The AI assistant</p>
+      <h3 class="feature-title">Describe it in a sentence. Watch it get built.</h3>
+      <p class="feature-lead"><strong>This is the part that makes Tolquane usable by anyone.</strong>
+        Describe what you want in a sentence and the builder writes a flow, checks its wiring, runs it on a
+        sample it makes up, fixes what failed, and hands you a diff to apply. Every step is shown as it
+        happens — <code>write_flow</code>, <code>check_flow</code>, <code>run_flow</code> — so you can see
+        what it did rather than trusting it.</p>
+
+      <figure class="shot">
+        <img src="/img/ai-flow-card.png" width="1920" height="1080" loading="lazy" decoding="async"
+             alt="The AI builder panel: what it wrote, what it checked, what it ran, and the diff to apply">
+      </figure>
+
+      <p class="feature-sub">It works in the panel beside the editor, with your open flow as context, and at
+        the command line:</p>
+
+      <div class="hero-install install-block">
+        <pre class="install"><code><span class="prompt">$</span> pip install <span class="s">"tolquane[ai]"</span>
+<span class="prompt">$</span> export ANTHROPIC_API_KEY=...        <span class="c"># or OPENAI_API_KEY with --provider openai</span>
+<span class="prompt">$</span> tolquane build <span class="s">"read urls.txt, fetch each with 8 workers,
+                 write url, status and size to status.csv"</span></code></pre>
+        <button class="copy" type="button" data-copy='tolquane build "read urls.txt, fetch each with 8 workers, write url, status and size to status.csv"' aria-label="Copy the tolquane build command">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2.5"/><path d="M5.5 15H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v.5"/></svg>
+          <span class="copy-label">Copy</span>
+        </button>
+      </div>
+
+      <p class="feature-sub">Three rounds and 12,994 tokens later, unedited:</p>
+<pre class="code"><code><span class="d">@tq.node</span>
+<span class="k">def</span> <span class="fn">fetch</span>(url: <span class="ty">str</span>):
+    <span class="c"># The slow, I/O bound stage, so this is what the farm multiplies.</span>
+    <span class="c"># A failed request is a result to record, not a crash, hence the except.</span>
+    <span class="k">try</span>:
+        <span class="k">with</span> urllib.request.<span class="fn">urlopen</span>(url, timeout=TIMEOUT) <span class="k">as</span> response:
+            <span class="k">return</span> (url, response.status, <span class="fn">len</span>(response.<span class="fn">read</span>()))
+    <span class="k">except</span> urllib.error.HTTPError <span class="k">as</span> exc:
+        <span class="k">return</span> (url, exc.code, <span class="fn">len</span>(exc.<span class="fn">read</span>()))
+    <span class="k">except</span> <span class="ty">Exception</span> <span class="k">as</span> exc:                       <span class="c"># timeout, DNS failure, bad URL</span>
+        <span class="k">return</span> (url, <span class="s">f"{type(exc).__name__}: {exc}"</span>, <span class="n">0</span>)
+
+
+<span class="k">def</span> <span class="fn">build</span>(source=<span class="ty">None</span>):
+    start = tq.<span class="fn">from_iterable</span>(source) <span class="k">if</span> source <span class="k">is not</span> <span class="ty">None</span> <span class="k">else</span> read_urls
+    <span class="k">return</span> start &gt;&gt; tq.<span class="fn">farm</span>(fetch, workers=<span class="n">8</span>) &gt;&gt; WriteCsv</code></pre>
+
+      <p class="note">Ten flows it wrote, unedited, with their full transcripts and the sentence each came
+        from, are in
+        <a href="https://github.com/robtacconelli/Tolquane/tree/main/examples/generated">examples/generated</a>.
+        None of the ten conversations had a tool error. Claude Opus 5 is the default and GPT works with
+        <code>--provider openai</code>; the key is yours, read from the environment or from a mode-600 file,
+        never stored in the database and never given to a flow. Generated code runs on your machine, in a
+        subprocess, with a timeout.</p>
+    </div>
+
+    <div class="screen screen-stack">
+      <div class="screen-text">
+        <h3>Schedules that tell you how it went</h3>
+        <p>A schedule is a flow, a five-field cron expression, its parameters and a runtime. The editor
+          shows what the expression means as a sentence with the next five times it fires, so it is never
+          a guess.</p>
+        <p>Because a schedule runs when nobody is watching, it can say how it went: a webhook, mail, or
+          both, on the statuses you pick, with up to five retries. Each attempt is a run of its own on the
+          Runs page, and the message comes once, at the end, with the final status.</p>
+      </div>
+      <div class="screen-shots">
+        <figure class="shot">
+          <img src="/img/schedules.png" width="1280" height="720" loading="lazy" decoding="async"
+               alt="The Schedules page: cron expressions with what they mean and when they fire next">
+        </figure>
+        <figure class="shot">
+          <img src="/img/outcomes.png" width="1280" height="720" loading="lazy" decoding="async"
+               alt="A schedule's Outcomes section: what to be told about, where, and how many retries">
+        </figure>
+      </div>
+    </div>
+
+    <div class="screen screen-flip">
+      <div class="screen-text">
+        <h3>Version history, in git</h3>
+        <p>When the workspace is a git repository, the History tab lists the commits that touched this flow
+          with their diffs, restores an old version, and commits on save with a message you type (or
+          automatically).</p>
+        <p>Only the flow and its layout sidecar are ever added by name, so a commit never sweeps up anything
+          else, and nothing here runs <code>push</code>, <code>reset</code> or <code>checkout</code>.</p>
+      </div>
+      <figure class="shot">
+        <img src="/img/history.png" width="1280" height="720" loading="lazy" decoding="async"
+             alt="The History tab: the versions of this flow, uncommitted changes on top">
+      </figure>
+    </div>
+
+    <div class="screen">
+      <div class="screen-text">
+        <h3>People, when there is more than one</h3>
+        <p>A local server with no accounts has no login, because only your machine can reach it. The first
+          account turns sign-in on for everybody: administrators get the settings, the keys and the users,
+          members get the flows, the runs, the schedules, the AI panel and the history.</p>
+        <p>Passwords are <code>scrypt</code> hashes, sessions and API tokens are kept only as their SHA-256,
+          and personal tokens let scripts use the same API.</p>
+      </div>
+      <figure class="shot">
+        <img src="/img/users.png" width="1280" height="720" loading="lazy" decoding="async"
+             alt="The Users page: accounts with their roles">
+      </figure>
+    </div>
+
+    <p class="note note-center">The whole tour, screen by screen, is the
+      <a href="https://tolquane.com/docs/web-user/">user guide</a>.</p>
+  </div>
+</section>
+
+<!-- ======================================================== ways to run it -->
+<section class="band" id="run">
+  <div class="wrap">
+    <p class="eyebrow">Deployment</p>
+    <h2>Ways to run it</h2>
+    <p class="lead">One process serves the page; every run happens in a child process of its own. Pick the
+      shape that matches who should be able to reach it.</p>
+
+    <div class="cards">
+      <article class="card">
+        <h3>On your own machine</h3>
+        <p><code>tolquane web</code> listens on <code>127.0.0.1:8765</code>, opens a browser and takes the
+          current directory as the workspace. No login, because nothing else can reach the port.</p>
+<pre class="code code-sm"><code><span class="prompt">$</span> pip install <span class="s">"tolquane[web]"</span>
+<span class="prompt">$</span> cd ~/flows &amp;&amp; tolquane web</code></pre>
+      </article>
+
+      <article class="card">
+        <h3>On a shared machine</h3>
+        <p>Leave the server on loopback and reach it through an SSH tunnel, or put a proxy in front of it for
+          HTTPS and make accounts. <code>--host</code> anything but loopback is refused without
+          <code>--token</code>, because anyone who can reach the page can run code as you.</p>
+<pre class="code code-sm"><code><span class="prompt">$</span> ssh -L 8765:127.0.0.1:8765 host</code></pre>
+        <p class="card-note">There is a systemd unit and an nginx and Caddy configuration in the
+          <a href="https://tolquane.com/docs/deploy/">deployment guide</a>.</p>
+      </article>
+
+      <article class="card">
+        <h3>In a container</h3>
+        <p>The <a href="https://github.com/robtacconelli/Tolquane/blob/main/Dockerfile">Dockerfile</a>
+          installs the wheel on <code>python:3.13-slim</code>, with two volumes and one token.
+          <code>/workspace</code> is your flow files and <code>/data</code> is <code>TOLQUANE_HOME</code>:
+          the SQLite database and the mode-600 key file. Nothing else is state.</p>
+<pre class="code code-sm"><code><span class="prompt">$</span> docker compose up -d</code></pre>
+      </article>
+
+      <article class="card">
+        <h3>As a library, in any script</h3>
+        <p><code>pip install tolquane</code> and <code>import tolquane as tq</code>. No server, no GUI, no
+          dependencies. From the command line, on any file that defines <code>build(source=None)</code>:</p>
+<pre class="code code-sm"><code><span class="prompt">$</span> tolquane run flow.py --stats --runtime processes
+<span class="prompt">$</span> tolquane check flow.py
+<span class="prompt">$</span> tolquane draw flow.py</code></pre>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ======================================================== get it -->
+<section class="band band-alt" id="get">
+  <div class="wrap">
+    <p class="eyebrow">Start now</p>
+    <h2>Get it</h2>
+
+    <div class="get-install">
+      <div class="hero-install install-block">
+        <pre class="install"><code><span class="prompt">$</span> pip install tolquane<span class="c hide-sm">                # the library alone</span>
+<span class="prompt">$</span> pip install <span class="s">"tolquane[web]"</span><span class="c hide-sm">         # with the GUI</span>
+<span class="prompt">$</span> pip install <span class="s">"tolquane[ai]"</span><span class="c hide-sm">          # with the AI builder</span></code></pre>
+        <button class="copy" type="button" data-copy='pip install "tolquane[web]"' aria-label="Copy the install command">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2.5"/><path d="M5.5 15H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v.5"/></svg>
+          <span class="copy-label">Copy</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="links">
+      <a class="link-card" href="https://github.com/robtacconelli/Tolquane">
+        <span class="link-title">GitHub</span>
+        <span class="link-sub">The source, the issues, the pull requests</span>
+      </a>
+      <a class="link-card" href="https://pypi.org/project/tolquane/">
+        <span class="link-title">PyPI</span>
+        <span class="link-sub">tolquane, with the <code>web</code> and <code>ai</code> extras</span>
+      </a>
+      <a class="link-card" href="https://tolquane.com/docs/">
+        <span class="link-title">Documentation</span>
+        <span class="link-sub">The tutorial, the cookbook, the runtimes, the API card</span>
+      </a>
+      <a class="link-card" href="https://huggingface.co/spaces/robtacconelli/tolquane">
+        <span class="link-title">Live demo</span>
+        <span class="link-sub">A Hugging Face Space; sign in as <code>demo</code> / <code>tolquane</code></span>
+      </a>
+      <a class="link-card" href="https://github.com/robtacconelli/Tolquane/blob/main/CHANGELOG.md">
+        <span class="link-title">Changelog</span>
+        <span class="link-sub">1.0 to 1.3</span>
+      </a>
+      <a class="link-card" href="https://github.com/robtacconelli/Tolquane/blob/main/DESIGN.md">
+        <span class="link-title">DESIGN.md</span>
+        <span class="link-sub">Why it is built this way; section 6 is the liveness contract</span>
+      </a>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer class="site-footer">
+  <div class="wrap footer-inner">
+    <div class="footer-brand">
+      <svg class="mark" width="26" height="26" viewBox="0 0 56 56" role="img" aria-hidden="true" focusable="false">
+        <rect width="56" height="56" rx="15" fill="var(--mark-bg)"/>
+        <g stroke="var(--mark-fg)" stroke-width="3" stroke-linecap="round" fill="none">
+          <line x1="11" y1="28" x2="19" y2="28"/>
+          <circle cx="28" cy="28" r="9"/>
+          <line x1="37" y1="28" x2="45" y2="28"/>
+        </g>
+        <circle cx="28" cy="28" r="3.4" fill="var(--mark-fg)"/>
+      </svg>
+      <span>Tolquane</span>
+    </div>
+    <p class="footer-note">Apache-2.0. The successor of
+      <a href="https://github.com/robtacconelli/BBFlow">BBFlow</a>, a Java implementation of the
+      <a href="https://github.com/fastflow/fastflow">FastFlow</a> building blocks, rewritten from scratch to
+      be simple to use and impossible to hang.</p>
+    <nav class="footer-links" aria-label="Elsewhere">
+      <a href="https://github.com/robtacconelli/Tolquane">GitHub</a>
+      <a href="https://pypi.org/project/tolquane/">PyPI</a>
+      <a href="https://tolquane.com/docs/">Docs</a>
+      <a href="https://github.com/robtacconelli/Tolquane/blob/main/LICENSE">License</a>
+    </nav>
+  </div>
+</footer>
+
+<script>
+  (function () {
+    var root = document.documentElement;
+    var toggle = document.getElementById('theme-toggle');
+
+    function current() {
+      var explicit = root.getAttribute('data-theme');
+      if (explicit) return explicit;
+      return window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+    }
+    function label() {
+      toggle.setAttribute('aria-label',
+        current() === 'dark' ? 'Switch to light theme' : 'Switch to dark theme');
+    }
+    toggle.addEventListener('click', function () {
+      var next = current() === 'dark' ? 'light' : 'dark';
+      root.setAttribute('data-theme', next);
+      try { localStorage.setItem('tq-theme', next); } catch (e) {}
+      label();
+    });
+    label();
+
+    var buttons = document.querySelectorAll('.copy');
+    for (var i = 0; i < buttons.length; i++) {
+      buttons[i].addEventListener('click', function () {
+        var button = this;
+        var text = button.getAttribute('data-copy');
+        var done = function () {
+          var out = button.querySelector('.copy-label');
+          if (!out || button.dataset.busy) return;
+          button.dataset.busy = '1';
+          var was = out.textContent;
+          out.textContent = 'Copied';
+          button.classList.add('is-copied');
+          setTimeout(function () {
+            out.textContent = was;
+            button.classList.remove('is-copied');
+            delete button.dataset.busy;
+          }, 1600);
+        };
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(done, function () {});
+        } else {
+          var field = document.createElement('textarea');
+          field.value = text;
+          document.body.appendChild(field);
+          field.select();
+          try { document.execCommand('copy'); done(); } catch (e) {}
+          document.body.removeChild(field);
+        }
+      });
+    }
+  })();
+</script>
+
+</body>
+</html>

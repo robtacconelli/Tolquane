@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="56" height="56" viewBox="0 0 56 56" role="img" aria-label="Tolquane">
+  <title>Tolquane</title>
+  <rect width="56" height="56" rx="15" fill="#14b8a6"/>
+  <g stroke="#ffffff" stroke-width="3" stroke-linecap="round" fill="none">
+    <line x1="11" y1="28" x2="19" y2="28"/>
+    <circle cx="28" cy="28" r="9"/>
+    <line x1="37" y1="28" x2="45" y2="28"/>
+  </g>
+  <circle cx="28" cy="28" r="3.4" fill="#ffffff"/>
+</svg>

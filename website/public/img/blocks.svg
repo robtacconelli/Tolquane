@@ -1,0 +1,100 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="560" viewBox="0 0 900 560" role="img" aria-label="A function is a node, the shift operator builds a pipeline, a farm copies a worker">
+  <title>The three things you write in Tolquane</title>
+  <desc>A decorated Python function becomes a node; the &gt;&gt; operator chains nodes into a pipeline; tq.farm copies one worker between an emitter and a collector.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#64748b"/>
+    </marker>
+    <marker id="arrow-teal" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#14b8a6"/>
+    </marker>
+    <style>
+      .bg   { fill: #f4f6f8; stroke: #cbd5e1; }
+      .card { fill: #ffffff; stroke: #94a3b8; stroke-width: 1.5; }
+      .node { fill: #ffffff; stroke: #14b8a6; stroke-width: 2; }
+      .code { fill: #ffffff; stroke: #dbe2e8; stroke-width: 1.5; }
+      .h    { font: 700 15px ui-sans-serif, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; fill: #0f172a; }
+      .t    { font: 600 14px ui-sans-serif, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; fill: #0f172a; }
+      .s    { font: 400 11.5px ui-sans-serif, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; fill: #64748b; }
+      .n    { font: 400 12.5px ui-sans-serif, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; fill: #475569; }
+      .m    { font: 400 12.5px ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; fill: #334155; }
+      .mt   { font: 600 13px ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; fill: #0f766e; }
+      .line { stroke: #64748b; stroke-width: 1.6; fill: none; }
+      .rule { stroke: #dbe2e8; stroke-width: 1; }
+    </style>
+  </defs>
+
+  <rect class="bg" x="0.5" y="0.5" width="899" height="559" rx="14"/>
+
+  <!-- 1. a function is a node -->
+  <text class="h" x="28" y="40">1 &#160;A function is a node</text>
+  <rect class="code" x="28" y="56" width="252" height="80" rx="8"/>
+  <text class="m" x="44" y="80">@tq.node</text>
+  <text class="m" x="44" y="100">def double(x):</text>
+  <text class="m" x="44" y="120" xml:space="preserve">    return x * 2</text>
+  <line class="line" x1="294" y1="96" x2="340" y2="96" marker-end="url(#arrow)"/>
+  <rect class="node" x="352" y="68" width="152" height="56" rx="10"/>
+  <text class="t" x="428" y="92" text-anchor="middle">double</text>
+  <text class="s" x="428" y="110" text-anchor="middle">tq.node</text>
+  <text class="n" x="530" y="90">One thread, one inbox. The return value is sent on.</text>
+  <text class="n" x="530" y="110">tq.SKIP sends nothing; a generator sends many.</text>
+
+  <line class="rule" x1="28" y1="156" x2="872" y2="156"/>
+
+  <!-- 2. >> is a pipeline -->
+  <text class="h" x="28" y="188">2 &#160;<tspan class="mt" font-size="15">&gt;&gt;</tspan> is a pipeline</text>
+  <rect class="node" x="28" y="204" width="146" height="56" rx="10"/>
+  <text class="t" x="101" y="228" text-anchor="middle">numbers</text>
+  <text class="s" x="101" y="246" text-anchor="middle">tq.source</text>
+  <line class="line" x1="178" y1="232" x2="222" y2="232" marker-end="url(#arrow)"/>
+  <rect class="node" x="226" y="204" width="146" height="56" rx="10"/>
+  <text class="t" x="299" y="228" text-anchor="middle">double</text>
+  <text class="s" x="299" y="246" text-anchor="middle">tq.node</text>
+  <line class="line" x1="376" y1="232" x2="420" y2="232" marker-end="url(#arrow)"/>
+  <rect class="node" x="424" y="204" width="146" height="56" rx="10"/>
+  <text class="t" x="497" y="228" text-anchor="middle">show</text>
+  <text class="s" x="497" y="246" text-anchor="middle">tq.sink</text>
+  <text class="mt" x="600" y="228">numbers &gt;&gt; double &gt;&gt; show</text>
+  <text class="n" x="600" y="248">Every edge is a bounded channel.</text>
+
+  <line class="rule" x1="28" y1="280" x2="872" y2="280"/>
+
+  <!-- 3. a farm copies a worker -->
+  <text class="h" x="28" y="312">3 &#160;A farm copies a worker</text>
+
+  <rect class="card" x="28" y="384" width="122" height="52" rx="10"/>
+  <text class="t" x="89" y="406" text-anchor="middle">emitter</text>
+  <text class="s" x="89" y="424" text-anchor="middle">round robin</text>
+
+  <rect class="node" x="228" y="330" width="150" height="42" rx="9"/>
+  <text class="t" x="303" y="356" text-anchor="middle">double.0</text>
+  <rect class="node" x="228" y="382" width="150" height="42" rx="9"/>
+  <text class="t" x="303" y="408" text-anchor="middle">double.1</text>
+  <rect class="node" x="228" y="434" width="150" height="42" rx="9"/>
+  <text class="t" x="303" y="460" text-anchor="middle">double.2</text>
+  <rect class="node" x="228" y="486" width="150" height="42" rx="9"/>
+  <text class="t" x="303" y="512" text-anchor="middle">double.3</text>
+
+  <path class="line" d="M 154 410 H 192 V 351 H 224" marker-end="url(#arrow-teal)"/>
+  <path class="line" d="M 154 410 H 192 V 403 H 224" marker-end="url(#arrow-teal)"/>
+  <path class="line" d="M 154 410 H 192 V 455 H 224" marker-end="url(#arrow-teal)"/>
+  <path class="line" d="M 154 410 H 192 V 507 H 224" marker-end="url(#arrow-teal)"/>
+
+  <path class="line" d="M 382 351 H 414 V 410 H 448" marker-end="url(#arrow-teal)"/>
+  <path class="line" d="M 382 403 H 414 V 410 H 448" marker-end="url(#arrow-teal)"/>
+  <path class="line" d="M 382 455 H 414 V 410 H 448" marker-end="url(#arrow-teal)"/>
+  <path class="line" d="M 382 507 H 414 V 410 H 448" marker-end="url(#arrow-teal)"/>
+
+  <rect class="card" x="452" y="384" width="122" height="52" rx="10"/>
+  <text class="t" x="513" y="406" text-anchor="middle">collector</text>
+  <text class="s" x="513" y="424" text-anchor="middle">first come</text>
+
+  <text class="mt" x="606" y="360">tq.farm(double, 4)</text>
+  <text class="n" x="606" y="384">Same graph on threads, in child</text>
+  <text class="n" x="606" y="404">processes, or split across machines.</text>
+  <text class="n" x="606" y="432">ordered=True keeps input order.</text>
+  <text class="n" x="606" y="452">emit=&quot;on_demand&quot; feeds idle workers.</text>
+  <text class="n" x="606" y="472">key= sends like items to one worker.</text>
+  <text class="n" x="606" y="500">tq.farm(a &gt;&gt; b, 4) copies a whole block.</text>
+</svg>
