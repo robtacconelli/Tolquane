@@ -100,6 +100,8 @@ jobs:
       # The Playwright configuration starts the server and seeds a workspace itself;
       # this job adds nothing to the environment.
       - run: npm run e2e
+        env:
+          TOLQUANE_PYTHON: python
         working-directory: web
       - name: screenshots
         if: failure()

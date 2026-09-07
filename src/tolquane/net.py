@@ -504,6 +504,9 @@ class _Sender:
         while self.unacked and self.unacked[0][0] + len(self.unacked[0][1]) <= upto:
             self.unacked.popleft()
         self.inst.inbox.release(0, n)
+        # Items the peer has not acknowledged are work outside this group's channels:
+        # the deadlock watchdog must not count this node as idle while they are out.
+        self.rc.scheduler.event(self.inst, -n)
 
     def _write(self, kind: int, obj: Any) -> None:
         sock = self.sock
@@ -566,6 +569,7 @@ class _Sender:
             with self.lock:
                 self.unacked.append(frame)
                 self.sent += len(chunk)
+            self.rc.scheduler.event(self.inst, len(chunk))
             self._transmit(DATA, frame)
             self.inst.stats.items_out += len(chunk)
 

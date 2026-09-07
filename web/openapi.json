@@ -1866,9 +1866,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "provider"
-        ],
+        "required": ["provider"],
         "title": "AiSettings"
       },
       "ChatMessage": {
@@ -1883,10 +1881,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "role",
-          "content"
-        ],
+        "required": ["role", "content"],
         "title": "ChatMessage"
       },
       "ChatRequest": {
@@ -1944,9 +1939,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "messages"
-        ],
+        "required": ["messages"],
         "title": "ChatRequest"
       },
       "CheckResult": {
@@ -1973,11 +1966,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "ok",
-          "nodes",
-          "edges"
-        ],
+        "required": ["ok", "nodes", "edges"],
         "title": "CheckResult"
       },
       "CommitMessage": {
@@ -2003,10 +1992,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "rev",
-          "short"
-        ],
+        "required": ["rev", "short"],
         "title": "Committed"
       },
       "CronPreview": {
@@ -2024,10 +2010,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "description",
-          "next_five"
-        ],
+        "required": ["description", "next_five"],
         "title": "CronPreview"
       },
       "CronPreviewRequest": {
@@ -2038,9 +2021,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "cron"
-        ],
+        "required": ["cron"],
         "title": "CronPreviewRequest"
       },
       "DeliveryModel": {
@@ -2070,11 +2051,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "channel",
-          "target",
-          "status"
-        ],
+        "required": ["channel", "target", "status"],
         "title": "DeliveryModel"
       },
       "DrawResult": {
@@ -2085,9 +2062,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "mermaid"
-        ],
+        "required": ["mermaid"],
         "title": "DrawResult"
       },
       "ExplainResult": {
@@ -2098,9 +2073,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "text"
-        ],
+        "required": ["text"],
         "title": "ExplainResult"
       },
       "FlowDetail": {
@@ -2178,11 +2151,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "path",
-          "source",
-          "modified"
-        ],
+        "required": ["path", "source", "modified"],
         "title": "FlowDetail"
       },
       "FlowList": {
@@ -2200,10 +2169,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "workspace",
-          "flows"
-        ],
+        "required": ["workspace", "flows"],
         "title": "FlowList"
       },
       "FlowSummary": {
@@ -2242,13 +2208,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "path",
-          "name",
-          "modified",
-          "size",
-          "has_layout"
-        ],
+        "required": ["path", "name", "modified", "size", "has_layout"],
         "title": "FlowSummary"
       },
       "GenerateRequest": {
@@ -2260,9 +2220,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "model"
-        ],
+        "required": ["model"],
         "title": "GenerateRequest"
       },
       "GenerateResult": {
@@ -2273,9 +2231,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "source"
-        ],
+        "required": ["source"],
         "title": "GenerateResult"
       },
       "HTTPValidationError": {
@@ -2323,12 +2279,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "ok",
-          "version",
-          "runs_live",
-          "scheduler"
-        ],
+        "required": ["ok", "version", "runs_live", "scheduler"],
         "title": "Health"
       },
       "HistoryEntry": {
@@ -2360,13 +2311,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "rev",
-          "short",
-          "author",
-          "date",
-          "message"
-        ],
+        "required": ["rev", "short", "author", "date", "message"],
         "title": "HistoryEntry"
       },
       "HistoryList": {
@@ -2385,9 +2330,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "entries"
-        ],
+        "required": ["entries"],
         "title": "HistoryList"
       },
       "HistoryStatus": {
@@ -2430,9 +2373,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "available"
-        ],
+        "required": ["available"],
         "title": "HistoryStatus"
       },
       "HistoryVersion": {
@@ -2451,11 +2392,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "rev",
-          "source",
-          "diff"
-        ],
+        "required": ["rev", "source", "diff"],
         "title": "HistoryVersion"
       },
       "ImportProbe": {
@@ -2481,10 +2418,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "module",
-          "ok"
-        ],
+        "required": ["module", "ok"],
         "title": "ImportProbe"
       },
       "IssuedToken": {
@@ -2505,10 +2439,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "id",
-          "token"
-        ],
+        "required": ["id", "token"],
         "title": "IssuedToken"
       },
       "LastOutcome": {
@@ -2527,11 +2458,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "status",
-          "attempts",
-          "notified"
-        ],
+        "required": ["status", "attempts", "notified"],
         "title": "LastOutcome"
       },
       "LoginRequest": {
@@ -2546,10 +2473,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "name",
-          "password"
-        ],
+        "required": ["name", "password"],
         "title": "LoginRequest"
       },
       "LoginResult": {
@@ -2564,10 +2488,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "token",
-          "user"
-        ],
+        "required": ["token", "user"],
         "title": "LoginResult"
       },
       "MeResult": {
@@ -2594,9 +2515,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "mode"
-        ],
+        "required": ["mode"],
         "title": "MeResult"
       },
       "NewFlow": {
@@ -2620,9 +2539,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "path"
-        ],
+        "required": ["path"],
         "title": "NewFlow"
       },
       "NewSchedule": {
@@ -2696,10 +2613,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "flow",
-          "cron"
-        ],
+        "required": ["flow", "cron"],
         "title": "NewSchedule"
       },
       "NewToken": {
@@ -2730,10 +2644,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "name",
-          "password"
-        ],
+        "required": ["name", "password"],
         "title": "NewUser"
       },
       "NotificationList": {
@@ -2747,9 +2658,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "notifications"
-        ],
+        "required": ["notifications"],
         "title": "NotificationList"
       },
       "NotificationModel": {
@@ -2809,13 +2718,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "id",
-          "channel",
-          "target",
-          "status",
-          "created"
-        ],
+        "required": ["id", "channel", "target", "status", "created"],
         "title": "NotificationModel"
       },
       "NotificationSettings": {
@@ -2948,9 +2851,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "notes"
-        ],
+        "required": ["notes"],
         "title": "OptimizeResult"
       },
       "ParseRequest": {
@@ -2966,9 +2867,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "source"
-        ],
+        "required": ["source"],
         "title": "ParseRequest"
       },
       "ParseResult": {
@@ -3026,9 +2925,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "new"
-        ],
+        "required": ["new"],
         "title": "PasswordChange"
       },
       "RenameFlow": {
@@ -3039,9 +2936,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "path"
-        ],
+        "required": ["path"],
         "title": "RenameFlow"
       },
       "RestoreRequest": {
@@ -3052,9 +2947,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "rev"
-        ],
+        "required": ["rev"],
         "title": "RestoreRequest"
       },
       "RunList": {
@@ -3068,9 +2961,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "runs"
-        ],
+        "required": ["runs"],
         "title": "RunList"
       },
       "RunModel": {
@@ -3184,14 +3075,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "id",
-          "flow",
-          "runtime",
-          "trigger",
-          "started",
-          "status"
-        ],
+        "required": ["id", "flow", "runtime", "trigger", "started", "status"],
         "title": "RunModel"
       },
       "SaveFlow": {
@@ -3225,9 +3109,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "source"
-        ],
+        "required": ["source"],
         "title": "SaveFlow"
       },
       "ScheduleChange": {
@@ -3360,9 +3242,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "schedules"
-        ],
+        "required": ["schedules"],
         "title": "ScheduleList"
       },
       "ScheduleModel": {
@@ -3516,11 +3396,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "host",
-          "port",
-          "token_set"
-        ],
+        "required": ["host", "port", "token_set"],
         "title": "ServerSettings"
       },
       "SettingsModel": {
@@ -3657,9 +3533,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "host"
-        ],
+        "required": ["host"],
         "title": "SmtpSettings"
       },
       "StartRun": {
@@ -3732,9 +3606,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "path"
-        ],
+        "required": ["path"],
         "title": "StartRun"
       },
       "TestResults": {
@@ -3748,9 +3620,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "results"
-        ],
+        "required": ["results"],
         "title": "TestResults"
       },
       "TokenList": {
@@ -3764,9 +3634,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "tokens"
-        ],
+        "required": ["tokens"],
         "title": "TokenList"
       },
       "TokenModel": {
@@ -3797,10 +3665,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "id",
-          "created"
-        ],
+        "required": ["id", "created"],
         "title": "TokenModel"
       },
       "UserChange": {
@@ -3853,9 +3718,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "users"
-        ],
+        "required": ["users"],
         "title": "UserList"
       },
       "UserModel": {
@@ -3901,11 +3764,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "id",
-          "name",
-          "role"
-        ],
+        "required": ["id", "name", "role"],
         "title": "UserModel"
       },
       "ValidationError": {
@@ -3941,11 +3800,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "loc",
-          "msg",
-          "type"
-        ],
+        "required": ["loc", "msg", "type"],
         "title": "ValidationError"
       }
     }

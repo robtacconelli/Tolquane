@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import json
 import smtplib
+import socketserver
 import threading
 import time
 from collections.abc import Iterator
@@ -66,6 +67,16 @@ if __name__ == "__main__":
 # ------------------------------------------------------------------------------ the ends
 
 
+class _QuietServer(HTTPServer):
+    """HTTPServer without the reverse DNS lookup of server_bind, which stalls on macOS."""
+
+    def server_bind(self) -> None:
+        socketserver.TCPServer.server_bind(self)
+        host, port = self.socket.getsockname()[:2]
+        self.server_name = host
+        self.server_port = port
+
+
 class Receiver:
     """A webhook nobody has to mock: one HTTP server, on a free port, keeping the bodies."""
 
@@ -90,7 +101,7 @@ class Receiver:
             def log_message(self, *args: Any) -> None:
                 pass
 
-        self.server = HTTPServer(("127.0.0.1", 0), Handler)
+        self.server = _QuietServer(("127.0.0.1", 0), Handler)
         self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
 
     @property
