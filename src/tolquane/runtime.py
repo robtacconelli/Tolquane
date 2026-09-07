@@ -372,7 +372,10 @@ class BatonScheduler(Scheduler):
         if inst.state is State.NEW:
             return True
         if inst.state is State.WAITING:
-            return inst.predicate is not None and inst.predicate()
+            # Read once: the node's own thread clears it when it leaves the wait, and on
+            # the free-threaded build that can happen between a check and a call.
+            predicate = inst.predicate
+            return predicate is not None and predicate()
         return False
 
     def _handoff(self, current: NodeInstance) -> None:
