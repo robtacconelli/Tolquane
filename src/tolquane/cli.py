@@ -427,6 +427,9 @@ def _port_in_use(host: str, port: int) -> str:
 
 
 def _url_host(host: str) -> str:
+    """The host to connect to for a bind address: the wildcards mean loopback here."""
+    if host in ("0.0.0.0", "::", ""):
+        return "127.0.0.1"
     return f"[{host}]" if ":" in host else host
 
 

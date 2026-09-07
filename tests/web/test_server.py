@@ -549,7 +549,8 @@ def test_settings_round_trip_and_keys(client: TestClient, tmp_path: Path) -> Non
 
     key_file = tmp_path / "web.toml"
     assert "sk-not-a-real-key" in key_file.read_text()
-    assert stat.S_IMODE(key_file.stat().st_mode) == 0o600
+    if sys.platform != "win32":  # Windows has no POSIX file modes
+        assert stat.S_IMODE(key_file.stat().st_mode) == 0o600
     assert client.get("/api/settings").json()["ai"]["has_anthropic_key"] is True
 
     forgotten = client.put("/api/settings", json={"ai": {"anthropic_key": None}})

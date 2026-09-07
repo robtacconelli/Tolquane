@@ -228,6 +228,7 @@ def test_the_interpreter_setting_is_run_before_it_is_saved(client: TestClient) -
     assert client.get("/api/settings").json()["python"] == sys.executable
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="the fake interpreter is a sh script")
 def test_an_interpreter_without_tolquane_is_named_with_its_fix(
     client: TestClient, tmp_path: Path
 ) -> None:
