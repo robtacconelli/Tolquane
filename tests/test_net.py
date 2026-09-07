@@ -14,13 +14,6 @@ import tolquane as tq
 from tolquane import net
 from tolquane.net import load_deployment, partition
 
-# On the macOS runner, loopback connections between groups drop or fail to come back
-# within the budget in ways that do not happen on Linux or Windows; until that is
-# reproduced on a Mac (docs/backlog.md), these tests report rather than gate there.
-pytestmark = pytest.mark.xfail(
-    sys.platform == "darwin", reason="network runtime on the macOS runner", strict=False
-)
-
 # Workers at module level so the processes runtime can find them too.
 
 
@@ -446,7 +439,6 @@ def test_remote_group_can_use_processes() -> None:
 
 def test_cli_run_with_deploy(tmp_path: Path) -> None:
     import subprocess
-    import sys
 
     flow = tmp_path / "flow.py"
     flow.write_text(

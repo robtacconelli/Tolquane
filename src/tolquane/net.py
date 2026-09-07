@@ -422,6 +422,7 @@ class _Sender:
         self.rc.register_cond(self.cond)
         self.sent = 0  # items sent so far
         self.acked = 0  # items the peer has handed to its node
+        self.ended = False  # END has been sent once; a reconnect must say it again
         # A peer that has our items must answer within the reconnect budget: acks as it
         # delivers them, heartbeats while it is busy. Silence past this point is a lost peer.
         self.ack_deadline: float | None = None
@@ -636,6 +637,11 @@ class _Sender:
             try:
                 for first, items in resend:
                     self._write(DATA, (first, items))
+                # The END frame may have been in the dropped socket's buffer, after the
+                # data the peer never read: without it the peer waits for us for ever
+                # while we, fully acknowledged, are already gone.
+                if self.ended:
+                    self._write(END, self.sent)
                 return
             except (OSError, ConnectionError):
                 time.sleep(0.05)
@@ -669,6 +675,8 @@ class _Sender:
 
     def _finish(self) -> None:
         """Every item is sent: say the stream ended and wait until the peer has it all."""
+        with self.lock:
+            self.ended = True
         self._transmit(END, self.sent)
         with self.lock:
             self._wait_for(lambda: self.acked >= self.sent)
