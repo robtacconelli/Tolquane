@@ -11,6 +11,8 @@ from typing import Any
 import pytest
 
 import tolquane as tq
+from tolquane import net
+from tolquane.net import load_deployment, partition
 
 # On the macOS runner, loopback connections between groups drop or fail to come back
 # within the budget in ways that do not happen on Linux or Windows; until that is
@@ -18,8 +20,6 @@ import tolquane as tq
 pytestmark = pytest.mark.xfail(
     sys.platform == "darwin", reason="network runtime on the macOS runner", strict=False
 )
-from tolquane import net
-from tolquane.net import load_deployment, partition
 
 # Workers at module level so the processes runtime can find them too.
 
