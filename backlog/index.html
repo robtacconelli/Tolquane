@@ -622,6 +622,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#platforms" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Platforms
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -697,6 +708,34 @@
     
   
     User guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../deploy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deploying it
   
 
     
@@ -947,6 +986,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#platforms" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Platforms
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1116,6 +1166,28 @@ release", and the I3 hardening pass), and what 1.3 left for later.</p>
 <td>Notifications beyond a webhook and email</td>
 <td>1.3 B3</td>
 <td>Slack, Teams and the like go through the webhook today, in Tolquane's own JSON shape; per-target templates, or first-class integrations, if anybody asks.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="platforms">Platforms<a class="headerlink" href="#platforms" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Where it came up</th>
+<th>The work</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Cancel on Windows</td>
+<td><code>tolquane run --events</code> and the run supervisor</td>
+<td>Windows has no SIGTERM: a cancel kills the child, which ends as failed rather than cancelled. A control pipe or a file flag would let the child stop cleanly.</td>
+</tr>
+<tr>
+<td>Drop and resume on macOS</td>
+<td><code>tests/test_net.py</code>, expected to fail on the macOS runner</td>
+<td>After a simulated connection drop the receiver on the macOS runner sometimes never sees the sender come back within the budget; the same test passes on Linux and Windows. Reproduce on a Mac and fix.</td>
 </tr>
 </tbody>
 </table>

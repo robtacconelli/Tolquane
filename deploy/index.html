@@ -11,10 +11,10 @@
       
       
       
-        <link rel="prev" href="../deploy/">
+        <link rel="prev" href="../web-user/">
       
       
-        <link rel="next" href="../web-interfaces/">
+        <link rel="next" href="../web/">
       
       
         
@@ -25,7 +25,7 @@
     
     
       
-        <title>The plan - Tolquane</title>
+        <title>Deploying it - Tolquane</title>
       
     
     
@@ -78,7 +78,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#tolquane-web-the-web-gui-broken-down" class="md-skip">
+        <a href="#deploying-tolquane-web" class="md-skip">
           Skip to content
         </a>
       
@@ -114,7 +114,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              The plan
+              Deploying it
             
           </span>
         </div>
@@ -636,34 +636,6 @@
                 
   
   
-  
-  
-    <li class="md-nav__item">
-      <a href="../deploy/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Deploying it
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
     
   
   
@@ -683,7 +655,7 @@
   <span class="md-ellipsis">
     
   
-    The plan
+    Deploying it
   
 
     
@@ -701,7 +673,7 @@
   <span class="md-ellipsis">
     
   
-    The plan
+    Deploying it
   
 
     
@@ -727,10 +699,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#what-it-is" class="md-nav__link">
+  <a href="#what-a-deployment-is-made-of" class="md-nav__link">
     <span class="md-ellipsis">
       
-        What it is
+        What a deployment is made of
       
     </span>
   </a>
@@ -738,10 +710,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#decisions-that-shape-everything" class="md-nav__link">
+  <a href="#on-your-own-machine" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Decisions that shape everything
+        On your own machine
       
     </span>
   </a>
@@ -749,77 +721,22 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#layout-in-the-repository" class="md-nav__link">
+  <a href="#on-a-machine-you-log-in-to" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Layout in the repository
+        On a machine you log in to
       
     </span>
   </a>
   
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#the-sub-problems" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        The sub-problems
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="The sub-problems">
+    <nav class="md-nav" aria-label="On a machine you log in to">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#wave-0-foundations-python-only-all-three-in-parallel" class="md-nav__link">
+  <a href="#as-a-service" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Wave 0: foundations (Python only, all three in parallel)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#wave-1-the-server-and-the-app-shell-parallel-once-wave-0-interfaces-are-fixed" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Wave 1: the server and the app shell (parallel once wave 0 interfaces are fixed)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#wave-2-the-editor-and-the-tools-parallel-each-against-s4-and-f1" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Wave 2: the editor and the tools (parallel, each against S4 and F1)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#wave-3-packaging-tests-docs" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Wave 3: packaging, tests, docs
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#later-not-in-the-first-release" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Later, not in the first release
+        As a service
       
     </span>
   </a>
@@ -832,10 +749,60 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#order-and-parallelism" class="md-nav__link">
+  <a href="#docker" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Order and parallelism
+        Docker
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Docker">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#compose" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Compose
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-command-line-inside-the-container" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The command line, inside the container
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#building-from-the-checkout" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Building from the checkout
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#behind-a-reverse-proxy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Behind a reverse proxy
       
     </span>
   </a>
@@ -843,10 +810,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#risks" class="md-nav__link">
+  <a href="#the-environment" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Risks
+        The environment
       
     </span>
   </a>
@@ -854,10 +821,32 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#13-users-inputs-and-environments-history-schedule-outcomes" class="md-nav__link">
+  <a href="#what-to-back-up" class="md-nav__link">
     <span class="md-ellipsis">
       
-        1.3: users, inputs and environments, history, schedule outcomes
+        What to back up
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#upgrading" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Upgrading
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#security-in-one-paragraph" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Security, in one paragraph
       
     </span>
   </a>
@@ -868,6 +857,34 @@
   
 </nav>
       
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../web/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The plan
+  
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -1050,10 +1067,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#what-it-is" class="md-nav__link">
+  <a href="#what-a-deployment-is-made-of" class="md-nav__link">
     <span class="md-ellipsis">
       
-        What it is
+        What a deployment is made of
       
     </span>
   </a>
@@ -1061,10 +1078,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#decisions-that-shape-everything" class="md-nav__link">
+  <a href="#on-your-own-machine" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Decisions that shape everything
+        On your own machine
       
     </span>
   </a>
@@ -1072,77 +1089,22 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#layout-in-the-repository" class="md-nav__link">
+  <a href="#on-a-machine-you-log-in-to" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Layout in the repository
+        On a machine you log in to
       
     </span>
   </a>
   
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#the-sub-problems" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        The sub-problems
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="The sub-problems">
+    <nav class="md-nav" aria-label="On a machine you log in to">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#wave-0-foundations-python-only-all-three-in-parallel" class="md-nav__link">
+  <a href="#as-a-service" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Wave 0: foundations (Python only, all three in parallel)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#wave-1-the-server-and-the-app-shell-parallel-once-wave-0-interfaces-are-fixed" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Wave 1: the server and the app shell (parallel once wave 0 interfaces are fixed)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#wave-2-the-editor-and-the-tools-parallel-each-against-s4-and-f1" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Wave 2: the editor and the tools (parallel, each against S4 and F1)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#wave-3-packaging-tests-docs" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Wave 3: packaging, tests, docs
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#later-not-in-the-first-release" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Later, not in the first release
+        As a service
       
     </span>
   </a>
@@ -1155,10 +1117,60 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#order-and-parallelism" class="md-nav__link">
+  <a href="#docker" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Order and parallelism
+        Docker
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Docker">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#compose" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Compose
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-command-line-inside-the-container" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The command line, inside the container
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#building-from-the-checkout" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Building from the checkout
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#behind-a-reverse-proxy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Behind a reverse proxy
       
     </span>
   </a>
@@ -1166,10 +1178,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#risks" class="md-nav__link">
+  <a href="#the-environment" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Risks
+        The environment
       
     </span>
   </a>
@@ -1177,10 +1189,32 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#13-users-inputs-and-environments-history-schedule-outcomes" class="md-nav__link">
+  <a href="#what-to-back-up" class="md-nav__link">
     <span class="md-ellipsis">
       
-        1.3: users, inputs and environments, history, schedule outcomes
+        What to back up
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#upgrading" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Upgrading
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#security-in-one-paragraph" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Security, in one paragraph
       
     </span>
   </a>
@@ -1207,182 +1241,283 @@
   
 
 
-<h1 id="tolquane-web-the-web-gui-broken-down">Tolquane Web: the web GUI, broken down<a class="headerlink" href="#tolquane-web-the-web-gui-broken-down" title="Permanent link">&para;</a></h1>
-<p><strong>Status:</strong> built, shipped in 1.2; the 1.3 additions at the end of this page shipped the
-same day. The user guide is <code>docs/web-user.md</code>; this page stays as the record of the
-plan and the sub-problems. This page is the contract the
-sub-problems are built against; each one is small enough for one agent to finish and test
-on its own.</p>
-<h2 id="what-it-is">What it is<a class="headerlink" href="#what-it-is" title="Permanent link">&para;</a></h2>
-<p>A local web application, started with <code>tolquane web</code>, that lets anyone create, see,
-test, run, debug and schedule Tolquane flows on a canvas the way n8n does with
-workflows, with the Python code always one click away and editable, and the AI builder
-in a side panel. It is an optional extra (<code>pip install "tolquane[web]"</code>). The library
-stays dependency-free, and every flow Tolquane Web makes is a plain <code>flow.py</code> that runs
-with <code>python flow.py</code> on a machine that has only <code>tolquane</code> installed.</p>
-<h2 id="decisions-that-shape-everything">Decisions that shape everything<a class="headerlink" href="#decisions-that-shape-everything" title="Permanent link">&para;</a></h2>
-<ol>
-<li><strong>The Python file is the artifact; the canvas is a view of it.</strong> A flow is a
-   <code>flow.py</code> in the house style, with <code>build(source=None)</code> and <code>main()</code>, exactly what the
-   AI builder writes and the CLI runs today. The Tolquane Web keeps a <em>flow model</em> (JSON) that
-   it reads out of the file by importing it and walking the block tree, and writes back
-   as Python by the same code generator the builder's style asks for. Node bodies are
-   kept verbatim as source text in the model, so a round trip changes nothing a person
-   wrote. Canvas positions live in a sidecar, <code>flow.layout.json</code>, never in the <code>.py</code>.
-   A file the model cannot represent (a <code>Graph.link</code> topology, a node built at runtime)
-   opens in <em>code-only mode</em>: the canvas shows the expanded graph read-only, the editor
-   works, run and debug work.</li>
-<li><strong>The canvas shows blocks, not threads.</strong> Nodes on the canvas are what people write:
-   source, node, sink, raw, farm (with its worker inside as a nested card), comb,
-   feedback, all-to-all. <code>&gt;&gt;</code> is an edge. A toggle shows the expanded graph
-   (<code>tq.draw</code>), the threads that will actually run.</li>
-<li><strong>Flows run in a child process, never in the server.</strong> A run is
-   <code>tolquane run flow.py --events</code> in a subprocess; it streams JSON lines (node state,
-   counts, busy time, sampled items, stdout, the report, errors, deadlock reports) that
-   the server relays over a WebSocket. A hung or crashing flow cannot take Tolquane Web
-   down, and cancel is a signal.</li>
-<li><strong>One server, local by default.</strong> FastAPI and uvicorn, bound to <code>127.0.0.1</code>, no
-   login. <code>--host 0.0.0.0 --token ...</code> for a shared machine. SQLite in
-   <code>~/.tolquane/web.db</code> for runs, schedules and settings; flows are files in a
-   workspace directory the user picks.</li>
-<li><strong>Frontend: React, TypeScript, Vite, <code>@xyflow/react</code> for the canvas, CodeMirror 6
-   for code, Zustand for state.</strong> Built assets ship inside the wheel, so <code>pip install</code>
-   is all a user does. Node is a build-time tool only.</li>
-<li><strong>The AI builder is the same <code>tolquane.ai.Builder</code>,</strong> given the open flow as context,
-   streaming its turns and tool calls into the panel; when it writes a flow the canvas
-   updates. Keys live in Tolquane Web settings file with owner-only permissions, or in the
-   environment; never in the database, never in a flow.</li>
-</ol>
-<h2 id="layout-in-the-repository">Layout in the repository<a class="headerlink" href="#layout-in-the-repository" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code>src/tolquane/web/      the Python side: model, codegen, events, server, storage, scheduler
-web/                      the frontend source (Vite project); builds into src/tolquane/web/static/
-docs/web.md               this page; docs/web-interfaces.md the contracts; docs/web-user.md later, the user guide
-tests/web/                Python tests; web/tests for frontend unit tests; e2e under web/e2e
+<h1 id="deploying-tolquane-web">Deploying Tolquane Web<a class="headerlink" href="#deploying-tolquane-web" title="Permanent link">&para;</a></h1>
+<p>Tolquane Web runs flows. It is a program that executes Python you give it, with the
+privileges of whoever started it. Everything below is a way of deciding who that is and
+who can reach the page.</p>
+<p>Four shapes, in the order most people meet them:</p>
+<table>
+<thead>
+<tr>
+<th>Where</th>
+<th>How</th>
+<th>Who can get in</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Your own machine</td>
+<td><code>tolquane web</code></td>
+<td>you, because only this machine can reach it</td>
+</tr>
+<tr>
+<td>A machine you <code>ssh</code> into</td>
+<td><code>tolquane web</code> plus a tunnel</td>
+<td>whoever can log in to that machine</td>
+</tr>
+<tr>
+<td>A shared machine</td>
+<td>a service on loopback, accounts, a proxy for HTTPS</td>
+<td>whoever has an account</td>
+</tr>
+<tr>
+<td>A container</td>
+<td>Docker or compose, a token, a proxy for HTTPS</td>
+<td>whoever has the token or an account</td>
+</tr>
+</tbody>
+</table>
+<h2 id="what-a-deployment-is-made-of">What a deployment is made of<a class="headerlink" href="#what-a-deployment-is-made-of" title="Permanent link">&para;</a></h2>
+<p><img alt="Browser, server, one child process per run, and the files each of them owns" src="../img/web-architecture.svg" /></p>
+<p>One process serves the page and the API. Every run, check, draw and optimize happens in
+a child process of its own, so a flow that hangs or crashes costs one process and the
+server keeps answering. Three things on disk outlive the server:</p>
+<ul>
+<li><strong>the workspace</strong>, the directory of <code>flow.py</code> files (with their layout sidecars, and a
+  git repository if you want history);</li>
+<li><strong><code>$TOLQUANE_HOME/web.db</code></strong>, SQLite: runs, schedules, settings, users and sessions;</li>
+<li><strong><code>$TOLQUANE_HOME/web.toml</code></strong>, mode 600: the API keys and the SMTP password.</li>
+</ul>
+<p><code>TOLQUANE_HOME</code> is <code>~/.tolquane</code> unless you set it. Nothing else is state.</p>
+<h2 id="on-your-own-machine">On your own machine<a class="headerlink" href="#on-your-own-machine" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>pip install "tolquane[web]"
+cd ~/flows
+tolquane web
 </code></pre></div>
-<h2 id="the-sub-problems">The sub-problems<a class="headerlink" href="#the-sub-problems" title="Permanent link">&para;</a></h2>
-<p>Each has a name, an owner-sized scope, what it depends on, and how it is known to be
-done. "Interface" means the thing the others build against.</p>
-<h3 id="wave-0-foundations-python-only-all-three-in-parallel">Wave 0: foundations (Python only, all three in parallel)<a class="headerlink" href="#wave-0-foundations-python-only-all-three-in-parallel" title="Permanent link">&para;</a></h3>
-<p><strong>S1. Flow model, code generator, parser.</strong> <code>tolquane.web.model</code>.
-- Interface: a JSON schema <code>FlowModel</code> (nodes with <code>id, name, kind, params, source</code>;
-  a composition tree of <code>pipeline | farm | comb | feedback | all2all | node</code> with their
-  options; sample inputs; metadata), <code>to_python(model) -&gt; str</code>, <code>from_python(path) -&gt;
-  FlowModel | CodeOnly</code>, <code>layout</code> sidecar read and write.
-- Done when: every file in <code>examples/</code> and <code>examples/generated/</code> round-trips
-  (<code>from_python</code> then <code>to_python</code> gives a file whose <code>build()</code> expands to the same graph
-  and whose node sources are byte-identical); generated code passes <code>ruff</code> and the house
-  style test; code-only fallback is exercised by the MSOM example.</p>
-<p><strong>S2. Live run events in the library and CLI.</strong> <code>tolquane.run(..., on_progress=,
-progress_interval=, tap=)</code> and <code>tolquane run --events</code>.
-- Interface: a <code>Progress</code> snapshot (per node: state, items in and out, busy and wait
-  seconds, queue depths per edge; per run: elapsed, phase) delivered to a callback on an
-  interval and at the end; <code>tap=N</code> keeps the last N items per edge as truncated reprs
-  and includes them; <code>--events</code> prints one JSON object per line (<code>progress</code>, <code>stdout</code>,
-  <code>stderr</code>, <code>report</code>, <code>error</code>, <code>deadlock</code>, <code>done</code>); SIGTERM cancels the run cleanly and
-  reports it as <code>cancelled</code>.
-- Done when: tests show snapshots on threads, processes and sync; taps see items;
-  cancel ends within the deadlock timeout; overhead under 2 percent on the pipeline
-  benchmark with a 0.5 s interval.</p>
-<p><strong>S3. Storage and scheduler.</strong> <code>tolquane.web.store</code>, <code>tolquane.web.schedule</code>.
-- Interface: SQLite schema and a repository for <code>runs</code> (id, flow path, started, ended,
-  status, report JSON, log excerpt, trace path), <code>schedules</code> (id, flow, cron, sample,
-  runtime, enabled, last and next run), <code>settings</code> (key, value); a five-field cron
-  parser with <code>next_after(dt)</code>; a scheduler loop that fires due schedules through a
-  callback and survives restarts.
-- Done when: parser tests cover ranges, steps, lists, names and DST; the loop fires
-  exactly once per due minute in a simulated clock; the store migrates from an empty
-  file.</p>
-<h3 id="wave-1-the-server-and-the-app-shell-parallel-once-wave-0-interfaces-are-fixed">Wave 1: the server and the app shell (parallel once wave 0 interfaces are fixed)<a class="headerlink" href="#wave-1-the-server-and-the-app-shell-parallel-once-wave-0-interfaces-are-fixed" title="Permanent link">&para;</a></h3>
-<p><strong>S4. Server.</strong> <code>tolquane.web.server</code>, FastAPI.
-- Interface: REST for the workspace (list, open, save, create, delete, rename flows),
-  model (parse, generate, check, explain, draw, optimize), runs (start with sample or
-  source, cancel, list, get, log, trace download), schedules, settings, AI chat
-  (server-sent events with turns and tool calls, apply result); a WebSocket per run
-  relaying S2's events; a supervisor that owns child processes, limits concurrent runs
-  and kills orphans on exit; static serving of the built frontend; <code>tolquane web</code>
-  opens the browser. OpenAPI is the contract the frontend client is generated from.
-- Done when: <code>httpx</code> tests cover every route, a run's events arrive over the socket, a
-  crashing flow leaves the server healthy, and <code>tolquane web --check</code> starts and
-  stops the server in CI.</p>
-<p><strong>F1. App shell.</strong> Vite, React, TypeScript; routes for Flows, Editor, Runs, Schedules,
-Settings; a typed API client generated from the OpenAPI file; a WebSocket hook; theme;
-error toasts.
-- Done when: the shell builds, the client compiles against the server's OpenAPI, and
-  a smoke test loads every route.</p>
-<h3 id="wave-2-the-editor-and-the-tools-parallel-each-against-s4-and-f1">Wave 2: the editor and the tools (parallel, each against S4 and F1)<a class="headerlink" href="#wave-2-the-editor-and-the-tools-parallel-each-against-s4-and-f1" title="Permanent link">&para;</a></h3>
-<p><strong>F2. Canvas editor.</strong> Block cards per kind with a palette to drag from, <code>&gt;&gt;</code> edges,
-farms as containers holding their worker card, feedback as a container with the loop
-edge drawn, all-to-all as two farms side by side, property panels for every option
-(workers, emit, collect, ordered, key, prefetch, capacity, runtime, custom ends),
-auto-layout (dagre) for files without a sidecar, <code>check</code> errors shown on the offending
-card, undo and redo, expanded-graph toggle.
-- Done when: every example builds on the canvas without code-only mode, edits regenerate
-  code that round-trips, and a flow drawn from an empty canvas runs.</p>
-<p><strong>F3. Code view and edit.</strong> CodeMirror with Python mode, two-way sync (canvas edit
-regenerates code; code edit re-parses and updates the canvas, with a clear message when
-the file drops to code-only), per-node body editor in the property panel, diff before
-overwriting a file changed on disk.</p>
-<p><strong>F4. Run and debug.</strong> Run with the source or a sample (samples saved with the flow),
-live overlay on the cards (state colour, items, busy percent), queue depth on edges,
-tapped items in a side drawer per edge, console for stdout and stderr, errors and
-deadlock reports pointing at the card, the report table, trace download, run history
-with re-run.</p>
-<p><strong>F5. AI panel.</strong> Chat with streaming, the builder's tool calls shown as steps, "apply
-to editor", quick actions (explain this flow, make it faster, add a stage that ...),
-provider and model picked from settings.</p>
-<p><strong>F6. Schedules and settings.</strong> Cron editor with a human preview and the next five
-times, enable and disable, last result; settings for providers and keys, workspace
-directory, default runtime and batch, run limits, server host, port and token, theme.</p>
-<h3 id="wave-3-packaging-tests-docs">Wave 3: packaging, tests, docs<a class="headerlink" href="#wave-3-packaging-tests-docs" title="Permanent link">&para;</a></h3>
-<p><strong>I1. Build and ship.</strong> Hatch build hook that runs <code>npm ci &amp;&amp; npm run build</code> and puts
-the assets in the wheel; CI job with Node; <code>tolquane[web]</code> extra; the wheel works
-without Node installed.
-<strong>I2. End-to-end tests.</strong> Playwright journeys: create a flow from the palette, run it
-with a sample, see items in a tap, ask the AI to change it, schedule it.
-<strong>I3. User guide and hardening.</strong> <code>docs/web-user.md</code> with screenshots; token auth,
-CORS, path checks so the workspace cannot be escaped, Windows and macOS paths.</p>
-<h3 id="later-not-in-the-first-release">Later, not in the first release<a class="headerlink" href="#later-not-in-the-first-release" title="Permanent link">&para;</a></h3>
-<p>A deploy editor (assign cards to groups, write <code>deploy.toml</code>, launch and watch every
-group), a gallery of templates, sharing a flow as a link, multi-user workspaces,
-breakpoints that pause a node.</p>
-<h2 id="order-and-parallelism">Order and parallelism<a class="headerlink" href="#order-and-parallelism" title="Permanent link">&para;</a></h2>
-<p>Wave 0 runs as three agents at once; their interfaces are written down first (the JSON
-schema, the events format, the store API) so wave 1 can start on them before the code
-is final. Wave 1 is two agents. Wave 2 is up to five agents, each owning one area of the
-frontend against the running server. Wave 3 closes. The orchestrating session writes
-the interface documents, reviews every merge against the "done when" line, and keeps
-the library's own tests green throughout: S2 is the only sub-problem that touches
-<code>src/tolquane/</code> outside <code>web/</code>.</p>
-<h2 id="risks">Risks<a class="headerlink" href="#risks" title="Permanent link">&para;</a></h2>
+<p>That listens on <code>127.0.0.1:8765</code>, opens a browser and takes the current directory as the
+workspace. No login: only this machine can reach the port. <code>--workspace DIR</code>, <code>--port N</code>
+and <code>--no-browser</code> change the obvious things, and <code>tolquane web --check</code> starts the
+server, asks <code>/api/health</code> and stops, which is the line for CI.</p>
+<p>The first account turns sign-in on, even here. See
+<a href="../web-user/#users-and-sign-in">Users and sign-in</a>.</p>
+<h2 id="on-a-machine-you-log-in-to">On a machine you log in to<a class="headerlink" href="#on-a-machine-you-log-in-to" title="Permanent link">&para;</a></h2>
+<p>The best answer for one person on a remote machine is not to expose anything. Leave the
+server on loopback and bring the port to you:</p>
+<div class="highlight"><pre><span></span><code>ssh -L 8765:127.0.0.1:8765 host      # then open http://127.0.0.1:8765/ at home
+</code></pre></div>
+<p>Everything is inside the SSH connection, which is more than the plain HTTP the server
+speaks would give you.</p>
+<h3 id="as-a-service">As a service<a class="headerlink" href="#as-a-service" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># /etc/systemd/system/tolquane-web.service</span>
+<span class="k">[Unit]</span>
+<span class="na">Description</span><span class="o">=</span><span class="s">Tolquane Web</span>
+<span class="na">After</span><span class="o">=</span><span class="s">network.target</span>
+
+<span class="k">[Service]</span>
+<span class="na">Type</span><span class="o">=</span><span class="s">simple</span>
+<span class="na">User</span><span class="o">=</span><span class="s">tolquane</span>
+<span class="na">Group</span><span class="o">=</span><span class="s">tolquane</span>
+<span class="na">WorkingDirectory</span><span class="o">=</span><span class="s">/srv/flows</span>
+<span class="na">Environment</span><span class="o">=</span><span class="s">TOLQUANE_HOME=/var/lib/tolquane</span>
+<span class="c1"># Keys and the token, if any, out of the unit file: mode 600, owned by the service user.</span>
+<span class="na">EnvironmentFile</span><span class="o">=</span><span class="s">-/etc/tolquane/web.env</span>
+<span class="na">ExecStart</span><span class="o">=</span><span class="s">/opt/tolquane/venv/bin/tolquane web </span>\
+<span class="w">    </span><span class="s">--host 127.0.0.1 --port 8765 --workspace /srv/flows --no-browser</span>
+<span class="na">Restart</span><span class="o">=</span><span class="s">on-failure</span>
+<span class="na">RestartSec</span><span class="o">=</span><span class="s">5</span>
+
+<span class="c1"># The service runs flows, so it needs its own directories and nothing else.</span>
+<span class="na">NoNewPrivileges</span><span class="o">=</span><span class="s">true</span>
+<span class="na">PrivateTmp</span><span class="o">=</span><span class="s">true</span>
+<span class="na">ProtectSystem</span><span class="o">=</span><span class="s">strict</span>
+<span class="na">ProtectHome</span><span class="o">=</span><span class="s">true</span>
+<span class="na">ReadWritePaths</span><span class="o">=</span><span class="s">/srv/flows /var/lib/tolquane</span>
+
+<span class="k">[Install]</span>
+<span class="na">WantedBy</span><span class="o">=</span><span class="s">multi-user.target</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code>sudo systemctl daemon-reload &amp;&amp; sudo systemctl enable --now tolquane-web
+journalctl -u tolquane-web -f
+</code></pre></div>
+<p>Make the first administrator before anyone can reach it. The command needs no server
+running, only the same <code>TOLQUANE_HOME</code>:</p>
+<div class="highlight"><pre><span></span><code>sudo -u tolquane TOLQUANE_HOME=/var/lib/tolquane \
+    /opt/tolquane/venv/bin/tolquane web users add alice --admin
+</code></pre></div>
+<p>From then on everybody signs in, on loopback too, and the runs and schedules record who
+started them. <code>web.env</code> can hold <code>ANTHROPIC_API_KEY</code>, <code>OPENAI_API_KEY</code> and
+<code>TOLQUANE_SMTP_PASSWORD</code>; none of them reaches a flow, since the server takes them out
+of every child's environment.</p>
+<p>Schedules fire in the machine's own time zone, so give the service the zone you think in
+(<code>Environment=TZ=Europe/Rome</code>) rather than assuming UTC.</p>
+<h2 id="docker">Docker<a class="headerlink" href="#docker" title="Permanent link">&para;</a></h2>
+<p>The <a href="https://github.com/robtacconelli/Tolquane/blob/main/Dockerfile"><code>Dockerfile</code></a> at the
+root of the repository installs the released wheel from PyPI on <code>python:3.13-slim</code>, with
+<code>git</code> for the History tab. Two volumes, and one environment variable that matters.</p>
+<div class="highlight"><pre><span></span><code>docker build -t tolquane:local .
+docker run --rm -p 127.0.0.1:8765:8765 \
+    -e TOLQUANE_WEB_TOKEN="$(python -c 'import secrets; print(secrets.token_urlsafe(24))')" \
+    -e ANTHROPIC_API_KEY="$ANTHROPIC_API_KEY" \
+    -v "$PWD/flows:/workspace" \
+    -v tolquane-data:/data \
+    tolquane:local
+</code></pre></div>
 <ul>
-<li>Round-tripping arbitrary Python is the hard part of S1. The house style makes it
-  tractable (one function per node, <code>build()</code> composes blocks); anything else falls back
-  to code-only mode rather than losing code.</li>
-<li>Event overhead: snapshots read counters without locks; taps copy reprs, so <code>tap</code>
-  defaults to off outside Tolquane Web.</li>
-<li>Frontend size: CodeMirror and the canvas library together stay under 1 MB gzipped;
-  Monaco was rejected for that reason.</li>
-<li>Agents cannot see the browser. Every frontend sub-problem carries unit tests on its
-  logic and an e2e journey in I2; the orchestrator inspects screenshots from Playwright.</li>
+<li><code>/workspace</code> is the flow directory. Bind it to a directory of yours: the files are
+  ordinary Python and stay yours.</li>
+<li><code>/data</code> is <code>TOLQUANE_HOME</code>: <code>web.db</code> and <code>web.toml</code>. A named volume is enough.</li>
+<li>The server binds <code>0.0.0.0</code> inside the container, so it insists on a token; the
+  entrypoint turns <code>TOLQUANE_WEB_TOKEN</code> into <code>--token</code>. Paste it into the page once and
+  the browser keeps it.</li>
+<li>The image runs as uid 1000. If the bound directory belongs to somebody else, run with
+  <code>--user "$(id -u):$(id -g)"</code>.</li>
 </ul>
-<h2 id="13-users-inputs-and-environments-history-schedule-outcomes">1.3: users, inputs and environments, history, schedule outcomes<a class="headerlink" href="#13-users-inputs-and-environments-history-schedule-outcomes" title="Permanent link">&para;</a></h2>
-<p>Chosen after the first release. The contracts are the "1.3" part of
-<code>web-interfaces.md</code>. Sub-problems, in the order they run:</p>
+<p>Publishing on <code>127.0.0.1</code> means the container is reachable from that machine only, which
+is the safe default; put a proxy in front of it to go further.</p>
+<h3 id="compose">Compose<a class="headerlink" href="#compose" title="Permanent link">&para;</a></h3>
+<p><a href="https://github.com/robtacconelli/Tolquane/blob/main/docker-compose.yml"><code>docker-compose.yml</code></a>
+is the same thing with the volumes and the environment written down:</p>
+<div class="highlight"><pre><span></span><code>echo "TOLQUANE_WEB_TOKEN=$(python -c 'import secrets; print(secrets.token_urlsafe(24))')" &gt; .env
+docker compose up -d
+docker compose logs -f tolquane
+</code></pre></div>
+<p>It reads <code>TOLQUANE_WEB_TOKEN</code>, <code>ANTHROPIC_API_KEY</code>, <code>OPENAI_API_KEY</code>,
+<code>TOLQUANE_SMTP_PASSWORD</code> and <code>TZ</code> from <code>.env</code> or the environment, mounts <code>./workspace</code>
+and a named volume, and carries a commented Caddy service for HTTPS.</p>
+<h3 id="the-command-line-inside-the-container">The command line, inside the container<a class="headerlink" href="#the-command-line-inside-the-container" title="Permanent link">&para;</a></h3>
+<p>Any command given to <code>docker run</code> replaces the entrypoint, which is how the user
+commands are reached:</p>
+<div class="highlight"><pre><span></span><code>docker compose run --rm tolquane tolquane web users add alice --admin
+docker compose run --rm tolquane tolquane web users list
+docker compose run --rm tolquane tolquane run /workspace/hello.py --stats
+</code></pre></div>
+<h3 id="building-from-the-checkout">Building from the checkout<a class="headerlink" href="#building-from-the-checkout" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>npm --prefix web ci &amp;&amp; npm --prefix web run build      # the GUI assets
+docker build -t tolquane:dev --build-arg SOURCE=local .
+</code></pre></div>
+<p>The image has no Node, so it uses the assets already in <code>src/tolquane/web/static</code>.
+Without that step the container starts but has no page to serve.</p>
+<h2 id="behind-a-reverse-proxy">Behind a reverse proxy<a class="headerlink" href="#behind-a-reverse-proxy" title="Permanent link">&para;</a></h2>
+<p>Tolquane Web speaks plain HTTP and does not read <code>X-Forwarded-*</code>, so give it a hostname
+of its own and let the proxy do TLS. It is served at <code>/</code>, not under a path prefix.</p>
+<p>Caddy, which gets the certificate itself and upgrades the run WebSocket without being
+told to:</p>
+<div class="highlight"><pre><span></span><code>flows.example.com {
+    reverse_proxy 127.0.0.1:8765
+}
+</code></pre></div>
+<p>nginx, where the upgrade has to be spelled out or live runs never connect:</p>
+<div class="highlight"><pre><span></span><code><span class="k">server</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="kn">listen</span><span class="w"> </span><span class="mi">443</span><span class="w"> </span><span class="s">ssl</span><span class="p">;</span>
+<span class="w">    </span><span class="kn">server_name</span><span class="w"> </span><span class="s">flows.example.com</span><span class="p">;</span>
+
+<span class="w">    </span><span class="kn">location</span><span class="w"> </span><span class="s">/</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="kn">proxy_pass</span><span class="w"> </span><span class="s">http://127.0.0.1:8765</span><span class="p">;</span>
+<span class="w">        </span><span class="kn">proxy_http_version</span><span class="w"> </span><span class="mi">1</span><span class="s">.1</span><span class="p">;</span>
+<span class="w">        </span><span class="kn">proxy_set_header</span><span class="w"> </span><span class="s">Upgrade</span><span class="w"> </span><span class="nv">$http_upgrade</span><span class="p">;</span><span class="w">      </span><span class="c1"># the run socket and the AI stream</span>
+<span class="w">        </span><span class="kn">proxy_set_header</span><span class="w"> </span><span class="s">Connection</span><span class="w"> </span><span class="s">"upgrade"</span><span class="p">;</span>
+<span class="w">        </span><span class="kn">proxy_set_header</span><span class="w"> </span><span class="s">Host</span><span class="w"> </span><span class="nv">$host</span><span class="p">;</span>
+<span class="w">        </span><span class="kn">proxy_read_timeout</span><span class="w"> </span><span class="s">3600s</span><span class="p">;</span><span class="w">                    </span><span class="c1"># a long run must not be cut off</span>
+<span class="w">        </span><span class="kn">proxy_buffering</span><span class="w"> </span><span class="no">off</span><span class="p">;</span><span class="w">                         </span><span class="c1"># console output as it happens</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>Three things to know:</p>
 <ul>
-<li><strong>B1. Users backend.</strong> Store tables and migration, scrypt passwords, session and API
-  tokens, the auth and users routes, the three modes, roles on every route, the
-  <code>tolquane web users</code> commands.</li>
-<li><strong>B2. Parameters and the probe.</strong> <code>build()</code> keyword parameters in the model, parser
-  and generator; <code>--param</code> and <code>--env</code> on the CLI; <code>tolquane.web.probe</code>.</li>
-<li><strong>B3. Server integration.</strong> Params and env on runs and schedules, the interpreter and
-  workspace env settings, the import probe on check, the git history routes and commit
-  on save, notifications with retries, the new store tables. Runs after B1 and B2.</li>
-<li><strong>F-U, F-E, F-H, F-N.</strong> The frontend for each, in parallel: login and users; run
-  inputs, environment and interpreter; the history tab; outcomes in schedules and
-  settings.</li>
-<li><strong>C. Closing.</strong> End-to-end journeys for the four, the user guide, the OpenAPI
-  regeneration, release notes.</li>
+<li><strong>The proxy is not the fence.</strong> Put accounts or a token behind it. A proxy that lets
+  anyone through is a page that runs code for anyone.</li>
+<li><strong>Long runs and streams.</strong> Raise the read timeout and turn response buffering off, or
+  the console arrives in lumps and a run longer than the default timeout drops its
+  socket. The page reconnects, but the run's own events are what it missed.</li>
+<li><strong>Uploads.</strong> A flow is a file the page saves over the API; <code>max_source_bytes</code> (2 MB by
+  default) is the server's limit, so let the proxy pass at least that much.</li>
 </ul>
+<h2 id="the-environment">The environment<a class="headerlink" href="#the-environment" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>TOLQUANE_HOME</code></td>
+<td>Where <code>web.db</code> and <code>web.toml</code> live (default <code>~/.tolquane</code>)</td>
+</tr>
+<tr>
+<td><code>TOLQUANE_WEB_CONFIG</code></td>
+<td>The key file, if not <code>$TOLQUANE_HOME/web.toml</code></td>
+</tr>
+<tr>
+<td><code>ANTHROPIC_API_KEY</code>, <code>OPENAI_API_KEY</code></td>
+<td>The AI builder's key, instead of the settings page</td>
+</tr>
+<tr>
+<td><code>TOLQUANE_SMTP_PASSWORD</code></td>
+<td>The password schedule outcomes mail with</td>
+</tr>
+<tr>
+<td><code>TZ</code></td>
+<td>The zone schedules fire in</td>
+</tr>
+<tr>
+<td><code>TOLQUANE_WEB_TOKEN</code></td>
+<td>Read by the container entrypoint and passed as <code>--token</code></td>
+</tr>
+</tbody>
+</table>
+<p>The first four are secrets, and no flow the server runs ever sees them: the child's
+environment has them removed before the workspace's own variables are applied.</p>
+<h2 id="what-to-back-up">What to back up<a class="headerlink" href="#what-to-back-up" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Path</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>the workspace</td>
+<td>The flows themselves, their sidecars and their git history</td>
+</tr>
+<tr>
+<td><code>$TOLQUANE_HOME/web.db</code></td>
+<td>Runs, schedules, settings, accounts</td>
+</tr>
+<tr>
+<td><code>$TOLQUANE_HOME/web.toml</code></td>
+<td>The API keys and the SMTP password</td>
+</tr>
+</tbody>
+</table>
+<p><code>.tolquane-web/</code> inside the workspace is traces and scratch, cleared by age; it is not
+worth keeping. Copy the database with the server stopped, or ask SQLite for a consistent
+copy while it runs:</p>
+<div class="highlight"><pre><span></span><code>sqlite3 ~/.tolquane/web.db ".backup '/backup/web.db'"
+docker compose exec tolquane sqlite3 /data/web.db ".backup '/data/web-backup.db'"
+</code></pre></div>
+<h2 id="upgrading">Upgrading<a class="headerlink" href="#upgrading" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>pip install -U "tolquane[web]"        # or: docker compose build --pull &amp;&amp; docker compose up -d
+</code></pre></div>
+<p>The database carries a schema version and the new server migrates it when it opens it,
+so an upgrade is a restart. Back the file up first anyway: migrations only go forwards,
+and an older server will not open a newer database.</p>
+<p>Flows need nothing. A <code>flow.py</code> is a plain file that <code>python flow.py</code> runs wherever
+Tolquane is installed, which is also the answer to "what happens if I stop using this":
+you keep the files.</p>
+<h2 id="security-in-one-paragraph">Security, in one paragraph<a class="headerlink" href="#security-in-one-paragraph" title="Permanent link">&para;</a></h2>
+<p>There is no HTTPS in the server itself, so anything on a network gets a proxy in front
+of it or an SSH tunnel around it. With no <code>--host</code> the server is on loopback and needs no
+login; <code>--host</code> anything else is refused without <code>--token</code>. One account made and every
+request needs a session or a personal API token, on loopback too; passwords are <code>scrypt</code>
+hashes and tokens are kept only as their SHA-256. Every path a request names is resolved
+inside the workspace, and <code>..</code>, absolute paths and symlinks pointing out are refused.
+Accounts say who may do what on one server; they are not a fence between people's files,
+and a member can run a flow, which is running code on that machine as the user who
+started the server. The whole list is in the user guide's
+<a href="../web-user/#security">Security</a> section.</p>
 
 
 
