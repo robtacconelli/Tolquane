@@ -49,3 +49,9 @@ release", and the I3 hardening pass), and what 1.3 left for later.
 | Item | Where it came up | The work |
 |---|---|---|
 | Cancel on Windows | `tolquane run --events` and the run supervisor | Windows has no SIGTERM: a cancel kills the child, which ends as failed rather than cancelled. A control pipe or a file flag would let the child stop cleanly. |
+
+## Paused
+
+| Item | Where it came up | The work |
+|---|---|---|
+| The FastFlow comparison paper | `benchmarks/compare/PROTOCOL.md` | The protocol and the data script are in the repository; the two half-built suites (C++ on FastFlow, Python on Tolquane) and the analysis script draft are kept outside it at `/mnt/1T/home/st4ck/.cache/src/tolquane-compare-wip/` on the development machine. The early smoke tests said what was needed: about 2 to 7 µs per item of framework cost in Python against tens of nanoseconds in C++, vanishing above roughly 100 µs of work per item. Finish the suites, run them alone, and write the paper if the numbers are ever needed in print. |
