@@ -614,6 +614,7 @@ def test_events_report_a_deadlock(tmp_path: Path) -> None:
     assert [e["progress"]["phase"] for e in events if e["event"] == "progress"][-1] == "deadlock"
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="Windows has no SIGTERM: terminate kills")
 def test_sigterm_cancels_the_run_and_exits_130(tmp_path: Path) -> None:
     flow = _write(tmp_path, "endless.py", ENDLESS_FLOW)
     child = subprocess.Popen(

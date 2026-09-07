@@ -104,11 +104,13 @@ export default defineConfig({
     {
       // The built app, exactly as the wheel ships it; TOLQUANE_API_PORT points its proxy
       // at the server above (see the `preview` block in vite.config.ts).
-      command: `npm run build && npx vite preview --port ${String(PREVIEW_PORT)} --strictPort`,
+      // CI builds first and sets TOLQUANE_E2E_PREBUILT, since a build on a two-core
+      // runner alone can take longer than the readiness budget.
+      command: `${process.env.TOLQUANE_E2E_PREBUILT ? '' : 'npm run build && '}npx vite preview --port ${String(PREVIEW_PORT)} --strictPort`,
       env: { TOLQUANE_API_PORT: String(API_PORT) },
       url: BASE_URL,
       reuseExistingServer: false,
-      timeout: 180_000,
+      timeout: 300_000,
       stdout: 'ignore',
       stderr: 'pipe',
     },

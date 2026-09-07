@@ -43,3 +43,10 @@ release", and the I3 hardening pass), and what 1.3 left for later.
 | Events on disk for a long run | I3 hardening | Events are kept in memory and bounded (`MAX_EVENTS`), so a very long run loses its middle. Writing them to a file under `.tolquane-web/` would let the drawer scroll the whole run back. |
 | Retries and notifications that survive a restart | 1.3 B3 | A pending retry is a `threading.Timer` and a delivery is a daemon thread, so a server that stops between two attempts drops the chain and a message in flight is lost. A queue in the store, drained at startup, would make both survive. |
 | Notifications beyond a webhook and email | 1.3 B3 | Slack, Teams and the like go through the webhook today, in Tolquane's own JSON shape; per-target templates, or first-class integrations, if anybody asks. |
+
+## Platforms
+
+| Item | Where it came up | The work |
+|---|---|---|
+| Cancel on Windows | `tolquane run --events` and the run supervisor | Windows has no SIGTERM: a cancel kills the child, which ends as failed rather than cancelled. A control pipe or a file flag would let the child stop cleanly. |
+| Drop and resume on macOS | `tests/test_net.py`, expected to fail on the macOS runner | After a simulated connection drop the receiver on the macOS runner sometimes never sees the sender come back within the budget; the same test passes on Linux and Windows. Reproduce on a Mac and fix. |

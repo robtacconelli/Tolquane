@@ -29,6 +29,7 @@ import hmac
 import os
 import pickle
 import queue
+import select
 import socket
 import struct
 import threading
@@ -309,6 +310,19 @@ def recv_frame(sock: socket.socket) -> tuple[int, Any]:
     return kind, (pickle.loads(payload) if payload else None)
 
 
+def _linger(sock: socket.socket) -> None:
+    """Let the peer read the last frame before the socket closes.
+
+    Closing with unread bytes in the receive buffer makes some systems send a reset,
+    which throws away what was just sent; a half-close and a short drain avoid that.
+    """
+    with contextlib.suppress(OSError):
+        sock.shutdown(socket.SHUT_WR)
+        sock.settimeout(1.0)
+        while sock.recv(65536):
+            pass
+
+
 # --------------------------------------------------------------------------- run state
 
 
@@ -408,6 +422,9 @@ class _Sender:
         self.rc.register_cond(self.cond)
         self.sent = 0  # items sent so far
         self.acked = 0  # items the peer has handed to its node
+        # A peer that has our items must answer within the reconnect budget: acks as it
+        # delivers them, heartbeats while it is busy. Silence past this point is a lost peer.
+        self.ack_deadline: float | None = None
         self.unacked: deque[tuple[int, list[Any]]] = deque()
         self.sock: socket.socket | None = None
         self.error: str | None = None
@@ -472,11 +489,27 @@ class _Sender:
         ).start()
 
     def _reader(self, sock: socket.socket) -> None:
+        # What the peer says must reach this node wherever its own thread is blocked:
+        # on acknowledgements, or on its input while items are out. A peer's error and
+        # a peer's silence therefore fail the node from here, like a dead worker does.
         while True:
             try:
                 kind, obj = recv_frame(sock)
             except TimeoutError:
                 if self.rc.cancelled or self.sock is not sock:
+                    return
+                with self.lock:
+                    deadline = self.ack_deadline
+                    waiting = self.sent > self.acked
+                if waiting and deadline is not None and time.monotonic() > deadline:
+                    budget = self.state.deployment.reconnect_timeout
+                    self.rc.fail(
+                        self.inst,
+                        PeerLost(
+                            f"group {self.dst.name!r} stopped answering for {self.edge.id!r}: "
+                            f"no acknowledgement in {budget:.0f}s; is it still running?"
+                        ),
+                    )
                     return
                 continue
             except (OSError, ConnectionError, EOFError):
@@ -488,11 +521,13 @@ class _Sender:
             if kind == ACK:
                 with self.lock:
                     self._acknowledge(int(obj))
+                    self.ack_deadline = time.monotonic() + self.state.deployment.reconnect_timeout
                     self.cond.notify_all()
             elif kind == ERROR:
                 with self.lock:
                     self.error = str(obj)
                     self.cond.notify_all()
+                self.rc.fail(self.inst, PeerFailed(f"group {self.dst.name!r}: {self.error}"))
                 return
 
     def _acknowledge(self, upto: int) -> None:
@@ -571,6 +606,9 @@ class _Sender:
                 self.sent += len(chunk)
             self.rc.scheduler.event(self.inst, len(chunk))
             self._transmit(DATA, frame)
+            with self.lock:
+                if self.ack_deadline is None:
+                    self.ack_deadline = time.monotonic() + self.state.deployment.reconnect_timeout
             self.inst.stats.items_out += len(chunk)
 
     def _transmit(self, kind: int, obj: Any) -> None:
@@ -619,7 +657,14 @@ class _Sender:
                     self._reconnect()
                 finally:
                     self.lock.acquire()
+                self.ack_deadline = time.monotonic() + self.state.deployment.reconnect_timeout
                 continue
+            if self.ack_deadline is not None and time.monotonic() > self.ack_deadline:
+                budget = self.state.deployment.reconnect_timeout
+                raise PeerLost(
+                    f"group {self.dst.name!r} stopped answering for {self.edge.id!r}: no "
+                    f"acknowledgement in {budget:.0f}s; is it still running?"
+                )
             self.cond.wait(_SOCKET_TIMEOUT)
 
     def _finish(self) -> None:
@@ -637,6 +682,7 @@ class _Sender:
         if sock is not None:
             with contextlib.suppress(OSError):
                 send_frame(sock, ERROR, message)
+                _linger(sock)
             return
         with contextlib.suppress(OSError, ConnectionError, EOFError, pickle.UnpicklingError):
             sock = socket.create_connection((self.dst.host, self.dst.port), timeout=2.0)
@@ -650,6 +696,7 @@ class _Sender:
                 kind, obj = recv_frame(sock)
             if kind == WELCOME:
                 send_frame(sock, ERROR, message)
+                _linger(sock)
             sock.close()
 
     def _close(self) -> None:
@@ -721,12 +768,18 @@ class _Receiver:
                 raise Cancelled  # the failed node's inbox drops silently; do not keep acking
             if outbox.has_pending:
                 outbox.flush()
+            readable, _, _ = select.select([sock], [], [], _SOCKET_TIMEOUT)
+            if not readable:
+                if self.rc.cancelled:
+                    raise Cancelled
+                # A heartbeat: the same acknowledgement again, so the sender knows this
+                # group is alive while its node is slow to take the items.
+                send_frame(sock, ACK, self.expected)
+                continue
             try:
                 kind, obj = recv_frame(sock)
             except TimeoutError:
-                if self.rc.cancelled:
-                    raise Cancelled from None
-                continue
+                raise ConnectionError(f"a frame on {self.edge.id!r} stalled halfway") from None
             if kind == DATA:
                 first, items = obj
                 skip = self.expected - first
@@ -751,6 +804,7 @@ class _Receiver:
         if message and self.sock is not None:
             with contextlib.suppress(OSError):
                 send_frame(self.sock, ERROR, message)
+                _linger(self.sock)
 
 
 # --------------------------------------------------------------------------- entry point
