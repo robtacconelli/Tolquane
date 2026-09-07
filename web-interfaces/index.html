@@ -1,0 +1,1915 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Parallel programming with composable building blocks, in Python.">
+      
+      
+      
+      
+        <link rel="prev" href="../web/">
+      
+      
+        <link rel="next" href="../decisions/0001-naming/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Interfaces - Tolquane</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#tolquane-web-the-contracts-between-the-parts" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Tolquane" class="md-header__button md-logo" aria-label="Tolquane" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Tolquane
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Interfaces
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="indigo"  aria-label="Dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="teal" data-md-color-accent="indigo"  aria-label="Light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/robtacconelli/Tolquane" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Tolquane" class="md-nav__button md-logo" aria-label="Tolquane" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Tolquane
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/robtacconelli/Tolquane" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tutorial/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tutorial
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cookbook/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cookbook
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runtimes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Runtimes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../builder/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The AI builder
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api-card/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API card
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../from-bbflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Coming from FastFlow and BBFlow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../style/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    House style
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../design/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Design
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../backlog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Backlog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_12" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_12" id="__nav_12_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tolquane Web
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_12_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_12">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Tolquane Web
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../web-user/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../web/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The plan
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Interfaces
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Interfaces
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#s1-the-flow-model-tolquanewebmodel" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S1. The flow model (tolquane.web.model)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="S1. The flow model (tolquane.web.model)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#flowmodel-as-json" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        FlowModel as JSON
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-tree" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The tree
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#parsing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Parsing
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#code-generation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Code generation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-layout-sidecar" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The layout sidecar
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#graph_view" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        graph_view
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#s2-live-run-events-library-and-cli" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S2. Live run events (library and CLI)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#s3-storage-and-the-scheduler-tolquanewebstore-tolquanewebcron-tolquanewebscheduler" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S3. Storage and the scheduler (tolquane.web.store, tolquane.web.cron, tolquane.web.scheduler)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#s4-the-server-tolquanewebserver-tolquanewebsupervisor" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S4. The server (tolquane.web.server, tolquane.web.supervisor)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="S4. The server (tolquane.web.server, tolquane.web.supervisor)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#workspace-and-flow-paths" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Workspace and flow paths
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#errors" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Errors
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#flows" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Flows
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#runs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Runs
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#schedules" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Schedules
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#settings" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Settings
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ai-chat" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AI chat
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#health" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Health
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_13" >
+        
+          
+          <label class="md-nav__link" for="__nav_13" id="__nav_13_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Decisions
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_13_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_13">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Decisions
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../decisions/0001-naming/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Naming
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../decisions/0002-fastflow-review/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    FastFlow review
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#s1-the-flow-model-tolquanewebmodel" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S1. The flow model (tolquane.web.model)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="S1. The flow model (tolquane.web.model)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#flowmodel-as-json" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        FlowModel as JSON
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-tree" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The tree
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#parsing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Parsing
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#code-generation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Code generation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-layout-sidecar" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The layout sidecar
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#graph_view" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        graph_view
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#s2-live-run-events-library-and-cli" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S2. Live run events (library and CLI)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#s3-storage-and-the-scheduler-tolquanewebstore-tolquanewebcron-tolquanewebscheduler" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S3. Storage and the scheduler (tolquane.web.store, tolquane.web.cron, tolquane.web.scheduler)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#s4-the-server-tolquanewebserver-tolquanewebsupervisor" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S4. The server (tolquane.web.server, tolquane.web.supervisor)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="S4. The server (tolquane.web.server, tolquane.web.supervisor)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#workspace-and-flow-paths" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Workspace and flow paths
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#errors" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Errors
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#flows" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Flows
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#runs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Runs
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#schedules" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Schedules
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#settings" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Settings
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ai-chat" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AI chat
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#health" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Health
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="tolquane-web-the-contracts-between-the-parts">Tolquane Web: the contracts between the parts<a class="headerlink" href="#tolquane-web-the-contracts-between-the-parts" title="Permanent link">&para;</a></h1>
+<p>Wave 0 builds three parts at once; wave 1 and 2 build on them. These are the interfaces
+they agree on. Change one here first, then in the code.</p>
+<h2 id="s1-the-flow-model-tolquanewebmodel">S1. The flow model (<code>tolquane.web.model</code>)<a class="headerlink" href="#s1-the-flow-model-tolquanewebmodel" title="Permanent link">&para;</a></h2>
+<p>A flow file in the house style (see <code>docs/style.md</code>) is a module with a docstring,
+imports, node functions or classes, <code>build(source=None)</code> returning the graph, <code>main()</code>
+and the <code>__main__</code> guard. The model is that file as data.</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">tolquane.web.model</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">FlowModel</span><span class="p">,</span> <span class="n">CodeOnly</span><span class="p">,</span> <span class="n">parse_source</span><span class="p">,</span> <span class="n">parse_file</span><span class="p">,</span> <span class="n">to_python</span><span class="p">,</span> <span class="n">graph_view</span><span class="p">,</span>
+    <span class="n">read_layout</span><span class="p">,</span> <span class="n">write_layout</span><span class="p">,</span> <span class="n">check_model</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">parse_source</span><span class="p">(</span><span class="n">text</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">FlowModel</span> <span class="o">|</span> <span class="n">CodeOnly</span>
+<span class="n">parse_file</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">FlowModel</span> <span class="o">|</span> <span class="n">CodeOnly</span>
+<span class="n">to_python</span><span class="p">(</span><span class="n">model</span><span class="p">:</span> <span class="n">FlowModel</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span>             <span class="c1"># ruff-clean, house style, deterministic</span>
+<span class="n">graph_view</span><span class="p">(</span><span class="n">block_or_model_or_source</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span>    <span class="c1"># the expanded graph, for the "threads" view</span>
+<span class="n">check_model</span><span class="p">(</span><span class="n">model</span><span class="p">:</span> <span class="n">FlowModel</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>      <span class="c1"># [] when tq.check passes on the generated code</span>
+<span class="n">read_layout</span><span class="p">(</span><span class="n">path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Layout</span> <span class="o">|</span> <span class="kc">None</span>              <span class="c1"># the sidecar next to the flow</span>
+<span class="n">write_layout</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">layout</span><span class="p">:</span> <span class="n">Layout</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+</code></pre></div>
+<p>The command line form isolates user code from whoever calls it:</p>
+<div class="highlight"><pre><span></span><code>python -m tolquane.web.model parse flow.py        # prints the model as JSON, or {"code_only": true, "reason": ..., "graph": ...}
+python -m tolquane.web.model generate model.json  # prints the Python
+python -m tolquane.web.model graph flow.py        # prints graph_view as JSON
+</code></pre></div>
+<h3 id="flowmodel-as-json">FlowModel as JSON<a class="headerlink" href="#flowmodel-as-json" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">"version"</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"word_count"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"doc"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Count words per line with eight workers."</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"prelude"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"import re"</span><span class="p">,</span><span class="w"> </span><span class="s2">"PATTERN = re.compile(r\"\\w+\")"</span><span class="p">],</span>
+<span class="w">  </span><span class="nt">"nodes"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="p">{</span><span class="nt">"id"</span><span class="p">:</span><span class="w"> </span><span class="s2">"lines"</span><span class="p">,</span><span class="w"> </span><span class="nt">"kind"</span><span class="p">:</span><span class="w"> </span><span class="s2">"source"</span><span class="p">,</span><span class="w"> </span><span class="nt">"is_class"</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span><span class="w"> </span><span class="nt">"is_async"</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">     </span><span class="nt">"params"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"path"</span><span class="p">],</span><span class="w"> </span><span class="nt">"doc"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Yield the lines of the file."</span><span class="p">,</span>
+<span class="w">     </span><span class="nt">"source"</span><span class="p">:</span><span class="w"> </span><span class="s2">"@tq.source\ndef lines():\n    ..."</span><span class="p">}</span>
+<span class="w">  </span><span class="p">],</span>
+<span class="w">  </span><span class="nt">"flow"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"pipeline"</span><span class="p">,</span><span class="w"> </span><span class="nt">"stages"</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"start"</span><span class="p">},</span><span class="w"> </span><span class="p">{</span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"farm"</span><span class="p">,</span><span class="w"> </span><span class="nt">"..."</span><span class="p">:</span><span class="w"> </span><span class="s2">"..."</span><span class="p">}]},</span>
+<span class="w">  </span><span class="nt">"start"</span><span class="p">:</span><span class="w"> </span><span class="s2">"lines"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"main"</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"epilogue"</span><span class="p">:</span><span class="w"> </span><span class="p">[]</span>
+<span class="p">}</span>
+</code></pre></div>
+<ul>
+<li><code>prelude</code>: every top-level statement that is not a node definition, <code>build</code>, <code>main</code>
+  or the <code>__main__</code> guard, verbatim and in order (imports, constants, helper functions).</li>
+<li><code>nodes</code>: in file order. <code>source</code> is the whole definition including decorator lines,
+  verbatim. <code>kind</code> is one of <code>source</code>, <code>node</code>, <code>sink</code>, <code>raw</code>; <code>is_class</code> for classes
+  (<code>__call__</code>, <code>on_start</code>, <code>on_end</code>), <code>is_async</code> for coroutines and async generators.
+  <code>params</code> are the positional parameter names of the function or of <code>__call__</code>.</li>
+<li><code>flow</code>: the tree of the expression <code>build()</code> returns.</li>
+<li><code>params</code>: <code>build()</code>'s keyword-only parameters, in order, as section E describes them;
+  <code>[]</code> when it has none, and absent in a model written before 1.3.</li>
+<li><code>start</code>: the id of the node used when <code>source is None</code>, following the convention
+  <code>start = &lt;node&gt; if source is None else tq.from_iterable(source)</code>; <code>null</code> when the
+  flow has no source slot (then <code>build</code> ignores <code>source</code>).</li>
+<li><code>main</code>: <code>null</code> when <code>main()</code> is the standard three lines (<code>tq.run(build())</code>, or with
+  <code>print(report)</code>); otherwise its source verbatim.</li>
+<li><code>epilogue</code>: statements after <code>main</code> other than the guard, verbatim.</li>
+<li><code>build_notes</code>: comments found inside <code>build()</code>, kept at the top of its body.</li>
+<li><code>guard</code>: the statement inside <code>if __name__ == "__main__":</code> when it is not <code>main()</code>
+  (<code>sys.exit(main())</code> for instance), else <code>null</code>.</li>
+</ul>
+<p>As built, the parser also accepts two shapes the style allows: a file with no <code>build()</code>
+whose <code>main()</code> is one <code>tq.run(&lt;graph&gt;)</code> call (the graph is lifted into <code>build()</code>), and
+the start line written the other way round (<code>tq.from_iterable(source) if source is not
+None else rows</code>). Generation always writes the forms above, so the first round trip
+normalizes those, plus <code>workers=N</code> to positional and sub-block assignments in <code>build</code>
+inlined into the return; from the second trip on the output is byte-stable.</p>
+<h3 id="the-tree">The tree<a class="headerlink" href="#the-tree" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="p">{</span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"start"</span><span class="p">}</span>
+<span class="p">{</span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"ref"</span><span class="p">,</span><span class="w"> </span><span class="nt">"id"</span><span class="p">:</span><span class="w"> </span><span class="s2">"double"</span><span class="p">}</span>
+<span class="p">{</span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"inline"</span><span class="p">,</span><span class="w"> </span><span class="nt">"source"</span><span class="p">:</span><span class="w"> </span><span class="s2">"lambda x: x * 2"</span><span class="p">}</span>
+<span class="p">{</span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"pipeline"</span><span class="p">,</span><span class="w"> </span><span class="nt">"stages"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w"> </span><span class="err">...</span><span class="w"> </span><span class="p">]}</span>
+<span class="p">{</span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"farm"</span><span class="p">,</span><span class="w"> </span><span class="nt">"worker"</span><span class="p">:</span><span class="w"> </span><span class="err">&lt;</span><span class="kc">tree</span><span class="err">&gt;</span><span class="w"> </span><span class="err">|</span><span class="w"> </span><span class="p">[</span><span class="err">&lt;</span><span class="kc">tree</span><span class="err">&gt;</span><span class="p">,</span><span class="w"> </span><span class="err">...</span><span class="p">],</span><span class="w"> </span><span class="nt">"workers"</span><span class="p">:</span><span class="w"> </span><span class="mi">8</span><span class="p">,</span>
+<span class="w"> </span><span class="nt">"options"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">"emit"</span><span class="p">:</span><span class="w"> </span><span class="s2">"round_robin"</span><span class="p">,</span><span class="w"> </span><span class="nt">"collect"</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span><span class="w"> </span><span class="nt">"ordered"</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span><span class="w"> </span><span class="nt">"key"</span><span class="p">:</span><span class="w"> </span><span class="err">&lt;</span><span class="kc">tree</span><span class="err">&gt;</span><span class="w"> </span><span class="err">|</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
+<span class="w">             </span><span class="nt">"emitter"</span><span class="p">:</span><span class="w"> </span><span class="err">&lt;</span><span class="kc">tree</span><span class="err">&gt;</span><span class="w"> </span><span class="err">|</span><span class="w"> </span><span class="kc">false</span><span class="w"> </span><span class="err">|</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span><span class="w"> </span><span class="nt">"collector"</span><span class="p">:</span><span class="w"> </span><span class="err">&lt;</span><span class="kc">tree</span><span class="err">&gt;</span><span class="w"> </span><span class="err">|</span><span class="w"> </span><span class="kc">false</span><span class="w"> </span><span class="err">|</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
+<span class="w">             </span><span class="nt">"prefetch"</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="nt">"window"</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span><span class="w"> </span><span class="nt">"name"</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span><span class="w"> </span><span class="nt">"capacity"</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span><span class="w"> </span><span class="nt">"runtime"</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">}}</span>
+<span class="p">{</span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"comb"</span><span class="p">,</span><span class="w"> </span><span class="nt">"first"</span><span class="p">:</span><span class="w"> </span><span class="err">&lt;</span><span class="kc">tree</span><span class="err">&gt;</span><span class="p">,</span><span class="w"> </span><span class="nt">"second"</span><span class="p">:</span><span class="w"> </span><span class="err">&lt;</span><span class="kc">tree</span><span class="err">&gt;</span><span class="p">}</span>
+<span class="p">{</span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"feedback"</span><span class="p">,</span><span class="w"> </span><span class="nt">"inner"</span><span class="p">:</span><span class="w"> </span><span class="err">&lt;</span><span class="kc">tree</span><span class="err">&gt;</span><span class="p">,</span><span class="w"> </span><span class="nt">"name"</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">}</span>
+<span class="p">{</span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"all2all"</span><span class="p">,</span><span class="w"> </span><span class="nt">"left"</span><span class="p">:</span><span class="w"> </span><span class="err">&lt;</span><span class="kc">far</span><span class="err">m</span><span class="w"> </span><span class="kc">tree</span><span class="err">&gt;</span><span class="p">,</span><span class="w"> </span><span class="nt">"right"</span><span class="p">:</span><span class="w"> </span><span class="err">&lt;</span><span class="kc">far</span><span class="err">m</span><span class="w"> </span><span class="kc">tree</span><span class="err">&gt;</span><span class="p">,</span><span class="w"> </span><span class="nt">"R"</span><span class="p">:</span><span class="w"> </span><span class="err">&lt;</span><span class="kc">tree</span><span class="err">&gt;</span><span class="w"> </span><span class="err">|</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span><span class="w"> </span><span class="nt">"G"</span><span class="p">:</span><span class="w"> </span><span class="err">&lt;</span><span class="kc">tree</span><span class="err">&gt;</span><span class="w"> </span><span class="err">|</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span><span class="w"> </span><span class="nt">"merge"</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">}</span>
+</code></pre></div>
+<p>Options that are absent or equal to the default are written as <code>null</code> (or the default)
+and omitted when generating code. <code>inline</code> holds any expression the model does not
+understand (a lambda, <code>tq.to_list()</code>, a call building a node at runtime), kept verbatim
+and rendered back where it was; the canvas shows it as an expression card. A <code>farm</code>
+whose worker is a list is FastFlow's heterogeneous farm.</p>
+<h3 id="parsing">Parsing<a class="headerlink" href="#parsing" title="Permanent link">&para;</a></h3>
+<p>Parse with <code>ast</code>: find the node definitions (decorated with <code>tq.</code> decorators, or any
+<code>def</code>/<code>class</code> referenced from <code>build</code>), the prelude, <code>build</code>, <code>main</code>. Inside <code>build</code>,
+accept exactly the house-style shape: an optional <code>start = ... if source is None else
+tq.from_iterable(source)</code> line, optional simple assignments of sub-blocks to names
+(<code>work = tq.farm(...)</code>), and a <code>return</code> whose expression is built from <code>&gt;&gt;</code>,
+<code>tq.pipeline</code>, <code>tq.farm</code>, <code>tq.comb</code>, <code>tq.feedback</code>, <code>tq.all2all</code>, names and inline
+expressions. Anything else makes the file <code>CodeOnly(reason=..., graph=graph_view(...))</code>.
+After parsing, verify: generate the Python back, import both the original and the
+generated module in the same process (the CLI form runs in its own process), and check
+that <code>expand(build())</code> gives the same nodes, edges, loops and windows; a mismatch is
+<code>CodeOnly</code> with the difference as the reason.</p>
+<h3 id="code-generation">Code generation<a class="headerlink" href="#code-generation" title="Permanent link">&para;</a></h3>
+<p><code>to_python</code> writes: the docstring, <code>import tolquane as tq</code> and the prelude, a blank line
+and each node source, <code>build(source=None)</code> with the <code>start</code> line and the return
+expression on one line per stage (long farms wrapped by ruff), <code>main()</code> and the guard.
+The output passes <code>ruff check</code> and <code>ruff format --check</code> with the repository's settings
+and is identical after a second round trip.</p>
+<h3 id="the-layout-sidecar">The layout sidecar<a class="headerlink" href="#the-layout-sidecar" title="Permanent link">&para;</a></h3>
+<p><code>flow.layout.json</code> next to <code>flow.py</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span><span class="nt">"version"</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
+<span class="w"> </span><span class="nt">"positions"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">"stages.0"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">"x"</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="nt">"y"</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">},</span><span class="w"> </span><span class="nt">"stages.1.worker"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">"x"</span><span class="p">:</span><span class="w"> </span><span class="mi">260</span><span class="p">,</span><span class="w"> </span><span class="nt">"y"</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">}},</span>
+<span class="w"> </span><span class="nt">"viewport"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">"x"</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="nt">"y"</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="nt">"zoom"</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">},</span>
+<span class="w"> </span><span class="nt">"samples"</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="nt">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"three lines"</span><span class="p">,</span><span class="w"> </span><span class="nt">"items"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"a b"</span><span class="p">,</span><span class="w"> </span><span class="s2">"b c"</span><span class="p">,</span><span class="w"> </span><span class="s2">"c"</span><span class="p">]}]}</span>
+</code></pre></div>
+<p>Positions are keyed by the path of the tree element (<code>stages.1</code>, <code>stages.1.worker</code>,
+<code>stages.1.options.emitter</code>); the frontend re-keys them when it edits the tree. Samples
+are the sample inputs the Run panel offers; items are JSON values.</p>
+<h3 id="graph_view">graph_view<a class="headerlink" href="#graph_view" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="p">{</span><span class="nt">"nodes"</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="nt">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"double.0"</span><span class="p">,</span><span class="w"> </span><span class="nt">"kind"</span><span class="p">:</span><span class="w"> </span><span class="s2">"map"</span><span class="p">,</span><span class="w"> </span><span class="nt">"role"</span><span class="p">:</span><span class="w"> </span><span class="s2">"worker"</span><span class="p">,</span><span class="w"> </span><span class="nt">"group"</span><span class="p">:</span><span class="w"> </span><span class="s2">"double"</span><span class="p">,</span>
+<span class="w">            </span><span class="nt">"is_sink"</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span><span class="w"> </span><span class="nt">"is_async"</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span><span class="w"> </span><span class="nt">"tagged"</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">}],</span>
+<span class="w"> </span><span class="nt">"edges"</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="nt">"src"</span><span class="p">:</span><span class="w"> </span><span class="s2">"double.emitter"</span><span class="p">,</span><span class="w"> </span><span class="nt">"dst"</span><span class="p">:</span><span class="w"> </span><span class="s2">"double.0"</span><span class="p">,</span><span class="w"> </span><span class="nt">"rule"</span><span class="p">:</span><span class="w"> </span><span class="s2">"farm"</span><span class="p">,</span><span class="w"> </span><span class="nt">"feedback"</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">            </span><span class="nt">"capacity"</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span><span class="w"> </span><span class="nt">"batch"</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">}],</span>
+<span class="w"> </span><span class="nt">"loops"</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="nt">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"loop"</span><span class="p">,</span><span class="w"> </span><span class="nt">"nodes"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"..."</span><span class="p">],</span><span class="w"> </span><span class="nt">"heads"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"..."</span><span class="p">]}],</span>
+<span class="w"> </span><span class="nt">"windows"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">"double.window"</span><span class="p">:</span><span class="w"> </span><span class="mi">512</span><span class="p">}}</span>
+</code></pre></div>
+<h2 id="s2-live-run-events-library-and-cli">S2. Live run events (library and CLI)<a class="headerlink" href="#s2-live-run-events-library-and-cli" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="n">report</span> <span class="o">=</span> <span class="n">tq</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">block</span><span class="p">,</span> <span class="o">...</span><span class="p">,</span> <span class="n">on_progress</span><span class="o">=</span><span class="n">callback</span><span class="p">,</span> <span class="n">progress_interval</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">tap</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">stop</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+</code></pre></div>
+<ul>
+<li><code>on_progress(p: Progress)</code> is called from the run's watchdog thread every
+  <code>progress_interval</code> seconds and once more when the run ends. <code>Progress</code> is:</li>
+</ul>
+<div class="highlight"><pre><span></span><code><span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">Progress</span><span class="p">:</span>
+    <span class="n">elapsed</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">phase</span><span class="p">:</span> <span class="nb">str</span>                       <span class="c1"># "running", "done", "failed", "cancelled", "deadlock"</span>
+    <span class="n">nodes</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">NodeProgress</span><span class="p">]</span>   <span class="c1"># name -&gt; state "new"|"running"|"waiting"|"done"|"failed",</span>
+                                     <span class="c1">#         reason ("input"|"output"|"window"|...), detail,</span>
+                                     <span class="c1">#         items_in, items_out, dropped, busy, wait_in, wait_out</span>
+    <span class="n">edges</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">EdgeProgress</span><span class="p">]</span>   <span class="c1"># "src-&gt;dst" -&gt; queued, high_water, capacity, taps: list[str]</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">to_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span> <span class="o">...</span>
+</code></pre></div>
+<ul>
+<li><code>tap=N</code> keeps the last <code>N</code> items that crossed each edge, as <code>repr</code> cut to 200
+  characters, in <code>EdgeProgress.taps</code>. Off (<code>0</code>) by default.</li>
+<li><code>stop</code> is a <code>threading.Event</code>; when set, the run cancels the way an error does and
+  <code>run()</code> raises <code>tq.RunCancelled</code> (a <code>TolquaneError</code>). Sessions accept it too.</li>
+<li><code>Report.to_dict()</code> gives the report as JSON-ready data (nodes, edges, elapsed,
+  runtime, busiest).</li>
+<li>Snapshots read counters without taking channel locks; the pipeline benchmark with a
+  0.5 s interval stays within 2 percent of the plain run.</li>
+</ul>
+<div class="highlight"><pre><span></span><code>tolquane run flow.py --events [--progress-interval 0.5] [--tap 5] [--sample file] [--runtime ...]
+</code></pre></div>
+<p>With <code>--events</code> the command prints one JSON object per line on its real stdout, and
+the flow's own <code>print</code> and <code>sys.stderr</code> writes become events instead of reaching the
+terminal (child processes of the processes runtime still write to the terminal):</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span><span class="nt">"event"</span><span class="p">:</span><span class="w"> </span><span class="s2">"start"</span><span class="p">,</span><span class="w"> </span><span class="nt">"graph"</span><span class="p">:</span><span class="w"> </span><span class="err">&lt;graph_view&gt;</span><span class="p">,</span><span class="w"> </span><span class="nt">"runtime"</span><span class="p">:</span><span class="w"> </span><span class="s2">"threads"</span><span class="p">,</span><span class="w"> </span><span class="nt">"flow"</span><span class="p">:</span><span class="w"> </span><span class="s2">"flow.py"</span><span class="p">}</span>
+<span class="p">{</span><span class="nt">"event"</span><span class="p">:</span><span class="w"> </span><span class="s2">"progress"</span><span class="p">,</span><span class="w"> </span><span class="nt">"progress"</span><span class="p">:</span><span class="w"> </span><span class="err">&lt;Progress.</span><span class="kc">t</span><span class="err">o_dic</span><span class="kc">t</span><span class="err">()&gt;</span><span class="p">}</span>
+<span class="p">{</span><span class="nt">"event"</span><span class="p">:</span><span class="w"> </span><span class="s2">"stdout"</span><span class="p">,</span><span class="w"> </span><span class="nt">"text"</span><span class="p">:</span><span class="w"> </span><span class="s2">"got 4\n"</span><span class="p">}</span>
+<span class="p">{</span><span class="nt">"event"</span><span class="p">:</span><span class="w"> </span><span class="s2">"stderr"</span><span class="p">,</span><span class="w"> </span><span class="nt">"text"</span><span class="p">:</span><span class="w"> </span><span class="s2">"..."</span><span class="p">}</span>
+<span class="p">{</span><span class="nt">"event"</span><span class="p">:</span><span class="w"> </span><span class="s2">"report"</span><span class="p">,</span><span class="w"> </span><span class="nt">"report"</span><span class="p">:</span><span class="w"> </span><span class="err">&lt;Repor</span><span class="kc">t</span><span class="err">.</span><span class="kc">t</span><span class="err">o_dic</span><span class="kc">t</span><span class="err">()&gt;</span><span class="p">}</span>
+<span class="p">{</span><span class="nt">"event"</span><span class="p">:</span><span class="w"> </span><span class="s2">"error"</span><span class="p">,</span><span class="w"> </span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"NodeError"</span><span class="p">,</span><span class="w"> </span><span class="nt">"message"</span><span class="p">:</span><span class="w"> </span><span class="s2">"..."</span><span class="p">,</span><span class="w"> </span><span class="nt">"node"</span><span class="p">:</span><span class="w"> </span><span class="s2">"double.1"</span><span class="p">,</span><span class="w"> </span><span class="nt">"traceback"</span><span class="p">:</span><span class="w"> </span><span class="s2">"..."</span><span class="p">}</span>
+<span class="p">{</span><span class="nt">"event"</span><span class="p">:</span><span class="w"> </span><span class="s2">"deadlock"</span><span class="p">,</span><span class="w"> </span><span class="nt">"message"</span><span class="p">:</span><span class="w"> </span><span class="s2">"deadlock: ..."</span><span class="p">}</span>
+<span class="p">{</span><span class="nt">"event"</span><span class="p">:</span><span class="w"> </span><span class="s2">"done"</span><span class="p">,</span><span class="w"> </span><span class="nt">"status"</span><span class="p">:</span><span class="w"> </span><span class="s2">"done"</span><span class="w"> </span><span class="err">|</span><span class="w"> </span><span class="s2">"failed"</span><span class="w"> </span><span class="err">|</span><span class="w"> </span><span class="s2">"cancelled"</span><span class="w"> </span><span class="err">|</span><span class="w"> </span><span class="s2">"deadlock"</span><span class="p">,</span><span class="w"> </span><span class="nt">"elapsed"</span><span class="p">:</span><span class="w"> </span><span class="mf">1.23</span><span class="p">}</span>
+</code></pre></div>
+<p><code>SIGTERM</code> (and <code>SIGINT</code>) set the stop event; the process exits 0 after <code>done</code>, 1 after
+<code>failed</code> or <code>deadlock</code>, 130 after <code>cancelled</code>.</p>
+<h2 id="s3-storage-and-the-scheduler-tolquanewebstore-tolquanewebcron-tolquanewebscheduler">S3. Storage and the scheduler (<code>tolquane.web.store</code>, <code>tolquane.web.cron</code>, <code>tolquane.web.scheduler</code>)<a class="headerlink" href="#s3-storage-and-the-scheduler-tolquanewebstore-tolquanewebcron-tolquanewebscheduler" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="n">store</span> <span class="o">=</span> <span class="n">Store</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>                     <span class="c1"># SQLite; creates or migrates the schema</span>
+<span class="n">store</span><span class="o">.</span><span class="n">add_run</span><span class="p">(</span><span class="n">flow</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">runtime</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">sample</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="n">trigger</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Run</span>     <span class="c1"># trigger "manual"|"schedule:&lt;id&gt;"|"api"</span>
+<span class="n">store</span><span class="o">.</span><span class="n">finish_run</span><span class="p">(</span><span class="n">run_id</span><span class="p">,</span> <span class="n">status</span><span class="p">,</span> <span class="n">report</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="n">log</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">trace_path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="n">error</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span>
+<span class="n">store</span><span class="o">.</span><span class="n">get_run</span><span class="p">(</span><span class="n">run_id</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Run</span> <span class="o">|</span> <span class="kc">None</span>
+<span class="n">store</span><span class="o">.</span><span class="n">list_runs</span><span class="p">(</span><span class="n">flow</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">limit</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">50</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">Run</span><span class="p">]</span>
+<span class="n">store</span><span class="o">.</span><span class="n">add_schedule</span><span class="p">(</span><span class="n">flow</span><span class="p">,</span> <span class="n">cron</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">sample</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="n">runtime</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">enabled</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Schedule</span>
+<span class="n">store</span><span class="o">.</span><span class="n">update_schedule</span><span class="p">(</span><span class="n">schedule_id</span><span class="p">,</span> <span class="o">**</span><span class="n">fields</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Schedule</span>
+<span class="n">store</span><span class="o">.</span><span class="n">delete_schedule</span><span class="p">(</span><span class="n">schedule_id</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+<span class="n">store</span><span class="o">.</span><span class="n">list_schedules</span><span class="p">(</span><span class="n">flow</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">Schedule</span><span class="p">]</span>
+<span class="n">store</span><span class="o">.</span><span class="n">get_setting</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">;</span> <span class="n">store</span><span class="o">.</span><span class="n">set_setting</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">;</span> <span class="n">store</span><span class="o">.</span><span class="n">settings</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">dict</span>
+</code></pre></div>
+<p><code>Run</code>: <code>id, flow, runtime, sample, trigger, started (UTC ISO), ended, status
+("running"|"done"|"failed"|"cancelled"|"deadlock"), report (dict | None), log (str, the
+last 64 KB), trace_path, error</code>. <code>Schedule</code>: <code>id, flow, cron, sample, runtime, enabled,
+created, last_run (id | None), last_status, next_run (UTC ISO | None)</code>. Settings values
+are JSON. API keys are never stored here.</p>
+<div class="highlight"><pre><span></span><code><span class="n">cron</span> <span class="o">=</span> <span class="n">Cron</span><span class="o">.</span><span class="n">parse</span><span class="p">(</span><span class="s2">"*/15 8-18 * * mon-fri"</span><span class="p">)</span>   <span class="c1"># five fields; names; ranges; steps; lists; "@hourly" and friends</span>
+<span class="n">cron</span><span class="o">.</span><span class="n">next_after</span><span class="p">(</span><span class="n">dt</span><span class="p">:</span> <span class="n">datetime</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">datetime</span>     <span class="c1"># dt and result timezone-aware; the schedule's zone is the local one</span>
+<span class="n">cron</span><span class="o">.</span><span class="n">describe</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">str</span>                        <span class="c1"># "every 15 minutes from 8:00 to 18:59, Monday to Friday"</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><span class="n">scheduler</span> <span class="o">=</span> <span class="n">Scheduler</span><span class="p">(</span><span class="n">store</span><span class="p">,</span> <span class="n">fire</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">Schedule</span><span class="p">],</span> <span class="kc">None</span><span class="p">],</span> <span class="n">clock</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">,</span> <span class="n">interval</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)</span>
+<span class="n">scheduler</span><span class="o">.</span><span class="n">start</span><span class="p">();</span> <span class="n">scheduler</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span>
+<span class="n">scheduler</span><span class="o">.</span><span class="n">reload</span><span class="p">()</span>                            <span class="c1"># after schedules changed</span>
+</code></pre></div>
+<p>The loop wakes every <code>interval</code> seconds, fires each enabled schedule whose <code>next_run</code>
+has passed exactly once, records <code>next_run</code> in the store before calling <code>fire</code>, and
+skips runs missed while the server was down (one fire, not a backlog). <code>fire</code> is the
+server's "start a run" and must not block.</p>
+<h2 id="s4-the-server-tolquanewebserver-tolquanewebsupervisor">S4. The server (<code>tolquane.web.server</code>, <code>tolquane.web.supervisor</code>)<a class="headerlink" href="#s4-the-server-tolquanewebserver-tolquanewebsupervisor" title="Permanent link">&para;</a></h2>
+<p>FastAPI, started by <code>tolquane web [--host 127.0.0.1] [--port 8765] [--workspace DIR]
+[--token T] [--no-browser] [--check]</code>. Everything under <code>/api</code>; OpenAPI at
+<code>/api/openapi.json</code> (the frontend client is generated from it); the built frontend is
+served at <code>/</code> with an SPA fallback (unknown paths return <code>index.html</code>). With <code>--token</code>,
+every request under <code>/api</code> needs <code>Authorization: Bearer T</code> (the WebSocket takes
+<code>?token=T</code>, and so does any other request, since neither a socket nor an <code>EventSource</code>
+can set a header); without it the server binds only to loopback and refuses <code>--host</code>
+other than <code>127.0.0.1</code>.
+<code>--check</code> starts, hits <code>/api/health</code>, stops, for CI.</p>
+<p>The token is enforced one layer outside the routes as well as on each of them, so
+<code>/api/openapi.json</code> and <code>/api/docs</code>, which FastAPI adds itself, need it too, and an
+unknown <code>/api</code> path answers 401 rather than 404. It is compared with
+<code>hmac.compare_digest</code> and redacted (<code>token=&lt;hidden&gt;</code>) in every log line. The static files
+are served without it: the page is what asks the user for the token, and it reads the
+token from <code>localStorage</code> under <code>tolquane.token</code>. No CORS header is ever sent. The SPA
+response carries <code>X-Content-Type-Options: nosniff</code>, <code>Referrer-Policy: no-referrer</code> and a
+Content-Security-Policy whose <code>script-src</code> is <code>'self'</code> plus the sha256 of each inline
+script in <code>index.html</code>, <code>connect-src</code> is <code>'self' ws: wss:</code>, and <code>style-src</code> is
+<code>'self' 'unsafe-inline'</code> (the code editor and the canvas insert their own stylesheets).</p>
+<h3 id="workspace-and-flow-paths">Workspace and flow paths<a class="headerlink" href="#workspace-and-flow-paths" title="Permanent link">&para;</a></h3>
+<p>The workspace is one directory (<code>--workspace</code>, default the current directory, stored in
+settings). A flow is a <code>.py</code> file inside it, addressed by its path relative to the
+workspace with forward slashes (<code>{path}</code> below, URL-encoded; <code>..</code>, absolute paths, a
+Windows drive or share, and anything that resolves outside the workspace through a
+symlink are rejected with 400, whether the path is being read, written, renamed or
+created). A flow's sidecar is <code>&lt;stem&gt;.layout.json</code> next to it, checked the same way: a
+sidecar that is itself a symlink pointing out is refused. The flow listing skips hidden
+directories, <code>.tolquane-web/</code> and anything the server would refuse to open.</p>
+<h3 id="errors">Errors<a class="headerlink" href="#errors" title="Permanent link">&para;</a></h3>
+<p>Every error is <code>{"error": {"type": "GraphError", "message": "...", "detail": {...}}}</code>
+with 400 for a bad request or a flow that does not validate, 404 for unknown paths and
+ids, 409 for a stale save, 401 for a bad token, 413 for a body or a source over
+<code>max_source_bytes</code>, 429 for the concurrent run limit, 500 for the rest. <code>GraphError</code> and
+<code>TolquaneError</code> messages are passed through unchanged: they already say the fix.</p>
+<h3 id="flows">Flows<a class="headerlink" href="#flows" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>GET  /api/flows                     -&gt; {"workspace": "/abs/path", "flows": [{"path": "hello.py", "name": "hello",
+                                        "modified": "2026-09-06T10:00:00Z", "size": 1234, "has_layout": true,
+                                        "last_run": {"id": 12, "status": "done", "ended": "..."} | null}]}
+POST /api/flows                     {"path": "new.py", "template": "empty" | "hello" | {"model": &lt;FlowModel&gt;}} -&gt; the flow (below)
+GET  /api/flows/{path}              -&gt; {"path": ..., "source": "...", "modified": ..., "model": &lt;FlowModel&gt; | null,
+                                        "code_only": {"reason": "..."} | null, "graph": &lt;graph_view&gt;, "layout": &lt;Layout&gt; | null}
+PUT  /api/flows/{path}              {"source": "...", "modified": &lt;the modified you were given&gt;} -&gt; the flow; 409 with the
+                                     current source when the file changed since (client shows a diff)
+PUT  /api/flows/{path}/layout       &lt;Layout&gt; -&gt; {"ok": true}
+DELETE /api/flows/{path}            -&gt; {"ok": true}
+POST /api/flows/{path}/rename       {"path": "other.py"} -&gt; the flow
+POST /api/flows/parse               {"source": "...", "name": "flow"} -&gt; {"model": ... | null, "code_only": ... | null, "graph": ...}
+POST /api/flows/generate            {"model": &lt;FlowModel&gt;} -&gt; {"source": "..."}
+POST /api/flows/{path}/check        -&gt; {"ok": true, "nodes": 12, "edges": 14} or 400 with the GraphError
+POST /api/flows/{path}/explain      -&gt; {"text": "..."}
+POST /api/flows/{path}/draw         -&gt; {"mermaid": "..."}
+POST /api/flows/{path}/optimize     {"all2all": false} -&gt; {"source": null, "notes": ["..."], "graph": &lt;graph_view&gt;}
+</code></pre></div>
+<p><code>parse</code>, <code>generate</code>, <code>check</code>, <code>explain</code>, <code>draw</code> and <code>optimize</code> run user code, so the
+server runs them in a child process through <code>python -m tolquane.web.model ...</code> and
+<code>python -m tolquane ...</code> with a timeout (settings <code>exec_timeout</code>, default 30 s), never
+by importing the flow itself. (<code>optimize</code> has no command line form that answers with
+data, so its child runs <code>tq.optimize</code> and prints the notes and the graph as JSON.)
+As built, <code>optimize</code> answers <code>"source": null</code>: <code>tq.optimize</code> rewrites the block tree at
+run time and there is no way back from it to Python yet, so the notes and the optimized
+graph are what the canvas shows, and the last note says to run with <code>optimize</code> set.
+<code>generate</code> is pure text and runs in the server itself; nothing is imported.</p>
+<h3 id="runs">Runs<a class="headerlink" href="#runs" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>POST /api/runs                      {"path": "hello.py", "runtime": "threads" | "processes" | "sync",
+                                     "sample": "three lines" | null, "batch": 32, "tap": 5, "trace": false,
+                                     "optimize": false} -&gt; &lt;Run&gt;
+GET  /api/runs?flow=hello.py&amp;limit=50 -&gt; {"runs": [&lt;Run&gt;]}   (with "log": "", which can be 64 KB each)
+GET  /api/runs/{id}                 -&gt; &lt;Run&gt; (the store's Run.to_dict(), plus "live": true while running)
+POST /api/runs/{id}/cancel          -&gt; &lt;Run&gt;
+GET  /api/runs/{id}/log             -&gt; text/plain, the captured stdout and stderr
+GET  /api/runs/{id}/trace           -&gt; the Chrome trace file, 404 when the run had none
+WS   /api/runs/{id}/events          -&gt; every event line of the run as a JSON message, in order; a client that
+                                     connects late first receives the events so far (the supervisor keeps them
+                                     in memory until the run ends and for 10 minutes after), then live ones; the
+                                     socket closes after the "done" event. A run whose events have been forgotten
+                                     answers with one "done" carrying its stored status; an unknown id, with one
+                                     "error". At most MAX_EVENTS (5000) are kept per run: when a flow sends more,
+                                     the oldest go (never the "start" event) and a late client is told once, right
+                                     after "start", with {"event": "dropped", "count": N, "message": "..."}; the
+                                     log and the report are whole either way
+</code></pre></div>
+<p>The supervisor owns the child processes: <code>python -m tolquane run &lt;path&gt; --events
+--progress-interval 0.5 --tap N [--sample tmpfile] [--runtime R] [--batch B] [--trace
+file] [--optimize]</code> with the workspace as the working directory and the flow's directory
+on <code>sys.path</code>. No child inherits a secret: <code>ANTHROPIC_API_KEY</code>, <code>OPENAI_API_KEY</code>,
+<code>TOLQUANE_WEB_TOKEN</code> and any variable whose value is the access token are taken out of
+the environment of every child, the one-shot commands included; the AI chat is the only
+thing that needs a key, and it is handed one directly. It limits concurrent runs (setting <code>max_concurrent_runs</code>, default 4;
+beyond it <code>POST /api/runs</code> answers 429), records every event into the run's log (the
+store keeps the last 64 KB), writes the report and status to the store on <code>done</code>, sends
+SIGTERM on cancel and SIGKILL after <code>cancel_grace</code> seconds (default 10), and kills every
+child when the server exits. A child that outlives SIGKILL by another <code>cancel_grace</code> is
+given up on: the run is recorded as <code>failed</code> with an error naming the process rather than
+left <code>running</code> for ever. At startup the supervisor clears everything under
+<code>.tolquane-web/</code> (traces, samples, scratch) older than <code>keep_traces_days</code>. A sample is written to a temporary <code>.json</code> file the CLI
+reads with <code>--sample</code>.</p>
+<h3 id="schedules">Schedules<a class="headerlink" href="#schedules" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>GET    /api/schedules?flow=          -&gt; {"schedules": [&lt;Schedule&gt; + {"description": cron.describe(), "next_five": [...]}]}
+POST   /api/schedules                {"flow": "hello.py", "cron": "*/15 * * * *", "sample": null, "runtime": "threads",
+                                      "enabled": true} -&gt; &lt;Schedule&gt;; 400 with the cron error otherwise
+PUT    /api/schedules/{id}           any of the fields above -&gt; &lt;Schedule&gt;
+DELETE /api/schedules/{id}           -&gt; {"ok": true}
+POST   /api/schedules/{id}/run       -&gt; &lt;Run&gt;   (fire now)
+POST   /api/schedules/preview        {"cron": "..."} -&gt; {"description": "...", "next_five": ["..."]}
+</code></pre></div>
+<p>The scheduler's <code>fire</code> starts a run with trigger <code>schedule:&lt;id&gt;</code> through the supervisor.</p>
+<h3 id="settings">Settings<a class="headerlink" href="#settings" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>GET /api/settings  -&gt; {"workspace": "...", "default_runtime": "threads", "default_batch": 32, "exec_timeout": 30,
+                       "max_concurrent_runs": 4, "max_source_bytes": 2000000, "cancel_grace": 10,
+                       "keep_traces_days": 7, "theme": "dark",
+                       "ai": {"provider": "anthropic", "model": null, "has_anthropic_key": true, "has_openai_key": false},
+                       "server": {"host": "127.0.0.1", "port": 8765, "token_set": false}}
+PUT /api/settings  any subset of the above; "ai.anthropic_key" and "ai.openai_key" may be sent to store a key
+</code></pre></div>
+<p>Keys never enter the SQLite store: the server writes them to <code>~/.tolquane/web.toml</code>
+with mode 600 (or the file named by <code>TOLQUANE_WEB_CONFIG</code>), reads them from there or
+from <code>ANTHROPIC_API_KEY</code> / <code>OPENAI_API_KEY</code> in the environment, and only ever reports
+whether one is set. Every other setting lives in the store. <code>workspace</code>, <code>server.host</code>
+and <code>server.port</code> are what the <em>next</em> <code>tolquane web</code> starts with when no flag says
+otherwise: a running server keeps the ones it was given, and <code>GET /api/health</code> is where
+the live workspace is. A setting the server does not know, or a value it cannot use, is
+a 400 naming it rather than a value nothing reads.</p>
+<h3 id="ai-chat">AI chat<a class="headerlink" href="#ai-chat" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>POST /api/ai/chat   {"path": "hello.py" | null, "messages": [{"role": "user", "content": "..."}], "provider": ..., "model": ...,
+                     "sample": "three lines" | null}
+                    -&gt; text/event-stream
+</code></pre></div>
+<p>Events: <code>{"type": "text", "delta": "..."}</code> for the assistant's words, <code>{"type":
+"tool", "name": "write_flow", "status": "started" | "done", "summary": "...", "error":
+false}</code> for each tool call the builder makes, <code>{"type": "flow", "source": "...",
+"model": ..., "graph": ...}</code> when the builder has written or changed the flow (the
+frontend offers "apply"), <code>{"type": "done", "usage": {...}, "ok": true, "summary":
+"..."}</code>, <code>{"type": "error", "message": "..."}</code>. The server runs <code>tolquane.ai.Builder</code>
+in a directory of its own under the workspace (<code>.tolquane-web/ai/&lt;id&gt;</code>, removed when the
+stream ends) seeded with the open flow's source, so <code>write_flow</code> can never touch the
+open file: the client applies the result through <code>PUT /api/flows/{path}</code>. The open
+flow's source and the sample are in the first user turn's context, along with the
+earlier messages of the conversation.</p>
+<h3 id="health">Health<a class="headerlink" href="#health" title="Permanent link">&para;</a></h3>
+<p><code>GET /api/health -&gt; {"ok": true, "version": "1.2.0", "workspace": "...", "runs_live": 1, "scheduler": true}</code></p>
+<h1 id="13-users-inputs-and-environments-history-schedule-outcomes">1.3: users, inputs and environments, history, schedule outcomes<a class="headerlink" href="#13-users-inputs-and-environments-history-schedule-outcomes" title="Permanent link">&para;</a></h1>
+<p>Four additions, built against the contracts below. Version 1.3.</p>
+<h2 id="u-users-and-sessions">U. Users and sessions<a class="headerlink" href="#u-users-and-sessions" title="Permanent link">&para;</a></h2>
+<p><strong>Modes.</strong> <code>GET /api/auth/me</code> reports <code>mode</code>: <code>local</code> (bound to loopback, no <code>--token</code>,
+no users defined: every request is the implicit admin <code>local</code>, no login), <code>users</code>
+(at least one user exists: login required, on loopback too), <code>token</code> (<code>--token</code> given
+and no users yet: the token acts as an admin API token, and lets the first admin be
+created from the login page). The <code>--token</code> value keeps working as an admin API token
+in every mode, for scripts and setup.</p>
+<p>With <code>--token</code> <em>and</em> users, the wall of S4 takes a session or an API token as well as
+the token itself, and the public routes (<code>GET /api/health</code>, <code>GET /api/auth/me</code>,
+<code>POST /api/auth/login</code>) stop asking for the token: a login page that needed the token
+to offer a login box would be a lock with two keys. With <code>--token</code> and no users -- token
+mode -- nothing under <code>/api</code> answers without it, exactly as in 1.2.</p>
+<p><strong>Store.</strong> <code>users(id, name unique, role 'admin'|'member', password_hash, created,
+disabled, must_change_password)</code> with <code>hashlib.scrypt</code> (<code>n=2**14, r=8, p=1</code>, per-user
+salt, stored as <code>scrypt$&lt;salt b64&gt;$&lt;hash b64&gt;</code>); <code>sessions(id, token_hash sha256,
+user_id, kind 'session'|'api', label, created, expires, last_seen)</code>. Session tokens
+are <code>secrets.token_urlsafe(32)</code>, shown once, sliding 30-day expiry; API tokens do not
+expire. <code>runs</code> and <code>schedules</code> gain a <code>user</code> column (the name; <code>local</code> in local mode,
+and <code>local</code> for every row written before 1.3). A password change keeps the sessions
+that were open: it is made from one of them. Disabling a user stops theirs at once, and
+deleting a user takes them with it.</p>
+<p><strong>Routes.</strong></p>
+<div class="highlight"><pre><span></span><code>POST /api/auth/login        {"name", "password"} -&gt; {"token", "user"}; 401 on a wrong pair, 403 when disabled
+POST /api/auth/logout       -&gt; {"ok": true}   (the session is deleted)
+GET  /api/auth/me           -&gt; {"user": {"id", "name", "role", "created", "disabled", "must_change_password", "last_seen"} | null,
+                                "mode": "local"|"users"|"token", "can_setup": true when mode is token and no users exist}
+                            local mode and the --token value are users too, with id 0 and the names `local` and `token`
+POST /api/auth/setup        {"name", "password"} -&gt; 201 {"token", "user"}, signed in as the first admin;
+                            only in token mode with the token, 409 afterwards, 403 without --token
+POST /api/auth/password     {"current", "new"} -&gt; {"ok": true}; clears must_change_password; 401 on a wrong current
+GET  /api/auth/tokens       -&gt; {"tokens": [{"id", "label", "created", "last_seen"}]}
+POST /api/auth/tokens       {"label"} -&gt; 201 {"id", "token", "label"}   (the token is shown once)
+DELETE /api/auth/tokens/{id} -&gt; {"ok": true}; somebody else's token id is a 404
+GET  /api/users             admin -&gt; {"users": [{"id", "name", "role", "created", "disabled", "must_change_password", "last_seen"}]}
+POST /api/users             admin {"name", "role", "password"} -&gt; 201, the user (must_change_password true)
+PUT  /api/users/{id}        admin {"role"?, "disabled"?, "password"?} -&gt; the user; 400 when it would leave no enabled admin;
+                            a new password sets must_change_password
+DELETE /api/users/{id}      admin -&gt; {"ok": true}; 400 for yourself or the last admin
+</code></pre></div>
+<p>The bearer token is a session token, an API token, or the <code>--token</code> value, in the
+<code>Authorization</code> header or as <code>?token=</code>. The three <code>/api/auth</code> routes that are about an
+account -- <code>password</code>, <code>tokens</code>, <code>tokens/{id}</code> -- answer 400 to the local admin and to
+the <code>--token</code> value, which are not people and have no password to change.
+Passwords are at least 8 characters. Names are <code>[a-z0-9_.-]{2,32}</code>, lower-cased.</p>
+<p><strong>Roles.</strong> <code>member</code>: flows, runs, schedules, AI, history; <code>GET /api/settings</code> (the
+<code>server</code> section and the <code>has_*_key</code> flags come back <code>null</code>); <code>PUT /api/settings</code> only
+for <code>theme</code>, and 403 naming the other fields. <code>admin</code>: everything, including users,
+settings, keys, <code>history/init</code>. A route the role cannot use answers 403 <code>{"error":
+{"type": "Forbidden", ...}}</code>. <code>GET /api/health</code> needs no login and leaves <code>workspace</code>
+out altogether when the caller is not signed in. The table lives in
+<code>tolquane.web.server.ROUTE_ROLES</code>, as data: everything under <code>/api/users</code> is <code>admin</code>,
+<code>GET /api/health</code>, <code>GET /api/auth/me</code>, <code>POST /api/auth/login</code> and <code>POST /api/auth/setup</code>
+are public, and everything else needs a signed-in member.</p>
+<p><strong>CLI.</strong> <code>tolquane web users add NAME [--admin] [--password P]</code> (prompts when no
+<code>--password</code>, twice, and refuses two that differ), <code>users list</code>, <code>users disable NAME</code>,
+<code>users enable NAME</code>, <code>users passwd NAME [--password P]</code>; all operate on the store named
+by <code>TOLQUANE_HOME</code> or the defaults, without a running server. A user made at the command
+line is not asked to change their password: whoever typed it chose it. A duplicate name,
+a name that is not a name, a password under 8 characters, an unknown user and disabling
+the last administrator each print one line and exit 1.</p>
+<p><strong>Frontend.</strong> A <code>/login</code> page (name, password; "create the first admin" in token
+mode; the token dialog stays for token mode); an account menu at the bottom of the
+sidebar (name, role, change password, personal API tokens, sign out); a <code>/users</code> page
+for admins (list, create with a temporary password shown once, change role, disable,
+reset password, delete); route guards (members never see Users, and Settings hides
+the admin sections); a 401 anywhere sends to <code>/login</code> and back afterwards; a forced
+password change on first login.</p>
+<h2 id="e-inputs-and-environments">E. Inputs and environments<a class="headerlink" href="#e-inputs-and-environments" title="Permanent link">&para;</a></h2>
+<p><strong>Parameters.</strong> A flow may declare keyword-only parameters after <code>source</code>, each with a
+literal default: <code>def build(source=None, *, threshold: float = 0.5, path: str =
+"data.csv")</code>. The model gains <code>params: [{"name", "default": "&lt;python literal source&gt;",
+"annotation": "&lt;source&gt;" | null}]</code>, in order; the code generator writes them back; a
+parameter without a default, or a default that is not a literal (<code>ast.literal_eval</code>),
+makes the file <code>CodeOnly</code> with that reason.</p>
+<p><strong>CLI.</strong> <code>tolquane run|check|explain|draw flow.py --param name=value</code> (repeatable;
+<code>value</code> goes through <code>ast.literal_eval</code>, a plain word stays a string) and
+<code>tolquane run --env NAME=value</code> (repeatable). <code>build()</code> is called with the parameters
+as keywords; unknown names are an error naming the flow's parameters. <code>--env</code> is applied
+to the process environment before the flow module is imported and put back afterwards,
+so an in-process caller is left as it was found. The <code>--events</code> <code>start</code> event carries
+<code>params</code> (what <code>--param</code> gave, JSON-safe) and <code>env</code> (names only).</p>
+<p><strong>Runs and schedules.</strong> <code>POST /api/runs</code> and the schedule bodies gain <code>params: {name:
+value}</code> and <code>env: {NAME: value}</code> (both JSON, stored with the run and the schedule);
+<code>Run.to_dict()</code> and schedules return them. The supervisor passes <code>--param</code>/<code>--env</code>
+to the child; per-run env is applied after the workspace env below and after the
+secret stripping, so a run can set anything except the server's own keys.</p>
+<p><strong>Workspace settings.</strong> <code>python</code>: the interpreter for runs and one-shot commands
+(default: the server's own <code>sys.executable</code>); on <code>PUT</code>, the server runs it with
+<code>-c "import tolquane, sys; print(tolquane.__version__)"</code> and answers 400 with a <code>pip
+install tolquane</code> line when that fails or the major version differs. <code>env: {NAME:
+value}</code>: applied to every run; admins see values, members see names only
+(<code>env_names</code>). Both in <code>GET /api/settings</code>.</p>
+<p><strong>Import probe.</strong> <code>tolquane.web.probe.probe_imports(source: str, python: str, *, path=None,
+timeout=20.0) -&gt; list[Probe]</code> with <code>Probe(module, ok, hint)</code>: the top-level modules the
+file imports (ast, every statement including the ones inside functions), minus the
+standard library (<code>sys.stdlib_module_names</code>), <code>tolquane</code> and the flow's own neighbours
+(a <code>.py</code> or a package next to <code>path</code>, which is why the call takes one), each tried with
+<code>python -c "import &lt;module&gt;"</code> in one child call, in sorted order; <code>hint</code> is <code>pip install
+&lt;name&gt;</code> with a small map for the usual renames (<code>cv2</code> opencv-python, <code>PIL</code> pillow,
+<code>sklearn</code> scikit-learn, <code>yaml</code> pyyaml, <code>bs4</code> beautifulsoup4, <code>dotenv</code> python-dotenv).
+An interpreter that cannot be run or does not answer within <code>timeout</code> is not an
+exception: every module comes back <code>ok=False</code> with <code>could not ask &lt;python&gt;: &lt;reason&gt;</code>.
+<code>POST /api/flows/{path}/check</code> gains <code>"imports": [Probe]</code>; the frontend shows a
+missing import as a warning in Problems with the hint, and the Run popover shows the
+interpreter in use.</p>
+<p><strong>As built.</strong> <code>POST /api/flows/{path}/check</code> answers <code>imports</code> on success, and carries
+the same list in the <code>detail</code> of its 400 when the flow does not check: an <code>import pandas</code>
+that is not installed is exactly the failure whose fix belongs in Problems. <code>GET
+/api/settings</code> answers <code>env</code> and <code>env_names</code>; a member sees <code>env: null</code> and the names, the
+way they see <code>server: null</code>. <code>python</code> accepts a bare name and resolves it on <code>PATH</code>, and
+falls back to the server's own interpreter when a saved path has since gone, so a deleted
+virtualenv does not make every run fail; it is also the interpreter the one-shot commands
+(parse, graph, check, explain, draw, optimize) use.</p>
+<p><strong>Frontend.</strong> The Run popover gains a Parameters section (one field per parameter,
+typed from the default: number, boolean toggle, text, or a code field for anything
+else; last values remembered per flow in localStorage) and an Environment section
+(name/value rows); the schedule dialog gains the same two; the properties panel of the
+start card lists the parameters and lets the user add, rename, retype and remove them
+(a model edit that regenerates <code>build()</code>); Settings gains Interpreter and Workspace
+environment rows (admin).</p>
+<h2 id="h-history-of-a-flow">H. History of a flow<a class="headerlink" href="#h-history-of-a-flow" title="Permanent link">&para;</a></h2>
+<p>Git, through <code>subprocess</code>, nothing else. Everything degrades to "history unavailable"
+with a reason when <code>git</code> is not on PATH or the workspace is not in a repository.</p>
+<div class="highlight"><pre><span></span><code>GET  /api/workspace/history          -&gt; {"available": bool, "reason": str | null, "repo": bool, "root": path | null, "dirty": n}
+POST /api/workspace/history/init     admin -&gt; {"ok": true}   (git init in the workspace; writes .gitignore with .tolquane-web/ and __pycache__/)
+GET  /api/flows/{path}/history?limit=50 -&gt; {"entries": [{"rev", "short", "author", "date", "message", "head": bool}], "uncommitted": bool}
+GET  /api/flows/{path}/history/{rev} -&gt; {"rev", "source", "diff": "&lt;unified diff, that revision against the file now&gt;"}
+POST /api/flows/{path}/restore       {"rev"} -&gt; the flow (the file and its sidecar as they were at rev; not committed)
+PUT  /api/flows/{path}               gains optional "commit": {"message": "..."}; the response gains "commit": {"rev", "short"} | null
+</code></pre></div>
+<p><code>git log --follow</code> for the entries; <code>git show rev:path</code> for a version; the sidecar
+is included in commits and restores when it exists. Commits use <code>--author "&lt;user
+name&gt; &lt;name@tolquane.local&gt;"</code> and only add the flow's own files. Setting
+<code>auto_commit: bool</code> (default false): every save commits, with the given message or
+<code>Edit &lt;path&gt;</code>; the AI apply passes <code>AI: &lt;first line of the request&gt;</code>; a restore does
+not commit. Nothing ever runs <code>git push</code>, <code>reset</code> or <code>checkout</code>.</p>
+<p><strong>As built.</strong> The history lives in <code>tolquane.web.history</code>, and every route answers 400
+with git's own reason when there is no history to read (no git, or no repository). A
+<code>PUT</code> that asks for a commit in a workspace that is not a repository is refused <em>before</em>
+the file is written, so nothing is saved that could not be committed; a commit that git
+refuses for any other reason, and every <code>auto_commit</code> failure, leaves <code>commit: null</code> and
+a line in the server log rather than failing the save that already happened. A save that
+changes nothing is <code>commit: null</code> too. Restores never touch the index: the old text is
+read with <code>git show</code> and written over the file. The <code>.py</code> and its <code>.layout.json</code> are
+added by name, so a commit never picks up whatever else was uncommitted. <code>auto_commit</code>
+is in <code>GET /api/settings</code> beside <code>theme</code>. The history routes are registered before
+<code>GET /api/flows/{path}</code>, which would otherwise match <code>hello.py/history</code> as a flow name.</p>
+<p><strong>Frontend.</strong> The editor's right column gains a History tab (Properties | AI |
+History): the entries with relative dates, author and message, "uncommitted changes"
+on top when the file differs from HEAD, click to see the diff (the existing diff
+view), Restore with a confirmation, Initialize history when the workspace is not a
+repository (admin), and Save with message (Cmd/Ctrl+Shift+S) as a small dialog; the
+Save button shows a dot while uncommitted changes exist.</p>
+<h2 id="n-schedule-outcomes">N. Schedule outcomes<a class="headerlink" href="#n-schedule-outcomes" title="Permanent link">&para;</a></h2>
+<p><strong>Schedule fields.</strong> <code>notify: {"events": ["failed", "deadlock", "cancelled", "done"],
+"webhook": url | null, "emails": [address]}</code> (default: no events), <code>retries: 0..5</code>
+(default 0), <code>retry_delay: seconds</code> (default 60). A retry re-runs the flow after a
+<code>failed</code> or <code>deadlock</code> end, never after <code>cancelled</code>, as a new run with trigger
+<code>retry:&lt;schedule id&gt;:&lt;attempt&gt;</code>; the notification for the schedule fires once, after
+the last attempt, with the final status and the attempt count.</p>
+<p><strong>Settings.</strong> <code>notifications: {"webhook_default": url | null, "smtp": {"host", "port",
+"username", "from", "starttls": bool} | null, "has_smtp_password": bool}</code>; <code>PUT</code> accepts
+<code>notifications.smtp_password</code> write-only (it goes to the key file). A schedule with
+<code>webhook: null</code> uses the default; emails need the SMTP settings, else the attempt is
+recorded as failed with the reason.</p>
+<p><strong>Delivery.</strong> Webhook: <code>POST</code> JSON <code>{"event", "status", "attempts", "flow", "schedule":
+{"id", "cron"}, "run": &lt;Run.to_dict()&gt;, "busiest", "error", "log_tail": "&lt;last 2 KB&gt;",
+"url": "&lt;server url&gt;/runs/&lt;id&gt;"}</code> with a 10 s timeout and one retry after 30 s.
+Email: <code>smtplib</code>, STARTTLS when set, subject <code>[Tolquane] &lt;flow&gt;: &lt;status&gt;</code>, a plain
+text body with the same facts. Attempts are recorded in <code>notifications(id, run_id,
+schedule_id, channel 'webhook'|'email', target, status 'sent'|'failed', error,
+created)</code>.</p>
+<div class="highlight"><pre><span></span><code>GET  /api/runs/{id}/notifications    -&gt; {"notifications": [...]}
+POST /api/schedules/{id}/test        -&gt; {"results": [{"channel", "target", "status", "error"}]}   (sends a test event now)
+</code></pre></div>
+<p>Schedule rows gain <code>last_outcome: {"status", "attempts", "notified": bool}</code>.</p>
+<p><strong>As built.</strong> The webhook body's <code>run</code> is <code>Run.to_dict()</code> with <code>log</code> emptied: the tail
+is already there as <code>log_tail</code>, and a receiver has no use for sixty-four kilobytes of it
+twice. One <code>notifications</code> row is written per <em>attempt</em>, so a webhook that failed and
+then succeeded leaves a <code>failed</code> row and a <code>sent</code> row, and the run dialog can show the
+chain. <code>last_outcome</code> is written after every attempt, with <code>notified: false</code> while the
+chain is still going, and again at the end with the final status and count.
+<code>POST /api/schedules/{id}/test</code> sends without the retry -- somebody is waiting for the
+answer -- and answers 400 when the schedule has no webhook, no addresses and no default;
+its message describes the schedule's last run, or a placeholder run with <code>id: 0</code> when it
+has never had one. The SMTP password lives in the key file under <code>[notifications]</code>,
+beside the API keys, and is read from <code>TOLQUANE_SMTP_PASSWORD</code> when the file has none;
+like the other secrets, it is stripped from the environment of every child process. A
+<code>notify</code> object with a field this server does not know is a 400 rather than a schedule
+that quietly tells nobody. Delivery for a run is done on a daemon thread
+(<code>Notifier.deliver_later</code>), and the retry chain is a <code>threading.Timer</code> per attempt
+(<code>Outcomes</code>), cancelled when the server stops.</p>
+<p><strong>Frontend.</strong> The schedule dialog gains an Outcomes section (notify-on chips, webhook
+with "use the default", emails, retries and delay, Send a test); the schedule list
+shows a bell when notifications are set and the last outcome; Settings gains a
+Notifications section (default webhook, SMTP with the password field that is never
+echoed); the run dialog lists the notification attempts and the retry chain.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.sections", "content.code.copy"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>

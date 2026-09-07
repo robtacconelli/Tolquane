@@ -1,0 +1,1937 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Parallel programming with composable building blocks, in Python.">
+      
+      
+      
+      
+        <link rel="prev" href="../backlog/">
+      
+      
+        <link rel="next" href="../web/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>User guide - Tolquane</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#tolquane-web-the-user-guide" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Tolquane" class="md-header__button md-logo" aria-label="Tolquane" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Tolquane
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              User guide
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="indigo"  aria-label="Dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="teal" data-md-color-accent="indigo"  aria-label="Light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/robtacconelli/Tolquane" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Tolquane" class="md-nav__button md-logo" aria-label="Tolquane" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Tolquane
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/robtacconelli/Tolquane" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tutorial/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tutorial
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cookbook/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cookbook
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runtimes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Runtimes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../builder/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The AI builder
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api-card/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API card
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../from-bbflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Coming from FastFlow and BBFlow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../style/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    House style
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../design/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Design
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../backlog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Backlog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_12" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_12" id="__nav_12_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tolquane Web
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_12_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_12">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Tolquane Web
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User guide
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#install-and-start" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Install and start
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#users-and-sign-in" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Users and sign-in
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#flows" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Flows
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-editor" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The editor
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The editor">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#code-and-the-two-way-sync" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Code, and the two-way sync
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-properties-panel" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The properties panel
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#check" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Check
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#running" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Running
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#parameters-and-environment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Parameters and environment
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#runs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Runs
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#history" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        History
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#schedules" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Schedules
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#schedule-outcomes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Schedule outcomes
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-same-flow-anywhere" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The same flow, anywhere
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-ai-builder" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The AI builder
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#settings" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Settings
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-is-on-disk" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What is on disk
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#keyboard-shortcuts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Keyboard shortcuts
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Troubleshooting
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#security" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Security
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../web/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The plan
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../web-interfaces/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Interfaces
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_13" >
+        
+          
+          <label class="md-nav__link" for="__nav_13" id="__nav_13_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Decisions
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_13_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_13">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Decisions
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../decisions/0001-naming/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Naming
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../decisions/0002-fastflow-review/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    FastFlow review
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#install-and-start" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Install and start
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#users-and-sign-in" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Users and sign-in
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#flows" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Flows
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-editor" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The editor
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The editor">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#code-and-the-two-way-sync" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Code, and the two-way sync
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-properties-panel" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The properties panel
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#check" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Check
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#running" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Running
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#parameters-and-environment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Parameters and environment
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#runs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Runs
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#history" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        History
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#schedules" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Schedules
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#schedule-outcomes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Schedule outcomes
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-same-flow-anywhere" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The same flow, anywhere
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-ai-builder" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The AI builder
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#settings" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Settings
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-is-on-disk" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What is on disk
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#keyboard-shortcuts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Keyboard shortcuts
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Troubleshooting
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#security" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Security
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="tolquane-web-the-user-guide">Tolquane Web: the user guide<a class="headerlink" href="#tolquane-web-the-user-guide" title="Permanent link">&para;</a></h1>
+<p>Tolquane Web is a page for the flows in one directory: a canvas of the blocks, the
+Python beside it, runs with live per-node counts, a history, schedules and the AI
+builder. It runs on your machine, and the flows it writes are ordinary files.</p>
+<p>The file is the artifact and the canvas is a view of it. Every flow is a <code>flow.py</code> in
+the <a href="../style/">house style</a>, with <code>build(source=None)</code> and <code>main()</code>, so anything made
+here runs with <code>python flow.py</code> on any machine that has <code>pip install tolquane</code> and
+nothing else.</p>
+<h2 id="install-and-start">Install and start<a class="headerlink" href="#install-and-start" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>pip install "tolquane[web]"
+cd ~/flows
+tolquane web
+</code></pre></div>
+<p>That starts a server on <code>127.0.0.1:8765</code>, opens a browser at it, and takes the current
+directory as the <em>workspace</em>: the directory whose <code>.py</code> files are the flows, and the
+working directory every run starts in. <code>--workspace DIR</code> picks another one, <code>--port</code> a
+different port, and <code>--no-browser</code> leaves the browser alone. The workspace, host and
+port you save on the Settings page are what the <em>next</em> <code>tolquane web</code> starts with when
+no flag says otherwise.</p>
+<p>The server has no login because it is on loopback, where only this machine can reach it.
+To put it on a shared machine, bind wider and set a token:</p>
+<div class="highlight"><pre><span></span><code>tolquane web --host 0.0.0.0 --token "$(python -c 'import secrets; print(secrets.token_urlsafe(24))')"
+</code></pre></div>
+<p>Tolquane Web refuses <code>--host</code> anything but loopback without <code>--token</code>: anyone who can
+reach the page can run code as you. Paste the token into the page once, where it asks
+for it; the browser keeps it under <code>localStorage['tolquane.token']</code> and sends it with
+every request from then on. (Setting it by hand is the same thing:
+<code>localStorage.setItem('tolquane.token', '…')</code> in the developer console.) See
+<a href="#security">Security</a> for what the token does and does not cover.</p>
+<p>A token is one secret for one person. Accounts are the other way in: the first user
+turns sign-in on for everybody, and a server started with <code>--token</code> can make its first
+administrator from the login page. See <a href="#users-and-sign-in">Users and sign-in</a>.</p>
+<p><code>tolquane web --check</code> starts the server, asks <code>/api/health</code>, and stops. That is the
+line for CI.</p>
+<h2 id="users-and-sign-in">Users and sign-in<a class="headerlink" href="#users-and-sign-in" title="Permanent link">&para;</a></h2>
+<p><img alt="The sign-in page of a server that has accounts" src="../img/web/login.png" /></p>
+<p>Whether you sign in depends on how the server was started and on whether anybody has an
+account yet. Three cases:</p>
+<ul>
+<li><strong>A local server with no users.</strong> Loopback, no <code>--token</code>, nobody added: no login. Every
+  request is an implicit administrator called <code>local</code>, and that is the name the runs and
+  the schedules record. It is the default, and it is what 1.2 did.</li>
+<li><strong>A server with users.</strong> As soon as one account exists, everybody signs in, on loopback
+  too. The account menu at the bottom of the sidebar says who you are.</li>
+<li><strong>A server started with <code>--token</code> and no users.</strong> The token is the only key, exactly as
+  before, and the login page offers <strong>Create the first administrator</strong>. The token keeps
+  working afterwards as an administrator's API token, for scripts and for setup.</li>
+</ul>
+<p>The first user is the switch. Make one from the login page of a <code>--token</code> server, or at
+the command line, which needs no server running:</p>
+<div class="highlight"><pre><span></span><code>tolquane web users add alice --admin      # asks for the password, twice
+tolquane web users list
+tolquane web users passwd alice
+tolquane web users disable bob
+tolquane web users enable bob
+</code></pre></div>
+<p>These read and write the database <code>tolquane web</code> uses (<code>~/.tolquane/web.db</code>, or under
+<code>TOLQUANE_HOME</code>), so they work while the server is down and they are the way back in when
+nobody can sign in. <code>--password</code> gives the password on the line instead of at a prompt. A
+duplicate name, a password under eight characters, an unknown user, or disabling the last
+administrator each print one line and stop.</p>
+<p><strong>Roles.</strong> An administrator can do everything. A member does the work — flows, runs,
+schedules, the AI builder, history — and nothing else: no Users page, no setting but the
+theme, no word on whether an API key is stored or what address the server is on, the
+names of the workspace environment variables but not their values, and no <code>git init</code>. A
+route a role does not have answers 403.</p>
+<p><strong>Accounts.</strong> A user made in the app is given a temporary password, shown once, and is
+asked to choose their own at the first sign-in; a user made at the command line keeps the
+password whoever typed it chose. The account menu holds <strong>Change password</strong>, <strong>API
+tokens…</strong> and <strong>Sign out</strong>. Names are lower case, two to thirty-two characters of letters,
+digits, <code>_</code>, <code>.</code> and <code>-</code>; passwords are at least eight characters. A session lasts thirty
+days, and using it puts that off again. Disabling a user ends their sessions at once.
+There is always one administrator who can sign in: the last one cannot be deleted,
+disabled or made a member.</p>
+<p><strong>API tokens, for scripts.</strong> A personal token is yours, carries your role, is shown once,
+and lasts until you delete it. Make one from the account menu, then:</p>
+<div class="highlight"><pre><span></span><code>curl -H "Authorization: Bearer $TOLQUANE_TOKEN" http://127.0.0.1:8765/api/runs
+</code></pre></div>
+<p>Every route takes it that way, and as <code>?token=</code> on the run socket and on a download link,
+neither of which can carry a header.</p>
+<h2 id="flows">Flows<a class="headerlink" href="#flows" title="Permanent link">&para;</a></h2>
+<p><img alt="The Flows page: every flow in the workspace with its last run" src="../img/web/flows.png" /></p>
+<p>The first screen lists every <code>.py</code> file in the workspace, when it changed, how big it is
+and how it last ran. Hidden directories, <code>__pycache__</code>, <code>node_modules</code>, virtualenvs and
+Tolquane Web's own <code>.tolquane-web/</code> are left out; so is a symlink pointing out of the
+workspace.</p>
+<p><strong>New flow</strong> writes a small template and opens it. <strong>Build with AI</strong> opens the same
+editor with the AI panel in front, for describing what you want instead. Clicking a row
+opens it; <strong>Rename</strong> moves the file and its layout sidecar together, and the cross
+deletes both.</p>
+<h2 id="the-editor">The editor<a class="headerlink" href="#the-editor" title="Permanent link">&para;</a></h2>
+<p><img alt="The canvas: a source, a fused comb, a farm and an all-to-all block" src="../img/web/canvas.png" /></p>
+<p>The canvas shows <em>blocks</em>, not threads: the things you write. A source, a node, a sink,
+a farm with its worker inside it, a comb, a feedback loop, an all-to-all pair, and a raw
+node. <code>&gt;&gt;</code> is an edge. Drag a kind from the palette on the left onto the canvas to add
+it, drag from one card's handle to another to connect them, and select a card and press
+Delete to remove it.</p>
+<p><strong>Blocks / Threads</strong> switches to the expanded graph — the emitters, the workers, the
+collectors, everything that will actually run, the same picture <code>tq.draw</code> prints.
+It is read-only: it is what the blocks become.</p>
+<p><strong>Tidy up</strong> lays the cards out again (a file with no saved layout is laid out
+automatically the first time it opens). The zoom controls and <strong>Fit</strong> are next to it.</p>
+<h3 id="code-and-the-two-way-sync">Code, and the two-way sync<a class="headerlink" href="#code-and-the-two-way-sync" title="Permanent link">&para;</a></h3>
+<p><img alt="The code view, with the canvas in sync" src="../img/web/code.png" /></p>
+<p><strong>Canvas / Code</strong> switches to the whole file in an editor. The two views are the same
+flow:</p>
+<ul>
+<li>An edit on the canvas regenerates the Python. The generated code is what the house
+  style asks for and passes <code>ruff</code>, and node bodies are kept exactly as written: a round
+  trip never reformats what you typed.</li>
+<li>An edit in the code re-parses about half a second after you stop typing, and the
+  canvas catches up. The badge by the file name says <code>Canvas in sync</code> when it did.</li>
+</ul>
+<p>Nothing is ever reverted. If the parser cannot model what you typed, the file stays
+exactly as it is and the panel underneath says which line stopped it; the flow drops
+to <em>code-only mode</em> until it can be modelled again.</p>
+<p><code>Ctrl S</code> (<code>⌘S</code>) saves. If the file changed on disk since it was opened — you edited it
+in another editor, or the AI builder wrote it — saving shows both versions instead of
+overwriting.</p>
+<h3 id="the-properties-panel">The properties panel<a class="headerlink" href="#the-properties-panel" title="Permanent link">&para;</a></h3>
+<p><img alt="The properties panel of a farm: workers, emit policy, key, prefetch" src="../img/web/properties.png" /></p>
+<p>Select a card and the panel on the right holds every option that block has: how many
+workers, the emit policy (round robin, on demand, broadcast, scatter, by key) and its
+key, the collect policy, ordering, prefetch, capacity, the runtime for that block, its
+name, and custom emitter and collector ends. The node's own body is editable there too.
+Every change goes straight into the code.</p>
+<h3 id="check">Check<a class="headerlink" href="#check" title="Permanent link">&para;</a></h3>
+<p><strong>Check</strong> runs <code>tq.check</code> on the flow in a child process and answers with the node and
+edge counts, or with the <code>GraphError</code> as it stands — Tolquane's errors already say what
+to fix. A problem that belongs to one block is marked on that card and listed in the
+Problems tab of the drawer.</p>
+<h2 id="running">Running<a class="headerlink" href="#running" title="Permanent link">&para;</a></h2>
+<p><img alt="A run in progress: item counts on the cards, tapped items in the drawer" src="../img/web/run.png" /></p>
+<p><strong>Run</strong> starts the flow in a child process, never in the server, so a flow that hangs
+or crashes costs one process and nothing else. The arrow next to it opens the options:</p>
+<ul>
+<li><strong>Input</strong>: the flow's own source, or one of the samples saved with the flow. <strong>Manage
+  samples</strong> is where you add one — a list of JSON values that is fed to <code>build(source=…)</code>
+  in place of the source node.</li>
+<li><strong>Runtime</strong>: threads, processes or sync. Sync runs one node at a time in a fixed
+  order, which is the one to reach for when something is wrong.</li>
+<li><strong>Tap items</strong>: keep the last five items that crossed every edge, for the Taps tab.</li>
+<li><strong>Chrome trace</strong>: write a trace file, downloadable from the report afterwards, that
+  opens in Perfetto.</li>
+</ul>
+<p><code>Ctrl ↵</code> (<code>⌘↵</code>) runs with whatever those options are set to.</p>
+<p>While it runs, each card carries its state colour (not started, running, waiting, done,
+failed), how many items it has taken and produced, and what percentage of the time it
+was busy; each edge carries its queue depth. Waiting is back pressure, not an error.</p>
+<p>The drawer at the bottom has four tabs:</p>
+<ul>
+<li><strong>Console</strong>: everything the flow printed, <code>stdout</code> and <code>stderr</code>, as it arrives.</li>
+<li><strong>Taps</strong>: one row per edge, and the last items that crossed it.</li>
+<li><strong>Report</strong>: the table <code>tq.run</code> returns — items in and out, busy and wait time per
+  node, the busiest one marked. The trace file downloads from here.</li>
+<li><strong>Problems</strong>: errors and deadlock reports, each pointing at the card it is about.</li>
+</ul>
+<p><strong>Cancel</strong> sends the run <code>SIGTERM</code>, and <code>SIGKILL</code> if it has not stopped after
+<code>cancel_grace</code> seconds.</p>
+<h2 id="parameters-and-environment">Parameters and environment<a class="headerlink" href="#parameters-and-environment" title="Permanent link">&para;</a></h2>
+<p><img alt="The Run popover: the flow's own parameters, each typed from its default" src="../img/web/params.png" /></p>
+<p>A flow can take parameters. They are keyword-only arguments of <code>build</code>, after <code>source</code>,
+each with a literal default:</p>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">build</span><span class="p">(</span><span class="n">source</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">factor</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span> <span class="n">label</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">"x"</span><span class="p">,</span> <span class="n">loud</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">):</span>
+    <span class="o">...</span>
+</code></pre></div>
+<p>The defaults are what the file does on its own, so <code>python flow.py</code> still runs and still
+needs nothing. A parameter with no default, or one whose default is not a literal, is
+something the canvas cannot model: the flow drops to code-only mode and says which one.</p>
+<p>The <strong>Run</strong> popover lists them under Parameters, one field per parameter, typed from the
+default — a number, a toggle, a text box, or a code field for anything else — with what
+the file says written underneath. The values you used last are remembered per flow, in
+the browser. The schedule dialog has the same section and keeps its values with the
+schedule. Parameters are added, renamed, retyped and removed in the properties panel of
+the start card, which is an edit of <code>build()</code> like any other.</p>
+<p>From the command line:</p>
+<div class="highlight"><pre><span></span><code>tolquane run flow.py --param factor=4 --param label=z
+tolquane check flow.py --param factor=4
+</code></pre></div>
+<p><code>--param</code> repeats, and works on <code>run</code>, <code>check</code>, <code>explain</code> and <code>draw</code>. The value goes
+through <code>ast.literal_eval</code>, so <code>4</code> is an integer and a plain word stays a string. A name
+the flow does not declare is an error that lists the ones it does.</p>
+<p><strong>Environment.</strong> The popover's Environment section sets variables for that one run;
+<code>tolquane run flow.py --env GREETING=world</code> does the same at the command line, and a
+schedule carries its own. <strong>Settings → Workspace environment</strong> is given to every run in
+the workspace, before the run's own variables: a key or a database URL a flow needs
+belongs there rather than in the file. The server's own API keys, the SMTP password and
+the access token are taken out of every child's environment before any of this is
+applied, so a flow never inherits them.</p>
+<p><strong>The interpreter.</strong> <strong>Settings → Interpreter</strong> is the Python that runs the flows; unset,
+it is the one the server itself runs on. Saving it runs it: an interpreter without
+Tolquane, or with a different major version, is refused with the <code>pip install tolquane</code>
+line that fixes it. A bare name is looked up on <code>PATH</code>, and a virtualenv that has since
+been deleted falls back to the server's own interpreter rather than making every run
+fail. Check, Explain, Draw and Optimize use it too, and the Run popover names it.</p>
+<p><strong>A missing import.</strong> <strong>Check</strong> also asks that interpreter to import what the file
+imports. Whatever it cannot import comes back in Problems as a warning with the line that
+fixes it — <code>pip install opencv-python</code> for <code>cv2</code>, and the same for <code>PIL</code>, <code>sklearn</code>,
+<code>yaml</code>, <code>bs4</code> and <code>dotenv</code>. The standard library, <code>tolquane</code> itself and the modules
+sitting next to the flow are not asked about. A flow that fails to check <em>because</em> of the
+missing module gets the warning as well: it is the same problem, and the fix is the line
+under it.</p>
+<h2 id="runs">Runs<a class="headerlink" href="#runs" title="Permanent link">&para;</a></h2>
+<p>Every run is recorded: the flow, when, how long, the runtime, the trigger (manual, a
+schedule, or a retry of one), who started it, the parameters and variables it was given,
+the status and the busiest node. Opening one shows its report and its log — the last
+64 KB of what it printed — the messages it sent if it was a schedule with
+<a href="#schedule-outcomes">outcomes</a>, and <strong>Run again</strong>, which starts the same flow on the same
+runtime with the same sample. The history lives in <code>~/.tolquane/web.db</code>.</p>
+<h2 id="history">History<a class="headerlink" href="#history" title="Permanent link">&para;</a></h2>
+<p><img alt="The History tab: the versions of this flow, uncommitted changes on top" src="../img/web/history.png" /></p>
+<p>The versions of a flow are git's, not Tolquane's. Two things have to be true: <code>git</code> on the
+<code>PATH</code>, and the workspace inside a repository. When either is missing the History tab says
+so, in git's own words, and an administrator can press <strong>Initialize history</strong>: that runs
+<code>git init</code> in the workspace and writes a <code>.gitignore</code> with <code>.tolquane-web/</code> and
+<code>__pycache__/</code>.</p>
+<p><strong>History</strong> is the third tab of the right column, beside Properties and the AI builder. It
+lists the commits that touched this flow — the short hash, who made it, the message, how
+long ago — with <code>HEAD</code> marked, and <strong>Uncommitted changes</strong> on top when the file differs
+from the last commit; the Save button carries a dot while that is true. Clicking an entry
+shows its diff against the file as it is now.</p>
+<p><strong>Restore</strong> writes that version back over the flow and its layout sidecar. It is a write,
+not a commit and not a checkout: the file becomes what it was, the change shows as
+uncommitted, and you save it, or restore <code>HEAD</code> again, as you like.</p>
+<p><code>Ctrl Shift S</code> (<code>⌘⇧S</code>) saves with a message: a small dialog, and the save commits the flow
+and its sidecar with what you typed. <strong>Settings → History → Commit on save</strong> does it for
+every save, with <code>Edit &lt;path&gt;</code> when no message was given; the toolbar says which of the
+two happened, and says so when there was nothing to commit. <strong>Apply</strong> in the AI panel
+fills the next message in for you: <code>AI: &lt;the first line of what you asked&gt;</code>.</p>
+<p>Only the flow's own two files are ever added, by name, so a commit never sweeps up
+whatever else was uncommitted, and a commit is authored as you, at
+<code>&lt;name&gt;@tolquane.local</code>. Nothing here runs <code>push</code>, <code>reset</code> or <code>checkout</code>. A commit git
+refuses does not undo the save: the file is written, the commit is not made, and the
+server log says why. Asking for a commit in a workspace that is not a repository is
+refused before anything is written.</p>
+<h2 id="schedules">Schedules<a class="headerlink" href="#schedules" title="Permanent link">&para;</a></h2>
+<p><img alt="The Schedules page: cron expressions with what they mean and when they fire next" src="../img/web/schedules.png" /></p>
+<p>A schedule is a flow, a five-field cron expression, an optional sample and a runtime,
+with the same <a href="#parameters-and-environment">parameters and variables</a> a run takes and its
+own <a href="#schedule-outcomes">outcomes</a>. The editor offers the usual shapes as presets — every
+few minutes, hourly, daily, weekdays, weekly, monthly — and a custom field for anything
+else. Whatever it comes to is shown back as a sentence with the next five times it fires,
+so an expression is never a guess.</p>
+<p>Times are the machine's own zone, the one the page names next to the table, not UTC.</p>
+<p>Schedules fire only while the server is up, and a time that passed while it was down
+does not queue: a schedule that missed four nights fires once, not four times. <strong>Run
+now</strong> fires one immediately.</p>
+<h2 id="schedule-outcomes">Schedule outcomes<a class="headerlink" href="#schedule-outcomes" title="Permanent link">&para;</a></h2>
+<p><img alt="A schedule's Outcomes section: what to be told about, where, and how many retries" src="../img/web/outcomes.png" /></p>
+<p>A schedule runs when nobody is watching, so it can say how it went and try again.</p>
+<p><strong>Tell me when a run is</strong> picks the statuses worth a message: failed, deadlock, cancelled,
+done. Nothing picked means nobody is told, which is the default; the run is recorded
+either way.</p>
+<p><strong>Webhook.</strong> One <code>POST</code> of JSON: the event and the final status, how many attempts it
+took, the flow, the schedule with its cron, the run record itself, the busiest node, the
+error, the last 2 KB of the log, and the address of the run's page. Ten seconds to answer,
+and one retry thirty seconds later. A schedule with no URL of its own uses <strong>Settings →
+Notifications → Default webhook</strong>.</p>
+<p><strong>Email.</strong> Addresses separated by commas. Mail needs an SMTP server in <strong>Settings →
+Notifications</strong> — host, port, user, the address it comes from, STARTTLS — and without one
+the attempt is recorded as failed, with that as the reason. The password is not a setting:
+it goes to <code>~/.tolquane/web.toml</code> beside the API keys, mode 600, and is never echoed back
+to the page. <code>TOLQUANE_SMTP_PASSWORD</code> in the server's environment does instead.</p>
+<p><strong>Retries.</strong> Zero to five, with a wait in seconds between them. A retry follows a failure
+or a deadlock, never a cancel. Each attempt is a run of its own on the Runs page, so the
+chain is there to read; the message comes once, after the last attempt, with the final
+status and how many there were.</p>
+<p><strong>Send a test</strong> delivers one message now, to every target the schedule has, describing
+its last run — or a placeholder, when it has never had one. It does not retry, since
+somebody is waiting for the answer, and it reports a line per target. A schedule with no
+webhook, no addresses and no default has nothing to test and says so.</p>
+<p>The schedule list shows a bell where notifications are set, and the last outcome. Every
+attempt is kept and listed on the run itself: a webhook that failed and then succeeded
+leaves both rows. Retries and deliveries live in the running server, so a server stopped
+between two attempts drops what was pending.</p>
+<h2 id="the-same-flow-anywhere">The same flow, anywhere<a class="headerlink" href="#the-same-flow-anywhere" title="Permanent link">&para;</a></h2>
+<p>Nothing Tolquane Web writes needs Tolquane Web to run:</p>
+<div class="highlight"><pre><span></span><code>python flow.py                       # or: tolquane run flow.py
+scp flow.py server:                  # and it runs there with pip install tolquane
+</code></pre></div>
+<p>The file is the whole flow. <code>build(source=None)</code> returns the graph and <code>main()</code> runs it,
+which is what <code>tolquane check</code>, <code>run</code>, <code>explain</code>, <code>draw</code> and <code>optimize</code> expect of any
+file, and what a <code>cron</code> line or a CI job can call. The canvas positions and the samples
+are in the sidecar next to it, and a machine that ignores the sidecar loses nothing but
+the layout.</p>
+<h2 id="the-ai-builder">The AI builder<a class="headerlink" href="#the-ai-builder" title="Permanent link">&para;</a></h2>
+<p><img alt="The AI panel: the builder answering with the flow it wrote" src="../img/web/ai.png" /></p>
+<p><strong>AI builder</strong> opens a chat beside the editor. It is the same <code>tolquane.ai.Builder</code> the
+<code>tolquane build</code> command uses, given the open flow and the chosen sample as context. It
+writes, checks and runs a flow in a scratch directory of its own — never over your open
+file — and streams its turns and its tool calls into the panel. When it has written
+something, the panel offers the diff and <strong>Apply</strong>, and the canvas updates when you take
+it.</p>
+<p>The key goes in <strong>Settings → AI builder</strong>: a provider (Anthropic or OpenAI), an optional
+model id, and the key itself. Keys are written to <code>~/.tolquane/web.toml</code> with owner-only
+permissions (mode 600) and never enter the database, a flow, or an answer from the
+server — the settings page is only ever told <em>whether</em> a key is stored. A key exported
+as <code>ANTHROPIC_API_KEY</code> or <code>OPENAI_API_KEY</code> before starting the server works too, and
+needs no setting at all.</p>
+<h2 id="settings">Settings<a class="headerlink" href="#settings" title="Permanent link">&para;</a></h2>
+<p>Everything on the Settings page is kept in the same SQLite database as the runs
+(<code>~/.tolquane/web.db</code>), except the API keys and the SMTP password, which are not:</p>
+<table>
+<thead>
+<tr>
+<th>Setting</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>workspace</code></td>
+<td>The directory the flows live in, for the next start</td>
+</tr>
+<tr>
+<td><code>env</code></td>
+<td>Variables given to every run in the workspace, before the run's own</td>
+</tr>
+<tr>
+<td><code>python</code></td>
+<td>The interpreter runs, checks, draws and optimizes use (the server's own)</td>
+</tr>
+<tr>
+<td><code>default_runtime</code>, <code>default_batch</code></td>
+<td>What a run uses when it does not choose</td>
+</tr>
+<tr>
+<td><code>exec_timeout</code></td>
+<td>How long a parse, check, draw or optimize child gets (30 s)</td>
+</tr>
+<tr>
+<td><code>max_concurrent_runs</code></td>
+<td>How many runs may go at once (4); beyond it a run is refused</td>
+</tr>
+<tr>
+<td><code>max_source_bytes</code></td>
+<td>The largest flow the server will write (2 MB)</td>
+</tr>
+<tr>
+<td><code>cancel_grace</code></td>
+<td>Seconds between <code>SIGTERM</code> and <code>SIGKILL</code> on cancel (10)</td>
+</tr>
+<tr>
+<td><code>keep_traces_days</code></td>
+<td>How long traces and samples survive in <code>.tolquane-web/</code> (7)</td>
+</tr>
+<tr>
+<td><code>auto_commit</code></td>
+<td>Commit the flow and its sidecar on every save (off)</td>
+</tr>
+<tr>
+<td><code>notifications.webhook_default</code></td>
+<td>Where a schedule with no webhook of its own posts</td>
+</tr>
+<tr>
+<td><code>notifications.smtp</code></td>
+<td>The mail server schedule outcomes use; its password is a key</td>
+</tr>
+<tr>
+<td><code>theme</code></td>
+<td>Dark, light, or whatever the system says</td>
+</tr>
+</tbody>
+</table>
+<p>Host, port and token are shown but not editable: they are start-up options, so changing
+them means restarting with <code>--host</code>, <code>--port</code> or <code>--token</code>. A member sees the page, but
+only the theme is theirs to change; the server's own section and the keys are not shown
+to them at all.</p>
+<h2 id="what-is-on-disk">What is on disk<a class="headerlink" href="#what-is-on-disk" title="Permanent link">&para;</a></h2>
+<p>For a flow called <code>hello.py</code>, in the workspace:</p>
+<div class="highlight"><pre><span></span><code>hello.py                     the flow: the artifact, and all of it
+hello.layout.json            the sidecar: card positions, the viewport, the samples
+.tolquane-web/               traces, sample files and the builder's scratch
+</code></pre></div>
+<p>The sidecar is the canvas's own file. Positions never go into the <code>.py</code>, so a flow
+opened on a machine that has never seen Tolquane Web is laid out automatically and
+nothing is missing; deleting the sidecar loses the layout and the samples and nothing
+else. Both are worth committing — the sidecar is small, and its samples are the inputs
+your flow is tested with.</p>
+<p><code>.tolquane-web/</code> is Tolquane Web's own directory and is not worth committing. Traces and
+samples in it are cleared at startup once they are older than <code>keep_traces_days</code>.</p>
+<p>Runs, schedules, settings, accounts, sessions and the record of what was notified are
+in <code>~/.tolquane/web.db</code>. Passwords are <code>scrypt</code> hashes with a salt each, and a session or
+API token is kept only as its SHA-256: neither is ever there as text. The API keys and the
+SMTP password are in <code>~/.tolquane/web.toml</code>, mode 600, and nowhere else.</p>
+<h2 id="keyboard-shortcuts">Keyboard shortcuts<a class="headerlink" href="#keyboard-shortcuts" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Key</th>
+<th>Does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Ctrl K</code> / <code>⌘K</code></td>
+<td>The command palette: every action, by name</td>
+</tr>
+<tr>
+<td><code>Ctrl S</code> / <code>⌘S</code></td>
+<td>Save the open flow</td>
+</tr>
+<tr>
+<td><code>Ctrl Shift S</code> / <code>⌘⇧S</code></td>
+<td>Save with a commit message</td>
+</tr>
+<tr>
+<td><code>Ctrl ↵</code> / <code>⌘↵</code></td>
+<td>Run the open flow</td>
+</tr>
+<tr>
+<td><code>Ctrl Z</code> / <code>⌘Z</code>, <code>Ctrl Shift Z</code> or <code>Ctrl Y</code></td>
+<td>Undo and redo on the canvas</td>
+</tr>
+<tr>
+<td><code>Ctrl F</code> / <code>⌘F</code></td>
+<td>Find, in the code view</td>
+</tr>
+<tr>
+<td><code>Delete</code></td>
+<td>Remove the selected card</td>
+</tr>
+<tr>
+<td><code>↵</code> / <code>Shift ↵</code></td>
+<td>Send, and a new line, in the AI panel</td>
+</tr>
+<tr>
+<td><code>Esc</code></td>
+<td>Close the palette or a dialog</td>
+</tr>
+</tbody>
+</table>
+<h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
+<p><strong>The port is in use.</strong> <code>tolquane web --port 8899</code>, or stop whatever holds 8765. Another
+Tolquane Web is the usual answer; they share the same database, so two of them on one
+machine is one too many.</p>
+<p><strong>"The Tolquane server is not reachable".</strong> The banner across the top means the page is
+still there but the server is not answering; it retries every five seconds. Start it
+again with <code>tolquane web</code> in the workspace and the banner goes on its own. Nothing typed
+is lost, but nothing can be saved until it is back.</p>
+<p><strong>A flow opens read-only, saying it cannot be modelled.</strong> That is code-only mode. The
+file is fine — it is Python the canvas cannot represent, usually a graph built at run
+time, a <code>Graph.link</code> topology, or a <code>build()</code> that does more than compose blocks. The
+code editor, Check, Run and the whole drawer work as usual; the canvas shows the
+expanded graph read-only instead of the blocks. The banner names what stopped the
+parser. To get the canvas back, move the part it cannot read into a node body, or let
+the AI builder rewrite the file in the house style.</p>
+<p><img alt="A code-only flow, and the deadlock report of a run that hung" src="../img/web/deadlock.png" /></p>
+<p><strong>A flow hangs.</strong> It will not hang for ever: Tolquane's watchdog notices that every node
+is waiting on another one and ends the run with a deadlock report, which arrives in the
+Problems tab naming the nodes, what each was waiting for, and the fix — usually a
+capacity to raise or a cycle to break. Cancel stops a run that is merely slow. A run
+whose child ignores both <code>SIGTERM</code> and <code>SIGKILL</code> is recorded as failed rather than left
+saying "running" for ever.</p>
+<p><strong>Every request answers 401 on a server started with <code>--token</code>.</strong> The token in the
+browser is missing or wrong. Set it again —
+<code>localStorage.setItem('tolquane.token', '…')</code> in the developer console, then reload —
+or restart the server without <code>--token</code> if it is only ever reached from this machine. On
+a server with accounts, a 401 means the session has gone instead: the page sends you to
+the sign-in form and back to where you were.</p>
+<p><strong>Nobody can sign in.</strong> Passwords are set from the command line as well as from the page,
+and no server has to be running: <code>tolquane web users passwd alice</code>, or
+<code>tolquane web users add alice --admin</code> if there is no administrator left.
+<code>tolquane web users list</code> says who there is.</p>
+<p><strong>A run is refused with "429".</strong> <code>max_concurrent_runs</code> runs are already going. Wait,
+cancel one, or raise the limit in Settings.</p>
+<p><strong>The page loads but nothing works, and the browser console says something about the
+Content Security Policy.</strong> The policy the server sends allows the app's own scripts and
+styles and nothing else; a browser extension injecting into the page is the usual cause.
+See below.</p>
+<h2 id="security">Security<a class="headerlink" href="#security" title="Permanent link">&para;</a></h2>
+<p>Tolquane Web runs flows: it is a program that executes code you give it, with your
+privileges. What it does about that:</p>
+<ul>
+<li><strong>Loopback by default.</strong> With no <code>--host</code>, only this machine can reach it, and with no
+  accounts either, no login is needed. <code>--host</code> anything else is refused unless <code>--token</code>
+  is given.</li>
+<li><strong>One token, everywhere.</strong> With a token set, every route under <code>/api</code>, the run
+  WebSocket and the AI event stream need it — as <code>Authorization: Bearer &lt;token&gt;</code>, or as
+  <code>?token=</code> on the socket and on a download link, neither of which can set a header.
+  Tokens are compared with <code>hmac.compare_digest</code>, and never written to a log: a URL that
+  carries one is logged with <code>token=&lt;hidden&gt;</code>. The static files are served without it,
+  since the page is what asks you for the token. Paste it once and the browser keeps it.</li>
+<li><strong>Accounts, when you want them.</strong> One user made and every request needs a session or
+  an API token, on loopback too. Passwords are <code>hashlib.scrypt</code> hashes, a salt each, never
+  text; a session token is <code>secrets.token_urlsafe(32)</code> kept as its SHA-256, and expires
+  thirty days after it was last used; an API token is the same without the expiry.
+  Disabling a user ends their sessions at once, deleting one takes them with it, and a
+  password change leaves the open sessions alone — it is made from one of them.</li>
+<li><strong>Roles, not only a door.</strong> Settings, the keys, the users and <code>git init</code> belong to an
+  administrator; a member has the flows, the runs, the schedules, the AI panel and the
+  history. Which routes need which is a table in the server rather than a check written
+  out route by route, and a route a role does not have answers 403.</li>
+<li><strong>The workspace is a fence.</strong> Every path a request names is resolved inside the
+  workspace, whether it is being read, written, renamed or created. <code>..</code>, an absolute
+  path, a Windows drive or share, and a symlink whose target is outside are all refused,
+  and so is a layout sidecar that points away. The listing skips what it would refuse to
+  open.</li>
+<li><strong>No secrets in a child.</strong> A flow runs in a child process whose environment has had
+  <code>ANTHROPIC_API_KEY</code>, <code>OPENAI_API_KEY</code>, <code>TOLQUANE_SMTP_PASSWORD</code> and the access token
+  taken out of it, and so do the children that parse, check, draw and optimize. The
+  workspace environment and the run's own variables are applied after that, so a flow
+  gets what you gave it and nothing the server keeps. The AI builder is the one thing
+  that needs a key, and it is handed one directly.</li>
+<li><strong>Bounded.</strong> At most <code>max_concurrent_runs</code> runs at once; a source over
+  <code>max_source_bytes</code> is refused with 413; a run's events are kept to a bounded number in
+  memory, so a flow printing a million lines costs the server nothing (the socket says
+  how many events it could not keep, and the log and the report are still whole).</li>
+<li><strong>Same origin, no CORS.</strong> No <code>Access-Control-Allow-Origin</code> header is ever sent, so a
+  page on another site cannot read an answer out of this server even from your own
+  browser. The app's own page comes with <code>X-Content-Type-Options: nosniff</code> and a Content
+  Security Policy that allows scripts from this server only (the one inline script the
+  built page carries is allowed by its hash), connections to this server and its
+  WebSocket, and nothing else. Styles are the single exception: <code>style-src</code> allows
+  <code>'unsafe-inline'</code>, because the code editor and the canvas write their own stylesheets
+  into the page as they load.</li>
+</ul>
+<p>What it is not: there is no HTTPS. Passwords, session tokens and everything else go over
+plain HTTP, so on a shared machine put the server behind an SSH tunnel
+(<code>ssh -L 8765:127.0.0.1:8765 host</code>) and leave it on loopback, which is better than a
+password on the wire. Accounts say who may do what on one server; they are not a fence
+between people's files. Everybody who signs in shares the one workspace, and a member can
+run a flow, which is running code on that machine as the user who started the server.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.sections", "content.code.copy"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>

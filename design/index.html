@@ -1,0 +1,1968 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Parallel programming with composable building blocks, in Python.">
+      
+      
+      
+      
+        <link rel="prev" href="../style/">
+      
+      
+        <link rel="next" href="../backlog/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Design - Tolquane</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#design" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Tolquane" class="md-header__button md-logo" aria-label="Tolquane" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Tolquane
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Design
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="indigo"  aria-label="Dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="teal" data-md-color-accent="indigo"  aria-label="Light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/robtacconelli/Tolquane" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Tolquane" class="md-nav__button md-logo" aria-label="Tolquane" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Tolquane
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/robtacconelli/Tolquane" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tutorial/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tutorial
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cookbook/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cookbook
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../runtimes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Runtimes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../builder/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The AI builder
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api-card/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API card
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../from-bbflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Coming from FastFlow and BBFlow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../style/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    House style
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Design
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../backlog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Backlog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_12" >
+        
+          
+          <label class="md-nav__link" for="__nav_12" id="__nav_12_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tolquane Web
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_12_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_12">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Tolquane Web
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../web-user/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../web/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The plan
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../web-interfaces/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Interfaces
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_13" >
+        
+          
+          <label class="md-nav__link" for="__nav_13" id="__nav_13_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Decisions
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_13_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_13">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Decisions
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../decisions/0001-naming/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Naming
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../decisions/0002-fastflow-review/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    FastFlow review
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="design">Design<a class="headerlink" href="#design" title="Permanent link">&para;</a></h1>
+<p>The full design document, kept at the repository root as <code>DESIGN.md</code>.</p>
+<h1 id="tolquane-design-rebuilding-bbflow-in-python">Tolquane design: rebuilding BBFlow in Python<a class="headerlink" href="#tolquane-design-rebuilding-bbflow-in-python" title="Permanent link">&para;</a></h1>
+<p>Status: draft 1, 2026-09-05. Companion to <code>PREV_CLAUDE.md</code> (naming decision).
+Decisions 1 to 5 in section 11 are settled; the liveness rules in section 6 are
+the contract every phase must keep.
+Sources studied: https://github.com/robtacconelli/BBFlow (Java 17, ~2.9k lines of
+library code, last commit May 2022) and the thesis <em>BBFlow: a Java implementation of
+FastFlow building blocks</em> (88 pages, May 2022, copy in <code>reference/</code>).</p>
+<hr />
+<h2 id="1-what-bbflow-is-as-built">1. What BBFlow is, as built<a class="headerlink" href="#1-what-bbflow-is-as-built" title="Permanent link">&para;</a></h2>
+<h3 id="11-the-vocabulary">1.1 The vocabulary<a class="headerlink" href="#11-the-vocabulary" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>BBFlow class</th>
+<th>Role</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>block&lt;T,U&gt;</code></td>
+<td>Abstract building block: <code>addInputChannel</code>, <code>addOutputChannel</code>, <code>start</code>, <code>join</code>.</td>
+</tr>
+<tr>
+<td><code>ff_node</code></td>
+<td>One Java <code>Thread</code> running one <code>defaultJob</code>. Every other block is built from these.</td>
+</tr>
+<tr>
+<td><code>defaultJob&lt;T,U&gt;</code></td>
+<td>User code plus runtime support. Holds <code>in</code>/<code>out</code> lists of channels. Hooks <code>init()</code> and <code>EOS()</code>. Helpers <code>sendOut</code> (round robin), <code>sendOutTo(i)</code>, <code>sendOutToAll</code>, <code>sendEOS</code>. Fields <code>id</code>, <code>position</code> (index of the input the current item came from).</td>
+</tr>
+<tr>
+<td><code>ff_comb</code></td>
+<td>Fuses two nodes into one thread. Result is always multi-input/multi-output.</td>
+</tr>
+<tr>
+<td><code>ff_farm</code></td>
+<td>Emitter + N workers + collector. Emitter policies ROUNDROBIN, SCATTER, BROADCAST. Collector policies FIRSTCOME, ROUNDROBIN, GATHER. Emitter/collector are public fields; <code>removeEmitter()</code>, <code>connectEmitterWorkers()</code> etc. rewire by hand.</td>
+</tr>
+<tr>
+<td><code>ff_pipeline</code></td>
+<td>Chain of blocks. Topologies 1-1, 1xN, Nx1, N-N, NxM, resolved by <code>instanceof</code> dispatch in <code>pipeline_generic</code>.</td>
+</tr>
+<tr>
+<td><code>ff_all2all</code></td>
+<td><code>combine_farm(left, right, R, G, merge)</code>: the eight farm-fusion cases from the FastFlow docs.</td>
+</tr>
+<tr>
+<td><code>ff_queue&lt;T&gt;</code></td>
+<td>SPSC FIFO channel. Blocking/non-blocking x bounded/unbounded on <code>LinkedBlockingQueue</code>, <code>ConcurrentLinkedQueue</code>, <code>squeue</code>. EOS is a boolean flag on the queue; <code>take()</code> returns <code>null</code> once EOS is set and the queue is empty. Non-blocking waits spin with a 1 us backoff.</td>
+</tr>
+<tr>
+<td><code>ff_queue_TCP</code></td>
+<td>INPUT side: server thread + <code>ObjectInputStream</code> feeding a local queue. OUTPUT side: client with buffered <code>ObjectOutputStream</code> flushed every 1 ms. Port = <code>serverPort + channel id</code>. Reconnects forever. EOS is the string <code>"EOS"</code>.</td>
+</tr>
+<tr>
+<td><code>bb_settings</code></td>
+<td>Global static config: BLOCKING, BOUNDED, defaultBufferSize, backOff, serverPort, bufferedTCP.</td>
+</tr>
+<tr>
+<td><code>preloader</code>, <code>customWatch</code></td>
+<td>JVM warm-up, stopwatch.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="12-how-a-node-runs">1.2 How a node runs<a class="headerlink" href="#12-how-a-node-runs" title="Permanent link">&para;</a></h3>
+<p><code>defaultJob.run()</code> calls <code>init()</code>, then loops in one of three modes chosen at
+construction time by reflection:</p>
+<ol>
+<li><strong>CUSTOM</strong>: user overrides <code>runJob()</code>; the body is called in a loop and the user
+   reads channels, writes channels and handles EOS by hand.</li>
+<li><strong>INLINE</strong> (anonymous class overriding <code>U runJob(T)</code>): single input, single output.
+   Return value is sent; <code>null</code> means "send nothing".</li>
+<li><strong>INLINE_MULTI</strong> (anonymous class overriding <code>runJobMulti(T, out)</code>): inputs are
+   scanned round robin; user sends explicitly.</li>
+</ol>
+<p>When all inputs have delivered EOS, <code>EOS()</code> is called and EOS is set on every output.
+EOS is always broadcast to all outputs so the whole graph drains.</p>
+<h3 id="13-what-the-thesis-measured-and-what-to-carry-over">1.3 What the thesis measured, and what to carry over<a class="headerlink" href="#13-what-the-thesis-measured-and-what-to-carry-over" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Buffering the TCP channel and flushing every 1 ms made network channels 4 to 5 times
+  faster. With that, BBFlow's TCP pipeline beat Distributed FastFlow by about 3x
+  beyond 100K items. Lesson: <strong>batch by default on every expensive channel</strong>.</li>
+<li>Farm and pipeline reached about 100x speedup on 123 workers (efficiency 0.81) on a
+  128-thread box. The block model itself scales; the overhead is per-item cost.</li>
+<li>Working on boxed <code>Long</code> instead of primitive <code>long</code> cost 40% in tight loops.
+  Lesson: <strong>the framework must not force per-item object churn</strong>; arrays and batches
+  must flow through untouched.</li>
+<li>LinkedList-based queues degrade once the consumer lags (queue depth &gt; 1K).
+  Lesson: <strong>ring buffers, bounded by default</strong>.</li>
+<li>FIRSTCOME collection is a 50 ms poll loop over inputs; the SOM use case had to
+  hand-pick which channels to listen on to stay efficient. Lesson: <strong>a multi-input
+  node needs one wait primitive, not a scan</strong>.</li>
+<li>Ordered farm and feedback channels were manual and listed as future work.</li>
+</ul>
+<h3 id="14-what-is-wrong-with-it-the-way-better-list">1.4 What is wrong with it (the "way better" list)<a class="headerlink" href="#14-what-is-wrong-with-it-the-way-better-list" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Problem in BBFlow</th>
+<th>Fix in Tolquane</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Global mutable settings (<code>bb_settings</code> statics).</td>
+<td>Options passed to <code>run()</code> or per channel; no globals.</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Three overlapping ways to write a job, chosen by reflection on anonymous classes.</td>
+<td>One way: a plain function or callable. Cardinality is inferred from the graph, not the class.</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Workers cloned from one job via Java serialization (<code>uniqueJob</code>).</td>
+<td>Pass a class or factory; it is instantiated once per worker.</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Public mutable fields plus <code>removeEmitter()</code> / <code>connectEmitterWorkers()</code> index juggling (<code>removeInputChannel(0)</code>).</td>
+<td>Immutable graph description; wiring is done by the runtime at <code>run()</code>. <code>farm(..., emitter=f, collector=g)</code> replaces the dance.</td>
+</tr>
+<tr>
+<td>5</td>
+<td>EOS as <code>null</code> sentinel and a flag on the queue; <code>poll</code> timeouts also return <code>null</code>; a forgotten <code>return</code> silently drops items.</td>
+<td>EOS is a message in the channel; <code>None</code> is a legal item; <code>tq.SKIP</code> is the only way to drop.</td>
+</tr>
+<tr>
+<td>6</td>
+<td>Multi-input wait = round-robin scan with 50 ms polls; non-blocking = spin with sleep/yield.</td>
+<td>Per-node inbox: all inputs feed one queue, node blocks on one condition variable. Policies (round robin, first come, ordered) are applied on top.</td>
+</tr>
+<tr>
+<td>7</td>
+<td>Network channel: port = base + id, manual id coordination on both ends, Java serialization (unsafe, Java-only), reconnect via <code>sleep(100)</code> loop, <code>"EOS"</code> string sentinel.</td>
+<td>One listening port per process; channels multiplexed by name; length-prefixed frames; pluggable serializer (pickle p5 / msgpack); HMAC handshake; EOS is a control frame. Edges crossing hosts become TCP automatically from a deploy file.</td>
+</tr>
+<tr>
+<td>8</td>
+<td>Exceptions are <code>printStackTrace()</code>d and swallowed; a crashed worker hangs <code>join()</code> forever.</td>
+<td>Any exception cancels the graph and re-raises in <code>run()</code> as an <code>ExceptionGroup</code> with node names.</td>
+</tr>
+<tr>
+<td>9</td>
+<td>No feedback channels, no ordered farm, no on-demand scheduling.</td>
+<td>Built in: <code>ordered=True</code>, <code>feedback=</code>, emitter policy <code>on_demand</code>, <code>key=</code>.</td>
+</tr>
+<tr>
+<td>10</td>
+<td><code>ff_comb</code> implemented through <code>combined</code>/<code>combined_side</code> back-pointers.</td>
+<td><code>comb(a, b)</code> composes two callables into one; no back-pointers.</td>
+</tr>
+<tr>
+<td>11</td>
+<td>Pipeline wiring is <code>instanceof</code> chains that mutate other nodes' channel lists.</td>
+<td>Graph is a small typed data structure (nodes, ports, edges); wiring is a pure function of it.</td>
+</tr>
+<tr>
+<td>12</td>
+<td>Tests are <code>main()</code> programs printing to stdout; no packaging (<code>javac tests/*.java</code>).</td>
+<td><code>pip install tolquane</code>, pytest suite, CI matrix, benchmark script that reproduces the thesis tables.</td>
+</tr>
+<tr>
+<td>13</td>
+<td>Docs are a thesis PDF and javadoc.</td>
+<td>mkdocs site: 5-minute tutorial, cookbook, "coming from FastFlow/BBFlow" page.</td>
+</tr>
+<tr>
+<td>14</td>
+<td>Hard to debug: everything is always multithreaded.</td>
+<td><code>runtime="sync"</code> runs the whole graph deterministically in the calling thread.</td>
+</tr>
+<tr>
+<td>15</td>
+<td><code>LICENSE</code> file is GPLv3 but README badge says LGPL.</td>
+<td>Clean-room rewrite; pick one license deliberately (see section 9).</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="2-goals-for-tolquane">2. Goals for Tolquane<a class="headerlink" href="#2-goals-for-tolquane" title="Permanent link">&para;</a></h2>
+<ol>
+<li><strong>Same vocabulary as FastFlow/BBFlow.</strong> Node, combine, pipeline, farm, all-to-all,
+   channels, emitter, collector. Thesis knowledge and FastFlow papers transfer directly.</li>
+<li><strong>A function is a node.</strong> Hello world is three lines. No base classes required.</li>
+<li><strong>One graph, several runtimes.</strong> Threads, processes, asyncio, TCP across machines,
+   and a deterministic sync runtime for tests. The graph description never changes.</li>
+<li><strong>Fail loudly.</strong> No hangs, no swallowed exceptions.</li>
+<li><strong>Zero required dependencies.</strong> Pure Python, optional extras for msgpack, numpy,
+   cloudpickle.</li>
+<li><strong>Typed, tested, documented, benchmarked.</strong> <code>py.typed</code>, generics <code>Node[In, Out]</code>,
+   pytest, CI on 3.11 to 3.14 plus the free-threaded 3.14t build.</li>
+</ol>
+<p>Non-goals for 1.0: GPU, cluster schedulers (Kubernetes, Slurm integration), exactly-once
+delivery, persistence, dynamic graph rewriting at runtime.</p>
+<hr />
+<h2 id="3-the-python-reality-check">3. The Python reality check<a class="headerlink" href="#3-the-python-reality-check" title="Permanent link">&para;</a></h2>
+<p>BBFlow is one thread per node. In CPython with the GIL, that gives parallel speedup only
+when the work releases the GIL (numpy, I/O, C extensions). Tolquane must be honest
+about this and make the runtime a one-word switch.</p>
+<table>
+<thead>
+<tr>
+<th>Runtime</th>
+<th>Node runs as</th>
+<th>Channel</th>
+<th>Use when</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>sync</code></td>
+<td>Function calls in the caller's thread, lock-step scheduler</td>
+<td>Python <code>deque</code></td>
+<td>Tests, debugging, tiny graphs. Deterministic.</td>
+</tr>
+<tr>
+<td><code>threads</code> (default)</td>
+<td>One <code>threading.Thread</code> per node</td>
+<td><code>deque</code> + <code>Condition</code>, bounded</td>
+<td>I/O-bound stages, numpy/C work, and <strong>full parallelism on free-threaded CPython 3.14t</strong>. Same model as BBFlow.</td>
+</tr>
+<tr>
+<td><code>processes</code></td>
+<td>Farm workers in child processes (spawned), everything else as threads in the parent; <code>tq.farm(..., runtime="processes")</code> for one farm</td>
+<td>pickle protocol 5 over a <code>multiprocessing</code> pipe, batched; a completion marker per item keeps credits and loop tokens exact; shared-memory ring for fixed-size records later</td>
+<td>CPU-bound pure Python on a GIL build.</td>
+</tr>
+<tr>
+<td>async nodes</td>
+<td><code>async def</code> nodes run on an event loop inside the threads runtime; <code>tq.farm(coro, workers=N)</code> is one pool node running N coroutines at a time</td>
+<td>The node's own inbox and outbox; the pool feeds and drains the loop</td>
+<td>Network-heavy stages: hundreds of requests in flight on one thread.</td>
+</tr>
+<tr>
+<td><code>tcp</code> (distributed)</td>
+<td>Any of the above per host; cross-host edges become TCP channels</td>
+<td>Length-prefixed frames, batched, reconnecting</td>
+<td>Two or more machines.</td>
+</tr>
+<tr>
+<td><code>interpreters</code> (experimental, later)</td>
+<td>One subinterpreter per node (PEP 734, Python 3.14)</td>
+<td>Interpreter channels</td>
+<td>GIL-per-interpreter parallelism without process overhead.</td>
+</tr>
+</tbody>
+</table>
+<p>Free-threaded CPython became officially supported in 3.14 (PEP 779). Tolquane's thread
+runtime is the natural fit for it, so the BBFlow benchmarks (farm scalability up to 128
+workers) become a real target again, not just a Java memory.</p>
+<p>The other lever is <strong>batching</strong>. A Python queue put/get pair costs a few microseconds,
+so per-item channel traffic dominates any cheap stage. Channels carry batches
+transparently (<code>batch=64</code> items or a time limit, flushed when the producer idles);
+user code always sees single items. This is the in-process version of the 1 ms TCP
+flush the thesis found so effective.</p>
+<hr />
+<h2 id="4-the-user-facing-api">4. The user-facing API<a class="headerlink" href="#4-the-user-facing-api" title="Permanent link">&para;</a></h2>
+<h3 id="41-hello-world">4.1 Hello world<a class="headerlink" href="#41-hello-world" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">tolquane</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">tq</span>
+
+<span class="nd">@tq</span><span class="o">.</span><span class="n">source</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">numbers</span><span class="p">():</span>
+    <span class="k">yield from</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">101</span><span class="p">)</span>          <span class="c1"># a source is a generator</span>
+
+<span class="nd">@tq</span><span class="o">.</span><span class="n">node</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">double</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+    <span class="k">return</span> <span class="n">x</span> <span class="o">*</span> <span class="mi">2</span>                       <span class="c1"># return value is sent downstream</span>
+
+<span class="nd">@tq</span><span class="o">.</span><span class="n">sink</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">show</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+
+<span class="n">graph</span> <span class="o">=</span> <span class="n">numbers</span> <span class="o">&gt;&gt;</span> <span class="n">tq</span><span class="o">.</span><span class="n">farm</span><span class="p">(</span><span class="n">double</span><span class="p">,</span> <span class="n">workers</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span> <span class="o">&gt;&gt;</span> <span class="n">show</span>
+<span class="n">tq</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">graph</span><span class="p">)</span>                          <span class="c1"># threads by default</span>
+<span class="n">tq</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">graph</span><span class="p">,</span> <span class="n">runtime</span><span class="o">=</span><span class="s2">"processes"</span><span class="p">)</span>     <span class="c1"># same graph, multiprocess</span>
+</code></pre></div>
+<p><code>&gt;&gt;</code> builds a pipeline. Plain <code>tq.pipeline(a, b, c)</code> does the same without operators.</p>
+<h3 id="42-node-forms">4.2 Node forms<a class="headerlink" href="#42-node-forms" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>You write</th>
+<th>Tolquane treats it as</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>def f(x) -&gt; y</code></td>
+<td>Stateless map node. The return value is always sent, <code>None</code> included. Return <code>tq.SKIP</code> to send nothing. A returned list is one item, never unpacked.</td>
+</tr>
+<tr>
+<td><code>def f(x): yield ...</code> (generator function)</td>
+<td>Zero-or-many node (flat map). Each yielded value is sent; yielding nothing drops the item.</td>
+</tr>
+<tr>
+<td><code>def f(x, ctx)</code></td>
+<td>Node with explicit sends: <code>ctx.send(y)</code>, <code>ctx.send(y, to=i)</code>, <code>ctx.broadcast(y)</code>, <code>ctx.stop()</code>. <code>ctx.source</code> tells which input the item came from (BBFlow's <code>position</code>), <code>ctx.index</code> is the worker id (BBFlow's <code>id</code>).</td>
+</tr>
+<tr>
+<td>A class with <code>__call__</code></td>
+<td>Stateful node; one instance per worker. Optional <code>on_start(ctx)</code> and <code>on_end(ctx)</code> map to BBFlow's <code>init()</code> and <code>EOS()</code>.</td>
+</tr>
+<tr>
+<td><code>def f(ctx)</code> decorated with <code>@tq.raw</code></td>
+<td>Full control: <code>for src, item in ctx.inputs(): ...</code> and manual sends. BBFlow's CUSTOM mode, without the hazards.</td>
+</tr>
+<tr>
+<td>A no-argument generator function</td>
+<td>Source. <code>@tq.sink</code> marks a node that must have no outputs; both are checked at build time.</td>
+</tr>
+<tr>
+<td><code>async def</code></td>
+<td>A coroutine pool: takes the item only, returns or yields what to send. A farm of one coroutine is one pool node with <code>workers</code> in flight; <code>ordered=True</code> keeps input order. Async classes may have async hooks.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="43-blocks">4.3 Blocks<a class="headerlink" href="#43-blocks" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="n">tq</span><span class="o">.</span><span class="n">farm</span><span class="p">(</span><span class="n">work</span><span class="p">,</span> <span class="n">workers</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span>
+        <span class="n">emit</span><span class="o">=</span><span class="s2">"round_robin"</span><span class="p">,</span>      <span class="c1"># or "broadcast", "scatter", "on_demand", key=lambda x: x.id</span>
+        <span class="n">collect</span><span class="o">=</span><span class="s2">"first_come"</span><span class="p">,</span>    <span class="c1"># or "round_robin", "gather"</span>
+        <span class="n">ordered</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>           <span class="c1"># True = built-in ordered farm (sequence tags)</span>
+        <span class="n">emitter</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>            <span class="c1"># custom emitter callable replaces the default</span>
+        <span class="n">collector</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>          <span class="c1"># custom collector callable replaces the default</span>
+
+<span class="n">tq</span><span class="o">.</span><span class="n">comb</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">)</span>                    <span class="c1"># fuse two nodes into one thread (BBFlow ff_comb)</span>
+<span class="n">tq</span><span class="o">.</span><span class="n">pipeline</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">c</span><span class="p">)</span>             <span class="c1"># or a &gt;&gt; b &gt;&gt; c</span>
+<span class="n">tq</span><span class="o">.</span><span class="n">all2all</span><span class="p">(</span><span class="n">left_farm</span><span class="p">,</span> <span class="n">right_farm</span><span class="p">,</span> <span class="n">R</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">G</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">merge</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>   <span class="c1"># the eight FastFlow cases</span>
+<span class="n">tq</span><span class="o">.</span><span class="n">feedback</span><span class="p">(</span><span class="n">farm</span><span class="p">,</span> <span class="n">from_</span><span class="o">=</span><span class="n">collector</span><span class="p">,</span> <span class="n">to</span><span class="o">=</span><span class="n">emitter</span><span class="p">)</span>                    <span class="c1"># loop edge, explicit</span>
+<span class="n">tq</span><span class="o">.</span><span class="n">farm</span><span class="p">(</span><span class="n">a</span> <span class="o">&gt;&gt;</span> <span class="n">b</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span>               <span class="c1"># any block as a worker (1.1): pipeline, farm, feedback, all2all</span>
+<span class="n">tq</span><span class="o">.</span><span class="n">optimize</span><span class="p">(</span><span class="n">block</span><span class="p">)</span>               <span class="c1"># fewer threads (1.1): fused ends, dropped collectors, normal form</span>
+</code></pre></div>
+<p>Scatter/gather expect sequences; numpy arrays are split with views, no copies.</p>
+<p>A block used as a worker is copied per worker under the name <code>&lt;farm&gt;.&lt;i&gt;.&lt;node&gt;</code>, must
+have one input and at most one output, and its plain stages count as the farm's workers
+for the processes runtime and for deploy files. Ordered and gather farms keep plain node
+workers, since their tags travel through one worker node. <code>optimize()</code> rewrites the
+block tree, never the expanded graph, with FastFlow's <code>optimize_static</code> rules: fuse the
+stage before a farm into its emitter, drop a default collector when the next stage reads
+the workers first come, fuse the next stage into an ordered farm's collector, flatten a
+farm of farms, and, opt-in, join two farms into an all-to-all. It never touches raw
+nodes, sources, coroutine pools, or the ends a feedback loop wires back.</p>
+<h3 id="44-running-results-errors">4.4 Running, results, errors<a class="headerlink" href="#44-running-results-errors" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="n">report</span> <span class="o">=</span> <span class="n">tq</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">graph</span><span class="p">,</span> <span class="n">runtime</span><span class="o">=</span><span class="s2">"threads"</span><span class="p">,</span> <span class="n">stats</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">report</span><span class="o">.</span><span class="n">items_per_second</span><span class="p">[</span><span class="s2">"double"</span><span class="p">]</span>
+<span class="n">report</span><span class="o">.</span><span class="n">queue_high_water</span><span class="p">[(</span><span class="s2">"numbers"</span><span class="p">,</span> <span class="s2">"double"</span><span class="p">)]</span>
+
+<span class="k">with</span> <span class="n">tq</span><span class="o">.</span><span class="n">session</span><span class="p">(</span><span class="n">graph</span><span class="p">)</span> <span class="k">as</span> <span class="n">s</span><span class="p">:</span>      <span class="c1"># long-lived graph: push items, pull results</span>
+    <span class="n">s</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="mi">42</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">get</span><span class="p">())</span>
+</code></pre></div>
+<p>An exception in any node cancels the graph and <code>run()</code> raises an <code>ExceptionGroup</code>
+whose sub-exceptions carry the node name and worker index.</p>
+<h3 id="45-introspection">4.5 Introspection<a class="headerlink" href="#45-introspection" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="n">tq</span><span class="o">.</span><span class="n">check</span><span class="p">(</span><span class="n">graph</span><span class="p">)</span>         <span class="c1"># validate wiring without running; raises GraphError with a fix</span>
+<span class="n">tq</span><span class="o">.</span><span class="n">draw</span><span class="p">(</span><span class="n">graph</span><span class="p">)</span>          <span class="c1"># Mermaid text of the wired graph (cardinalities resolved)</span>
+<span class="n">tq</span><span class="o">.</span><span class="n">explain</span><span class="p">(</span><span class="n">graph</span><span class="p">)</span>       <span class="c1"># which topology rule applied to each edge: 1-1, 1xN, Nx1, N-N, NxM</span>
+</code></pre></div>
+<p>Test helpers: <code>tq.from_iterable(items)</code> is a source, <code>tq.to_list()</code> a sink whose
+<code>.items</code> holds what arrived. Decorated functions stay callable, so <code>double(3)</code> still
+returns 6 in a unit test.</p>
+<h3 id="46-distributed">4.6 Distributed<a class="headerlink" href="#46-distributed" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># deploy.toml</span>
+<span class="k">[groups.G1]</span>
+<span class="n">endpoint</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"10.0.0.1:7000"</span>
+<span class="n">nodes</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">"numbers"</span><span class="p">,</span><span class="w"> </span><span class="s2">"double"</span><span class="p">]</span><span class="w">      </span><span class="c1"># farm name covers emitter, workers, collector</span>
+
+<span class="k">[groups.G2]</span>
+<span class="n">endpoint</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"10.0.0.2:7000"</span>
+<span class="n">nodes</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">"show"</span><span class="p">]</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code>host1$ tolquane run app.py --deploy deploy.toml --group G1
+host2$ tolquane run app.py --deploy deploy.toml --group G2
+</code></pre></div>
+<p>Edges that cross a group boundary become TCP channels. Nothing changes in <code>app.py</code>.
+This is the FastFlow <code>dff</code> groups model that BBFlow's <code>benchmark_network.json</code> already
+sketched.</p>
+<hr />
+<h2 id="5-architecture">5. Architecture<a class="headerlink" href="#5-architecture" title="Permanent link">&para;</a></h2>
+<h3 id="51-package-layout">5.1 Package layout<a class="headerlink" href="#51-package-layout" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>tolquane/
+  __init__.py          public API: node, source, sink, raw, SKIP, farm, comb, pipeline,
+                       all2all, feedback, run, session, draw, explain, EOS, Context
+  core/
+    graph.py           Graph, NodeSpec, Port, Edge; validation; topology resolution
+    node.py            Node runner loop, Context, EOS handling, lifecycle hooks
+    channel.py         Channel protocol, Inbox, batching wrapper
+    policies.py        emit: RoundRobin, Broadcast, Scatter, OnDemand, KeyHash
+                       collect: FirstCome, RoundRobin, Gather, Ordered
+    farm.py  comb.py  pipeline.py  all2all.py
+  runtimes/
+    base.py            Runtime protocol: build channels, spawn nodes, join, cancel
+    sync.py  threads.py  processes.py  asyncio_.py
+  net/
+    framing.py         length-prefixed frames, control frames (HELLO, EOS, PING)
+    serializers.py     pickle5 (default), msgpack, json; out-of-band buffers for numpy
+    channel.py         TcpChannel (client side sends, server side owns the inbox)
+    deploy.py          deploy.toml parsing, group assignment, edge cutting
+    launcher.py        `tolquane run` for one group
+  observe/
+    stats.py           per-node and per-edge counters, report object
+    trace.py           optional Perfetto/Chrome-trace export
+    diagram.py         Mermaid rendering
+  cli.py               tolquane run | draw | bench
+</code></pre></div>
+<h3 id="52-core-abstractions">5.2 Core abstractions<a class="headerlink" href="#52-core-abstractions" title="Permanent link">&para;</a></h3>
+<p><strong>Graph</strong> is data. <code>NodeSpec(name, callable, kind, n_in, n_out, options)</code>,
+<code>Edge(src_port, dst_port, channel_options)</code>. Building blocks are functions that return
+subgraphs; <code>&gt;&gt;</code> concatenates. Nothing runs until <code>run()</code>. Validation happens at build
+time: unconnected required ports, type hints that disagree across an edge (warning),
+async nodes with a <code>ctx</code> parameter, in <code>comb()</code>, or in a farm with any policy but the
+default.</p>
+<p><strong>Channel</strong> is a protocol with <code>put(item)</code>, <code>put_many(batch)</code>, <code>close()</code>, and a
+<code>Subscriber</code> that the inbox registers. Implementations differ per runtime. A channel is
+SPSC, as in BBFlow, but the consumer side always goes through an <strong>Inbox</strong>.</p>
+<p><strong>Inbox</strong> is the one queue a node waits on. Every input channel delivers
+<code>(source_index, item)</code> into it. This removes BBFlow's round-robin scanning and 50 ms
+polls: a multi-input node blocks once and wakes on any input. Collector policies are
+Inbox strategies: <code>first_come</code> is the raw inbox order; <code>round_robin</code> re-orders by
+source index; <code>ordered</code> re-orders by sequence tag. Bounded per-source credits keep one
+fast producer from starving the others.</p>
+<p>Credits come back at delivery, not at pop. An item a strategy pops but holds back
+(a <code>round_robin</code> collector waiting for another source, a raw node doing
+<code>recv(source=1)</code> while source 0 keeps arriving) keeps its producer's credit, so a
+held-back source blocks after <code>capacity</code> items instead of growing a buffer without
+bound. The price is that a node which refuses to read one source while the emitter
+must feed it can deadlock; that is a real cycle in the user's topology, and the stall
+detector reports it by name (<code>tests/liveness/</code> has the case). Ordered and gather
+collectors release at pop, because their window already bounds what they hold.</p>
+<p>Batching keeps that rule. A channel entry may carry up to <code>batch</code> items; a batch takes
+its credits when it is pushed and gives them back one by one as items are delivered,
+or all at once when the fast path hands a whole batch to a node that holds nothing
+back. A partial batch is sent when it is full, when one millisecond has passed since
+the last flush, or before the producer blocks on anything (input, output credit, an
+ordered window). The sync runtime never uses the clock, so its interleaving stays
+deterministic. Raw nodes that block outside Tolquane call <code>ctx.flush()</code> first.</p>
+<p><strong>Node runner</strong> is the loop: <code>on_start</code>, then consume the inbox until every source has
+delivered EOS, then <code>on_end</code>, then close all outputs. EOS is a distinct object, never
+<code>None</code>. The same loop serves every runtime; runtimes only supply channels and a way to
+spawn.</p>
+<p><strong>Runtime</strong> builds channels for each edge, spawns each node, joins, and cancels on
+error. It is the only layer that knows about threads, processes or sockets.</p>
+<h3 id="53-termination-and-feedback">5.3 Termination and feedback<a class="headerlink" href="#53-termination-and-feedback" title="Permanent link">&para;</a></h3>
+<p>Acyclic graphs terminate the BBFlow way: EOS propagates forward, every node drains and
+closes. Feedback edges create cycles, so EOS cannot flow naturally. Tolquane offers
+two mechanisms, both explicit: <code>ctx.stop()</code> from the node that owns the loop (usually
+the emitter), and an in-flight counter on the loop that closes it when the external
+input has ended and no item is circulating. The second is the FastFlow farm-with-feedback
+rule and is the default for <code>tq.feedback</code> on a farm.</p>
+<h3 id="54-farm-details">5.4 Farm details<a class="headerlink" href="#54-farm-details" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Workers are instantiated from a class or factory once each; stateless functions are
+  shared. No serialization cloning.</li>
+<li><code>on_demand</code> emit: each worker has a credit of one (or <code>prefetch=k</code>) item; the emitter
+  sends to whoever has credit. This is the FastFlow scheduling BBFlow lacked and it
+  beats round robin whenever item costs vary.</li>
+<li><code>key=</code> emit: consistent hashing of a key to a worker, so items with the same key
+  land on the same worker (stateful per-key processing).</li>
+<li><code>ordered=True</code>: emitter tags items with a sequence number, collector releases in
+  order with a bounded reorder buffer. The thesis's <code>ordered_farm_labeling</code> example
+  becomes one keyword.</li>
+<li>Custom emitter/collector: any node callable with the right cardinality; the farm
+  wires it. No <code>removeEmitter()</code>.</li>
+</ul>
+<h3 id="55-all-to-all">5.5 All-to-all<a class="headerlink" href="#55-all-to-all" title="Permanent link">&para;</a></h3>
+<p><code>all2all(left, right, R=None, G=None, merge=False)</code> reproduces the eight cases of the
+thesis (section 3, "ff_all2all") as a pure graph transformation: it returns a new
+subgraph and never mutates <code>left</code> or <code>right</code>. <code>tq.explain</code> prints which case fired.</p>
+<h3 id="56-network-channel">5.6 Network channel<a class="headerlink" href="#56-network-channel" title="Permanent link">&para;</a></h3>
+<ul>
+<li>One listening socket per group; a HELLO frame names the channel, so many channels
+  share one port. No port arithmetic.</li>
+<li>Frames: 4-byte length + 1-byte kind + payload. Kinds: DATA (a batch), EOS, PING.</li>
+<li>Serializer per channel: pickle protocol 5 by default (fast, arbitrary objects,
+  out-of-band buffers for numpy and bytes). msgpack for cross-language or when
+  peers are not fully trusted. pickle is documented as trusted-network only.</li>
+<li>Handshake with a shared secret (HMAC challenge, like <code>multiprocessing.connection</code>).
+  Optional TLS via <code>ssl</code> context in the deploy file.</li>
+<li>Sender batches by count or time (default 1 ms, the thesis's number) and flushes on
+  idle and on EOS. Receiver unpacks into the inbox.</li>
+<li>Reconnect with exponential backoff; the sender buffers while disconnected up to a
+  bound, then applies backpressure. At-least-once within a connection; no cross-restart
+  guarantees (non-goal).</li>
+</ul>
+<h3 id="57-observability">5.7 Observability<a class="headerlink" href="#57-observability" title="Permanent link">&para;</a></h3>
+<p>Every node counts items in/out, busy time and wait time; every edge tracks depth
+high-water and blocked-put time. <code>stats=True</code> returns a report; <code>tq.draw</code> can annotate
+the diagram with throughput. <code>trace=True</code> writes a Chrome trace file to open in Perfetto.
+This replaces <code>customWatch</code> and answers the thesis's "where is the bottleneck"
+questions directly.</p>
+<hr />
+<h2 id="6-liveness-how-tolquane-avoids-the-bbflow-hangs">6. Liveness: how Tolquane avoids the BBFlow hangs<a class="headerlink" href="#6-liveness-how-tolquane-avoids-the-bbflow-hangs" title="Permanent link">&para;</a></h2>
+<p>BBFlow's structure allows deadlocks, silent drops and stalls that look like deadlocks.
+Appendix A lists twenty concrete cases found in the code. The rules below are the
+contract that closes them; each rule names the appendix items it covers and is
+enforced by a test with a timeout in <code>tests/liveness/</code>.</p>
+<p><strong>R1. EOS is a message, not a flag.</strong> <code>close()</code> enqueues a sentinel after the last
+item, so consumers see it in order after all data. <code>put()</code> after <code>close()</code> raises
+<code>ChannelClosed</code>. No visibility race, no silent post-EOS drops. (A1, A2)</p>
+<p><strong>R2. Every node waits on exactly one thing: its inbox.</strong> All inputs deliver into it,
+so a node never blocks on one empty input while another is full. Policies that need a
+specific source next (<code>round_robin</code>, <code>ordered</code>) take from the inbox into a bounded
+reorder buffer instead of blocking the inbox. (A4, A20)</p>
+<p><strong>R3. Bounded everywhere, explicit otherwise.</strong> Every edge has a capacity (default
+1024 items). Unbounded requires writing <code>capacity=None</code>. Backpressure is the only
+flow control, so memory never grows silently. (A13, A18)</p>
+<p><strong>R4. Nothing is timed-polled.</strong> All waits are condition variables or events with a
+cancellation token. No 50 ms polls, no sleep/yield spinning. Idle costs zero CPU and
+wake-up latency is the only latency. (A10)</p>
+<p><strong>R5. Closing is complete and happens once.</strong> When a node finishes, for any reason
+(all inputs ended, <code>ctx.stop()</code>, exception, cancellation), the runtime closes every
+output port. <code>on_end</code> runs exactly once. User code cannot skip or duplicate it. (A3, A8)</p>
+<p><strong>R6. Unconnected ports fail at build time.</strong> An input nobody feeds, or an output
+nobody reads on a node not marked <code>@tq.sink</code>, makes <code>run()</code> raise before any thread
+starts. There are no dummy queues. (A5, A11)</p>
+<p><strong>R7. Errors cancel, never hang.</strong> An exception in any node sets the graph's cancel
+token; every blocking wait checks it; all nodes unwind; <code>run()</code> re-raises an
+<code>ExceptionGroup</code> naming the node and worker index. SIGINT does the same. Every join
+has a timeout and a diagnostic. (A11, A17)</p>
+<p><strong>R8. Stall detection is built in.</strong> The runtime tracks each node's state: running,
+waiting on inbox, blocked on edge, done. A watchdog raises <code>DeadlockError</code> naming the
+wait cycle when every live node is blocked and no I/O is pending. Distributed runtimes
+warn instead of raising, because a remote peer may just be slow. (A20)</p>
+<p><strong>R9. Ordered and gather policies use tags, not counting.</strong> Items entering a farm are
+tagged with a sequence number; <code>SKIP</code> becomes a tombstone so sequences still advance;
+a generator node produces <code>(seq, sub_seq, end)</code> markers. Gather and ordered collection
+never wait for an item that will not come. (A9)</p>
+<p><strong>R10. Feedback loops terminate by rule.</strong> A loop carries an in-flight counter
+(incremented when an item enters the loop, decremented when an item is consumed
+without producing a successor). When the external input has ended and the counter is
+zero, the loop closes. <code>ctx.stop()</code> is the explicit alternative. A loop that cannot
+terminate is reported by R8, not by an infinite hang. (A19)</p>
+<p><strong>R11. Composition is pure.</strong> <code>farm</code>, <code>comb</code>, <code>pipeline</code>, <code>all2all</code> and <code>feedback</code>
+return new graph values and never mutate their arguments. Ports are objects, never
+positional indices, so "remove channel 0" bugs cannot exist. <code>comb</code> is function
+composition over one node interface, with no mode branching. (A7, A12, A13)</p>
+<p><strong>R12. Cardinality is declared or inferred, never guessed from a class.</strong> A node's
+kind comes from its signature (<code>f(x)</code>, <code>f(x, ctx)</code>, generator, <code>raw</code>), a source may have
+no inputs, a sink no outputs, and a map node at the end of a pipeline is a build-time
+error with a hint. Several inputs into a plain function merge first-come through the
+inbox, which is well defined; nothing is silently ignored. No reflection on class
+names, no busy loops on an empty default method. (A4, A6)</p>
+<p><strong>R13. Network control is out of band.</strong> HELLO, WELCOME, CHALLENGE, ACK, END and
+ERROR are frame kinds, never payload values. Items travel in numbered batches; the
+receiver acknowledges a batch once its node has it, and only then does the sender give
+the producer's credits back, so the capacity window holds across the wire. After a
+dropped connection the receiver states the position it expects and the sender resends
+from there, so nothing is lost or duplicated within a run. <code>SO_REUSEADDR</code> is set. A
+failed bind, a peer that never connects, or one that stays gone past the reconnect
+budget surfaces as <code>PeerLost</code>; a peer that fails says why in an ERROR frame and the
+others stop with <code>PeerFailed</code>. As built: one listening socket per group, one TCP
+connection per cut edge, pickle protocol 5 frames, an HMAC challenge when a secret is
+set. Loops and ordered farms' ends stay inside one group. (A14, A15, A16)</p>
+<p><strong>R14. Processes always spawn.</strong> Never fork with threads alive. Child death is detected
+through the broken pipe and raised as <code>WorkerDied</code>; a child whose parent dies sees its
+pipe close and exits; SIGINT is ignored in children and handled by the parent. Pipes,
+not <code>multiprocessing.Queue</code>, so there is no feeder-thread join hang. As built: a remote
+worker keeps its inbox, outbox and edges in the parent as a proxy whose two threads
+forward across the pipe; in the child the worker runs unchanged between a pipe source
+and a pipe sink, so tags, batching, hooks and policies apply as on threads. The child
+sends a completion marker after each item, in order after its outputs, and only then
+does the parent release the producer's credit and the loop token, so <code>capacity</code> and
+<code>on_demand</code> mean the same across the pipe. The stall detector counts a proxy with
+items in flight as running, so a slow child is never reported as a deadlock; a stalled
+child is reported as the proxy waiting on it.</p>
+<p><strong>R15. Work outside the channels counts as busy.</strong> A pool's coroutines and a remote
+worker's items are work no channel can see. Each node reports how much of it is in
+flight (<code>in_flight</code>, changed only through the scheduler), and the deadlock detectors
+wait for it: the thread watchdog treats such a node as running, and the sync
+scheduler leaves the baton on the table until the thread that finishes the work hands
+it back or, if nothing can run then, reports the deadlock itself. A pool node stays one
+thread: the event loop posts results into the node's own inbox, so the node waits in one
+place for either input or a result and its state is never shared between threads. The
+sync scheduler parks a node on a private condition, never on a channel lock, so handing
+the baton over never waits on a lock another node holds.</p>
+<p><strong>R16. Every rule has a test.</strong> <code>tests/liveness/</code> and <code>tests/test_async.py</code> run under a
+pytest timeout and cover: put after close, multi-output close, gather with dropped
+items, slow consumer under broadcast, feedback termination, cycle deadlock detection,
+exception inside <code>on_end</code>, SIGINT during <code>run()</code>, child process crash, network peer
+disappearing, a pool inside a jammed loop.</p>
+<hr />
+<h2 id="7-bbflow-to-tolquane-mapping">7. BBFlow to Tolquane mapping<a class="headerlink" href="#7-bbflow-to-tolquane-mapping" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>BBFlow</th>
+<th>Tolquane</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>defaultJob</code> with <code>U runJob(T)</code></td>
+<td><code>@tq.node def f(x)</code></td>
+</tr>
+<tr>
+<td><code>return null</code> to drop</td>
+<td><code>return tq.SKIP</code></td>
+</tr>
+<tr>
+<td><code>runJobMulti(T, out)</code> + <code>sendOutTo</code></td>
+<td><code>def f(x, ctx)</code> + <code>ctx.send(y, to=i)</code></td>
+</tr>
+<tr>
+<td><code>runJob()</code> manual loop</td>
+<td><code>@tq.raw def f(ctx)</code> with <code>ctx.inputs()</code></td>
+</tr>
+<tr>
+<td><code>init()</code> / <code>EOS()</code></td>
+<td><code>on_start(ctx)</code> / <code>on_end(ctx)</code> on a class node</td>
+</tr>
+<tr>
+<td><code>sendOut</code> / <code>sendOutToAll</code> / <code>sendEOS</code></td>
+<td><code>ctx.send</code> / <code>ctx.broadcast</code> / <code>ctx.stop</code></td>
+</tr>
+<tr>
+<td><code>position</code> / <code>id</code></td>
+<td><code>ctx.source</code> / <code>ctx.index</code></td>
+</tr>
+<tr>
+<td><code>ff_node(job)</code></td>
+<td>the function itself</td>
+</tr>
+<tr>
+<td><code>ff_comb(a, b)</code></td>
+<td><code>tq.comb(a, b)</code></td>
+</tr>
+<tr>
+<td><code>ff_farm(n, job, EMIT, COLLECT)</code></td>
+<td><code>tq.farm(job, workers=n, emit=..., collect=...)</code></td>
+</tr>
+<tr>
+<td><code>defaultJob.uniqueJob(job, i)</code></td>
+<td>pass a class; instances are made for you</td>
+</tr>
+<tr>
+<td><code>ff_pipeline(a, b)</code> + <code>appendBlock</code></td>
+<td><code>a &gt;&gt; b &gt;&gt; c</code></td>
+</tr>
+<tr>
+<td><code>TYPE_1_1 ... TYPE_NxM</code></td>
+<td>inferred; <code>tq.explain</code> shows which</td>
+</tr>
+<tr>
+<td><code>ff_all2all.combine_farm(...)</code></td>
+<td><code>tq.all2all(...)</code></td>
+</tr>
+<tr>
+<td><code>ff_queue(blocking, bounded, size)</code></td>
+<td><code>tq.channel(capacity=..., batch=...)</code> on an edge; blocking always, bounded by default</td>
+</tr>
+<tr>
+<td><code>ff_queue_TCP(INPUT/OUTPUT, id, host)</code></td>
+<td>deploy file; edges become TCP automatically</td>
+</tr>
+<tr>
+<td><code>bb_settings.*</code></td>
+<td><code>tq.run(..., options=tq.Options(...))</code></td>
+</tr>
+<tr>
+<td><code>preloader</code></td>
+<td>not needed</td>
+</tr>
+<tr>
+<td><code>customWatch</code></td>
+<td><code>stats=True</code> report, <code>trace=True</code></td>
+</tr>
+<tr>
+<td>manual feedback via <code>addInputChannel</code></td>
+<td><code>tq.feedback(...)</code></td>
+</tr>
+<tr>
+<td><code>ordered_farm_labeling</code> example</td>
+<td><code>ordered=True</code></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="8-roadmap">8. Roadmap<a class="headerlink" href="#8-roadmap" title="Permanent link">&para;</a></h2>
+<p>Each phase ends with tests green in CI and a runnable example. The AI builder sits
+right after the core so that the API is shaped by what generated code needs.</p>
+<p><strong>Phase 0: bootstrap (done 2026-09-05).</strong>
+<code>pyproject.toml</code> (hatchling), <code>src/tolquane</code>, ruff + mypy strict, pytest, GitHub
+Actions matrix (3.11, 3.12, 3.13, 3.14, 3.14t), README with the hello world,
+placeholder <code>tolquane 0.0.1</code> on PyPI (from the <code>PREV_CLAUDE.md</code> to-do list), license
+decided.</p>
+<p><strong>Phase 1: core on threads (0.1, done 2026-09-05).</strong>
+Graph, Channel, Inbox, node runner, EOS, <code>sync</code> and <code>threads</code> runtimes, <code>pipeline</code>,
+<code>comb</code>, <code>farm</code> with round_robin/broadcast/scatter and first_come/round_robin/gather,
+<code>ordered=True</code>, <code>on_demand</code>, error propagation, stall detector, <code>run()</code>, <code>draw()</code>.
+The <code>tests/liveness/</code> suite from section 6 (in-process cases). Port these BBFlow
+tests as pytest cases: <code>combine2</code>, <code>all2all3</code> (as a farm with router workers),
+<code>ordered_farm_labeling</code>, <code>pipeline_farm_node</code>, <code>sumTest</code>. Benchmark script for the
+two-node pipeline (thesis Table 1) and farm scalability (Figure 13).</p>
+<p><strong>Phase 2: composition (0.2, done 2026-09-05).</strong>
+<code>all2all</code> with all eight cases, <code>feedback</code> with both termination rules, <code>key=</code> emit,
+<code>session()</code> for long-lived graphs, batching on channels, <code>explain()</code>, stats report.
+Port the remaining <code>ff_tests</code> and the SOM use case as an example (it exercises feedback,
+custom emitter/collector and worker-to-worker edges).</p>
+<p><strong>Phase 3: AI builder (0.3, done 2026-09-05).</strong>
+<code>tolquane[ai]</code> extra, <code>tolquane build</code> command and <code>tolquane.ai.build()</code>, Anthropic
+provider first, OpenAI second, the four tools, the API card and <code>docs/style.md</code>, a
+recorded-fixture test suite so the loop is tested without a key, and ten end-to-end
+examples with their generated flows checked into <code>examples/generated/</code>.</p>
+<p><strong>Phase 4: processes (0.4, done 2026-09-05).</strong>
+<code>processes</code> runtime with spawn, pickle protocol 5 channels, cloudpickle fallback for
+lambdas, per-farm process pools, numpy zero-copy on scatter/gather. Benchmarks:
+farm on a GIL build, pure Python CPU work, compared with threads on 3.14t.</p>
+<p><strong>Phase 5: distributed (0.5, done 2026-09-05).</strong>
+Framing, serializers, HMAC handshake, <code>TcpChannel</code>, <code>deploy.toml</code>, <code>tolquane run</code>,
+reconnect and backpressure. Reproduce thesis Tables 2 to 5 (pipeline and farm over
+loopback and Ethernet).</p>
+<p><strong>Phase 6: async nodes, docs, 1.0 (done 2026-09-05).</strong>
+<code>async def</code> nodes as coroutine pools on an event loop inside the threads runtime (a
+separate asyncio runtime was not needed: a pool node gives network-bound stages the
+concurrency, and every other node keeps its thread), Chrome trace export
+(<code>tq.run(..., trace="trace.json")</code>), mkdocs site (tutorial, cookbook, "coming from
+FastFlow/BBFlow", runtime decision table), API reference from docstrings, 1.0 built as
+sdist and wheel. The subinterpreter runtime is left for a later release.</p>
+<p><strong>1.1: the FastFlow review (done 2026-09-06).</strong> <code>docs/decisions/0002-fastflow-review.md</code>
+records what a reading of FastFlow's headers, tests and distributed layer showed was
+missing. Taken: any block as a farm worker, the static optimizer, <code>tolquane launch</code>
+(FastFlow's <code>dff_run</code>), busy and wait time per node in the report, eleven composition
+tests ported. Deferred: divide and conquer, parallel-for helpers, per-input end hooks, a
+byte cap on network batches, thread pinning, changing a farm's size while it runs, MPI.
+Everything deferred, from this review and from earlier phases, is listed in
+<code>docs/backlog.md</code>; that file is where future work waits.</p>
+<p><strong>1.2: Tolquane Web (done 2026-09-06).</strong> The GUI, planned in <code>docs/web.md</code> and built
+against the contracts in <code>docs/web-interfaces.md</code> by parallel agents in three waves:
+the flow model and code generator, live run events in the library, storage and a cron
+scheduler, the FastAPI server and run supervisor, the React canvas editor, the code
+view with two-way sync, run and debug, the AI panel, schedules and settings, packaging
+with the frontend inside the wheel, end-to-end journeys, the user guide and hardening.
+The library stays dependency-free; the GUI is the <code>web</code> extra.</p>
+<p><strong>1.3: users, inputs and environments, history, schedule outcomes (done 2026-09-06).</strong>
+Accounts with roles and sessions; flow parameters in <code>build()</code> with <code>--param</code> and
+<code>--env</code>, an interpreter per workspace and an import probe; git history of a flow with
+commit on save and restore; notifications and retries for scheduled runs.</p>
+<hr />
+<h2 id="9-the-ai-builder">9. The AI builder<a class="headerlink" href="#9-the-ai-builder" title="Permanent link">&para;</a></h2>
+<p>Tolquane ships with a builder: a command and a library call that turns a plain-language
+description into a runnable flow, tests it, and improves it with the user, using the
+user's own Claude or GPT key. The target user has never read the FastFlow papers. The
+output must be short, readable Python with a few blocks and comments, not a wall of
+generated code.</p>
+<h3 id="91-what-it-does">9.1 What it does<a class="headerlink" href="#91-what-it-does" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>$ tolquane build "read urls from urls.txt, fetch each with 8 workers, keep the ones
+                  that return 200, write the titles to titles.csv"
+</code></pre></div>
+<ol>
+<li><strong>Plan.</strong> The model reads the API card (section 9.3) and writes a short plan: which
+   blocks, which runtime, what each node does.</li>
+<li><strong>Write.</strong> It emits one file, <code>flow.py</code>, in the house style: sources, nodes and sinks
+   as small named functions, the graph as one <code>&gt;&gt;</code> line, a <code>main()</code> that calls <code>tq.run</code>.
+   Every node carries a one-line comment saying what it does and why it is a node.</li>
+<li><strong>Check.</strong> <code>tq.check(graph)</code> validates wiring without running: unconnected ports,
+   sources with inputs, sinks with outputs, bad cardinality. Errors go back to the model
+   verbatim; they are written for this purpose (node name, what is wrong, how to fix it).</li>
+<li><strong>Test.</strong> The builder runs the flow on the <code>sync</code> runtime with a small sample
+   (the first 20 items, a generated fixture, or a user-provided sample file) and shows
+   the model the output, the stats report and any <code>NodeError</code>. Deadlocks surface as a
+   <code>DeadlockError</code> naming the cycle, never as a hang, so the loop always terminates.</li>
+<li><strong>Improve.</strong> The user says what is wrong or what to add; the model edits the same
+   file. <code>tq.explain</code> and <code>tq.draw</code> output are available to the model so it can reason
+   about topology instead of guessing.</li>
+</ol>
+<p>The same loop is available in Python (<code>tolquane.ai.build(description, ...)</code>) so people
+can embed it in notebooks and internal tools.</p>
+<h3 id="92-provider-and-model">9.2 Provider and model<a class="headerlink" href="#92-provider-and-model" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Claude through the official <code>anthropic</code> SDK, model <code>claude-opus-5</code> by default with
+  adaptive thinking (the model's default) and <code>output_config.effort</code> set to <code>high</code>,
+  streamed, with <code>fallbacks="default"</code> so a declined request is re-run on Anthropic's
+  recommended fallback instead of failing. The key comes from the environment
+  (<code>ANTHROPIC_API_KEY</code>) or an <code>ant auth login</code> profile; the builder never stores it.</li>
+<li>GPT through the official <code>openai</code> SDK's Responses API, <code>gpt-5.5</code> by default,
+  selected with <code>--provider openai</code>.</li>
+<li>Both are optional extras: <code>pip install "tolquane[ai]"</code>. The core library never
+  imports either SDK.</li>
+<li>One provider-neutral loop drives both: a provider turns a user message and tool
+  results into the model's text plus tool calls, and the builder executes the four
+  tools <code>write_flow</code>, <code>check_flow</code>, <code>run_flow</code>, <code>read_docs</code>. A recording provider
+  writes every turn to JSON and a replay provider plays it back, so the loop is tested
+  without a key; the tools still run for real during replay.</li>
+<li>As built, the plan is plain text in the model's first message rather than a
+  structured-output block; the check and run tools make the plan verifiable anyway.</li>
+</ul>
+<h3 id="93-what-the-library-must-provide-for-the-builder-to-be-good">9.3 What the library must provide for the builder to be good<a class="headerlink" href="#93-what-the-library-must-provide-for-the-builder-to-be-good" title="Permanent link">&para;</a></h3>
+<p>These are Phase 1 and 2 deliverables, because generated code is only as good as the
+API it targets.</p>
+<ul>
+<li><strong>One way to do each thing.</strong> A function is a node; <code>&gt;&gt;</code> is a pipeline; a farm is one
+  call with keyword options. Fewer choices means fewer wrong choices.</li>
+<li><strong>An API card</strong>, <code>docs/api-card.md</code>: the whole public surface on one page with one
+  example per block, kept under 2K tokens, and shipped inside the package so the builder
+  can read it at runtime. It doubles as the human cheat sheet.</li>
+<li><strong>Errors written for a reader with no context.</strong> Every <code>GraphError</code> and <code>NodeError</code>
+  names the node, states the problem in one sentence, and ends with a fix.</li>
+<li><strong><code>tq.check</code>, <code>tq.explain</code>, <code>tq.draw</code></strong> as pure functions of the graph, callable
+  without running anything.</li>
+<li><strong>The <code>sync</code> runtime</strong>: deterministic, single-threaded, exact deadlock detection, so a
+  test run costs nothing and cannot hang the builder.</li>
+<li><strong><code>tq.to_list()</code> and <code>tq.from_iterable()</code></strong> so any flow can be tested with a sample in
+  three lines.</li>
+<li><strong>A house style</strong> documented in <code>docs/style.md</code> and followed by every example in the
+  repository, because the model imitates what it reads.</li>
+</ul>
+<h3 id="94-generated-output-the-standard-to-hit">9.4 Generated output, the standard to hit<a class="headerlink" href="#94-generated-output-the-standard-to-hit" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="sd">"""Fetch a list of URLs in parallel and save the page titles."""</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">csv</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">tolquane</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">tq</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">urllib.request</span>
+
+<span class="nd">@tq</span><span class="o">.</span><span class="n">source</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">urls</span><span class="p">():</span>
+    <span class="c1"># One URL per line; blank lines are skipped.</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s2">"urls.txt"</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="k">yield from</span> <span class="p">(</span><span class="n">line</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">f</span> <span class="k">if</span> <span class="n">line</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
+
+<span class="nd">@tq</span><span class="o">.</span><span class="n">node</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">fetch</span><span class="p">(</span><span class="n">url</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+    <span class="c1"># Network-bound, so a farm of threads is the right runtime.</span>
+    <span class="k">with</span> <span class="n">urllib</span><span class="o">.</span><span class="n">request</span><span class="o">.</span><span class="n">urlopen</span><span class="p">(</span><span class="n">url</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span> <span class="k">as</span> <span class="n">r</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">url</span><span class="p">,</span> <span class="n">r</span><span class="o">.</span><span class="n">status</span><span class="p">,</span> <span class="n">r</span><span class="o">.</span><span class="n">read</span><span class="p">()</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s2">"utf-8"</span><span class="p">,</span> <span class="s2">"replace"</span><span class="p">))</span>
+
+<span class="nd">@tq</span><span class="o">.</span><span class="n">node</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">keep_ok</span><span class="p">(</span><span class="n">page</span><span class="p">):</span>
+    <span class="n">url</span><span class="p">,</span> <span class="n">status</span><span class="p">,</span> <span class="n">body</span> <span class="o">=</span> <span class="n">page</span>
+    <span class="k">return</span> <span class="n">page</span> <span class="k">if</span> <span class="n">status</span> <span class="o">==</span> <span class="mi">200</span> <span class="k">else</span> <span class="n">tq</span><span class="o">.</span><span class="n">SKIP</span>
+
+<span class="nd">@tq</span><span class="o">.</span><span class="n">sink</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">write_title</span><span class="p">(</span><span class="n">page</span><span class="p">):</span>
+    <span class="n">url</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">body</span> <span class="o">=</span> <span class="n">page</span>
+    <span class="n">title</span> <span class="o">=</span> <span class="n">body</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">"&lt;title&gt;"</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">"&lt;/title&gt;"</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span> <span class="k">if</span> <span class="s2">"&lt;title&gt;"</span> <span class="ow">in</span> <span class="n">body</span> <span class="k">else</span> <span class="s2">""</span>
+    <span class="n">writer</span><span class="o">.</span><span class="n">writerow</span><span class="p">([</span><span class="n">url</span><span class="p">,</span> <span class="n">title</span><span class="p">])</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">():</span>
+    <span class="k">global</span> <span class="n">writer</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s2">"titles.csv"</span><span class="p">,</span> <span class="s2">"w"</span><span class="p">,</span> <span class="n">newline</span><span class="o">=</span><span class="s2">""</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="n">writer</span> <span class="o">=</span> <span class="n">csv</span><span class="o">.</span><span class="n">writer</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+        <span class="n">tq</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">urls</span> <span class="o">&gt;&gt;</span> <span class="n">tq</span><span class="o">.</span><span class="n">farm</span><span class="p">(</span><span class="n">fetch</span><span class="p">,</span> <span class="n">workers</span><span class="o">=</span><span class="mi">8</span><span class="p">)</span> <span class="o">&gt;&gt;</span> <span class="n">keep_ok</span> <span class="o">&gt;&gt;</span> <span class="n">write_title</span><span class="p">)</span>
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">"__main__"</span><span class="p">:</span>
+    <span class="n">main</span><span class="p">()</span>
+</code></pre></div>
+<p>Twenty lines of logic, every block visible, nothing to learn beyond <code>source</code>, <code>node</code>,
+<code>sink</code>, <code>farm</code> and <code>&gt;&gt;</code>.</p>
+<hr />
+<h2 id="10-definition-of-easily-usable-by-anyone">10. Definition of "easily usable by anyone"<a class="headerlink" href="#10-definition-of-easily-usable-by-anyone" title="Permanent link">&para;</a></h2>
+<ul>
+<li><code>pip install tolquane</code>, no compiler, no dependencies.</li>
+<li>The hello world in the README runs unchanged on threads, processes and two machines.</li>
+<li>Every error names the node and says what to do ("async node <code>fetch</code> takes (item,
+  ctx); coroutines take the item only and return (or yield) what to send").</li>
+<li><code>runtime="sync"</code> makes any graph steppable in a debugger.</li>
+<li><code>tq.draw</code> shows what will be wired before anything runs.</li>
+<li>One page explains which runtime to pick and why, with the GIL stated plainly.</li>
+<li>The thesis benchmarks are a script in the repo, so claims are reproducible.</li>
+</ul>
+<hr />
+<h2 id="11-decisions-recorded-2026-09-05">11. Decisions (recorded 2026-09-05)<a class="headerlink" href="#11-decisions-recorded-2026-09-05" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Decision</th>
+<th>Choice</th>
+<th>Note</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>License</td>
+<td><strong>Apache-2.0</strong></td>
+<td>BBFlow's <code>LICENSE</code> is GPLv3 while its README badge says LGPL. Tolquane is a clean-room rewrite and you hold BBFlow's copyright, so no conflict.</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Minimum Python</td>
+<td><strong>3.11</strong></td>
+<td><code>ExceptionGroup</code>, <code>TaskGroup</code>, <code>typing.Self</code>. Tested through 3.14 and 3.14t.</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Operator syntax</td>
+<td><strong><code>&gt;&gt;</code></strong> for pipeline</td>
+<td><code>tq.pipeline(a, b, c)</code> always available for people who dislike operators.</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Default collector</td>
+<td><strong><code>first_come</code></strong></td>
+<td>Best throughput. <code>collect="round_robin"</code> or <code>ordered=True</code> when order matters.</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Dropping items</td>
+<td><strong>explicit <code>tq.SKIP</code></strong>; <code>None</code> is a normal value; generator functions yield zero or many</td>
+<td>See rationale below.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Why <code>tq.SKIP</code> and not "None drops".</strong> Forgetting <code>return</code> is the most common silent
+mistake in Python. Under BBFlow's rule that mistake drops every item and the
+pipeline looks stuck with no error, which is exactly the class of failure this project
+must eliminate. With <code>SKIP</code>, a forgotten <code>return</code> sends <code>None</code> downstream, the next
+stage fails on it immediately, and the error names the node. Filters cost one explicit
+token (<code>return tq.SKIP</code>), and <code>None</code> stays a first-class value that can travel through
+channels and over the network. Generator functions cover "zero or many" without any
+wrapper, so there is exactly one way to do each thing.</p>
+<p>Still open: repository home (GitHub organization <code>tolquane</code> per <code>PREV_CLAUDE.md</code>, or
+under your user with a rename later).</p>
+<hr />
+<h2 id="appendix-a-bugs-and-traps-found-in-the-bbflow-code">Appendix A. Bugs and traps found in the BBFlow code<a class="headerlink" href="#appendix-a-bugs-and-traps-found-in-the-bbflow-code" title="Permanent link">&para;</a></h2>
+<p>Each item is a failure the current Java code can produce, with the file and line in
+the repository at commit <code>6675536</code>. They are listed here because each one becomes a
+liveness rule in section 6 and a regression test in Phase 1.</p>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Where</th>
+<th>What happens</th>
+<th>Rule</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A1</td>
+<td><code>bbflow/ff_queue.java:15</code></td>
+<td><code>boolean EOS</code> is not <code>volatile</code>; the non-blocking consumer loop reads it unsynchronized. The Java memory model allows the read to be hoisted, so a consumer may never observe EOS.</td>
+<td>R1</td>
+</tr>
+<tr>
+<td>A2</td>
+<td><code>bbflow/ff_queue.java:72</code></td>
+<td><code>put()</code> returns silently once EOS is set. Any item sent after <code>sendEOS()</code> vanishes without error.</td>
+<td>R1</td>
+</tr>
+<tr>
+<td>A3</td>
+<td><code>bbflow/defaultJob.java:203-210</code></td>
+<td>INLINE mode sets EOS only on output 0. A <code>runJob(T)</code> node with N outputs (1xN topology) leaves outputs 1..N-1 open forever; downstream nodes hang.</td>
+<td>R5</td>
+</tr>
+<tr>
+<td>A4</td>
+<td><code>bbflow/defaultJob.java:202</code></td>
+<td>INLINE mode reads only input 0. Extra inputs are ignored; their producers block (bounded) or grow without limit (unbounded).</td>
+<td>R2, R12</td>
+</tr>
+<tr>
+<td>A5</td>
+<td><code>bbflow/defaultJob.java:186</code></td>
+<td>A node with no output channel gets an unbounded dummy queue that is filled and never read. Memory grows until the process dies, which looks like a stall.</td>
+<td>R6</td>
+</tr>
+<tr>
+<td>A6</td>
+<td><code>bbflow/ff_node.java:30</code></td>
+<td>Run mode is detected only for anonymous classes. A named subclass that overrides <code>runJob(T)</code> runs the empty <code>runJob()</code> in <code>while(true)</code>: 100% CPU, no item ever consumed.</td>
+<td>R12</td>
+</tr>
+<tr>
+<td>A7</td>
+<td><code>bbflow/ff_comb.java:48-59</code></td>
+<td>The combiner checks <code>node1.runType</code> twice where the second check must be <code>node2</code>; if the second node is multi-output its <code>runJobMulti</code> is never called and the item is dropped. Line 59 passes <code>null</code> as the outputs list.</td>
+<td>R11</td>
+</tr>
+<tr>
+<td>A8</td>
+<td><code>bbflow/ff_comb.java:76,115</code></td>
+<td><code>node2.EOS()</code> can run twice (from <code>sendEOS(side)</code> and from the combined <code>EOS()</code>).</td>
+<td>R5</td>
+</tr>
+<tr>
+<td>A9</td>
+<td><code>bbflow/defaultCollector.java:106</code></td>
+<td>GATHER drops the partial vector when the last channel scanned returns EOS, and blocks forever if any worker filters an item (one-item-per-channel assumption).</td>
+<td>R9</td>
+</tr>
+<tr>
+<td>A10</td>
+<td><code>bbflow/defaultCollector.java:42</code></td>
+<td>FIRSTCOME is a 50 ms timed poll per input channel; idle latency and CPU scale with worker count.</td>
+<td>R4</td>
+</tr>
+<tr>
+<td>A11</td>
+<td><code>bbflow/ff_farm.java:105-116</code></td>
+<td>Workers are cloned by Java serialization; on failure the stack trace is printed and the farm is built with zero workers, which then drains into a dummy queue (A5).</td>
+<td>R6, R7</td>
+</tr>
+<tr>
+<td>A12</td>
+<td><code>bbflow/ff_farm.java:237,247</code></td>
+<td><code>removeEmitter()</code>/<code>removeCollector()</code> remove channel index 0 of every worker, assuming the emitter/collector edge is first. A manually added channel (feedback) is removed instead.</td>
+<td>R11</td>
+</tr>
+<tr>
+<td>A13</td>
+<td><code>bbflow/pipeline_generic.java:158</code></td>
+<td>The NxM branch creates <code>new ff_queue&lt;&gt;()</code> ignoring the BLOCKING/BOUNDED arguments it was given.</td>
+<td>R3, R11</td>
+</tr>
+<tr>
+<td>A14</td>
+<td><code>bbflow_network/objectClient.java:68-69</code></td>
+<td>On <code>IOException</code> the client calls <code>start()</code> on an already started <code>Thread</code> (<code>IllegalThreadStateException</code>) and may dereference a null socket. Buffered but unflushed items are lost on reconnect, so "guaranteed to arrive" does not hold. <code>ObjectOutputStream</code> is never <code>reset()</code>, so it keeps a reference to every object written.</td>
+<td>R13</td>
+</tr>
+<tr>
+<td>A15</td>
+<td><code>bbflow/ff_queue_TCP.java:62</code>, <code>bbflow_network/objectServer.java:74</code></td>
+<td>End of stream is the in-band string <code>"EOS"</code>; a user sending that string ends the stream.</td>
+<td>R13</td>
+</tr>
+<tr>
+<td>A16</td>
+<td><code>bbflow_network/objectServer.java:104</code></td>
+<td><code>ServerSocket</code> without <code>SO_REUSEADDR</code>; a restart inside TIME_WAIT fails, the server thread dies with a <code>RuntimeException</code>, and the input channel never opens.</td>
+<td>R13</td>
+</tr>
+<tr>
+<td>A17</td>
+<td><code>bbflow/ff_node.java:98</code></td>
+<td><code>join()</code> swallows <code>InterruptedException</code>; there is no cancellation anywhere. Ctrl-C leaves non-daemon threads alive and the JVM never exits.</td>
+<td>R7</td>
+</tr>
+<tr>
+<td>A18</td>
+<td><code>bbflow/bb_settings.java:15</code></td>
+<td><code>BOUNDED = false</code> by default: any producer/consumer speed mismatch grows memory without bound.</td>
+<td>R3</td>
+</tr>
+<tr>
+<td>A19</td>
+<td>Feedback (thesis ch. 3)</td>
+<td>Documented as "just remember to send EOS". There is no termination rule, so every loop needs hand-written protocol code, as in the SOM example.</td>
+<td>R10</td>
+</tr>
+<tr>
+<td>A20</td>
+<td>Multi-input round-robin <code>take()</code> (<code>defaultJob.java</code>, <code>defaultCollector.java</code>)</td>
+<td>A node blocks on one specific input while another input is full; with bounded queues and any cycle in the topology this is a deadlock. The SOM example works around it by hand-picking which channel to listen on.</td>
+<td>R2, R8</td>
+</tr>
+</tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.sections", "content.code.copy"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>
